@@ -27,7 +27,6 @@ import {
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale);
 
-const unidades = ["CUSTODIA", "UPCM"];
 const tipos = ["PREVENTIVO", "CORRECTIVO"];
 
 const getMantenimientoRecomendado = (horas) => {
@@ -240,7 +239,7 @@ const Mantenimiento = () => {
               <TableCell>{i + 1}</TableCell>
               <TableCell>{d.maquinaria_nombre || d.maquinaria}</TableCell>
               <TableCell>{d.unidad}</TableCell>
-              <TableCell>{d.tipo}</TableCell>
+              <TableCell>{d.tipo.toUpperCase()}</TableCell>
               <TableCell>{d.ultimaRevision}</TableCell>
               <TableCell>{`${d.horasOperacion} hrs/día`}</TableCell>
               <TableCell>{`${d.recorrido} km`}</TableCell>
@@ -306,9 +305,9 @@ const Mantenimiento = () => {
                 <MenuItem value="" disabled>
                   Seleccione una unidad
                 </MenuItem>
-                {unidades.map((unidad) => (
-                  <MenuItem key={unidad} value={unidad}>
-                    {unidad}
+                {maquinarias.map((maq) => (
+                  <MenuItem key={maq.id} value={maq.unidad}>
+                    {maq.unidad}
                   </MenuItem>
                 ))}
               </TextField>

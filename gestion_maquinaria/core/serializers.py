@@ -14,15 +14,29 @@ class ControlSerializer(serializers.ModelSerializer):
 
 
 class MantenimientoSerializer(serializers.ModelSerializer):
+    maquinaria_nombre = serializers.SerializerMethodField()
+
     class Meta:
         model = Mantenimiento
         fields = '__all__'
 
+    def get_maquinaria_nombre(self, obj):
+        return obj.maquinaria.detalle
+
 
 class AsignacionSerializer(serializers.ModelSerializer):
+    maquinaria_detalle = serializers.SerializerMethodField()
+    encargado_nombre = serializers.SerializerMethodField()
+
     class Meta:
         model = Asignacion
         fields = '__all__'
+
+    def get_maquinaria_detalle(self, obj):
+        return obj.maquinaria.detalle
+
+    def get_encargado_nombre(self, obj):
+        return obj.encargado.encargado
 
 
 class ImpuestoSerializer(serializers.ModelSerializer):
@@ -38,6 +52,11 @@ class ITVSerializer(serializers.ModelSerializer):
 
 
 class SeguroSerializer(serializers.ModelSerializer):
+    maquinaria_detalle = serializers.SerializerMethodField()
+
     class Meta:
         model = Seguro
         fields = '__all__'
+
+    def get_maquinaria_detalle(self, obj):
+        return obj.maquinaria.detalle

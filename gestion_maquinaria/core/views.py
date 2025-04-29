@@ -1,3 +1,5 @@
+from rest_framework.response import Response
+from rest_framework import status
 from rest_framework import viewsets
 from .models import Maquinaria, Control, Mantenimiento, Asignacion, Impuesto, ITV, Seguro
 from .serializers import (
@@ -28,7 +30,12 @@ class MantenimientoViewSet(viewsets.ModelViewSet):
 class AsignacionViewSet(viewsets.ModelViewSet):
     queryset = Asignacion.objects.all()
     serializer_class = AsignacionSerializer
-
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ImpuestoViewSet(viewsets.ModelViewSet):
     queryset = Impuesto.objects.all()

@@ -178,8 +178,8 @@ const AssignmentTable = () => {
           {assignments.map((a, index) => (
             <TableRow key={a.id}>
               <TableCell>{index + 1}</TableCell>
-              <TableCell>{a.maquinaria?.detalle}</TableCell>
-              <TableCell>{a.encargado?.encargado}</TableCell>
+              <TableCell>{a.maquinaria_detalle || "N/A"}</TableCell>
+              <TableCell>{a.encargado_nombre || "N/A"}</TableCell>
               <TableCell>{new Date(a.fechaAsignacion).toLocaleDateString()}</TableCell>
               <TableCell>{a.gestion}</TableCell>
               <TableCell align="right">
