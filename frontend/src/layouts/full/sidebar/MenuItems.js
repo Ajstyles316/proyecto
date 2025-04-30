@@ -91,13 +91,13 @@ const Menuitems = [
     id: uniqueId(),
     title: 'Iniciar Sesión',
     icon: IconLogin,
-    href: '/auth/login',
+    href: '/login',
   },
   {
     id: uniqueId(),
     title: 'Registro',
     icon: IconUserCircle,
-    href: '/auth/register',
+    href: '/registro',
   },
   
 ];
