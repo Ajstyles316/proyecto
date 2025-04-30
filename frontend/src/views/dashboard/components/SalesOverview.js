@@ -62,18 +62,18 @@ const SalesOverview = () => {
         },
         
         xaxis: {
-            categories: ["Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-                "July",
-                "Aug",
-                "Sept",
-                "Oct",
-                "Nov",
-                "Dec",],
+            categories: ["Enero",
+                "Febrero",
+                "Marzo",
+                "Abril",
+                "Mayo",
+                "Junio",
+                "Julio",
+                "Agosto",
+                "Septiembre",
+                "Octubre",
+                "Noviembre",
+                "Diciembre",],
             axisBorder: {
                 show: false,
             },
@@ -85,18 +85,18 @@ const SalesOverview = () => {
     };
     const seriescolumnchart = [
         {
-            name: "Ample Admin",
+            name: "Encargado",
             data: [355, 390, 300, 350, 390, 180, 355, 390, 300, 350, 390, 180],
         },
         {
-            name: "Pixel Admin",
+            name: "Gerente",
             data: [280, 250, 325, 215, 250, 310, 280, 250, 325, 215, 250, 310],
         },
     ];
 
     return (
 
-        <DashboardCard title="Sales Overview" action={
+        <DashboardCard title="Pronóstico de Mantenimiento" action={
             <Stack direction="row" spacing={2} alignItems="center">
                 <Stack direction="row" alignItems="center" spacing={1}>
                     <Box
@@ -108,7 +108,7 @@ const SalesOverview = () => {
                         }}
                     />
                     <Typography variant="subtitle2" sx={{ color: "primary.main" }}>
-                        Ample
+                        Encargado
                     </Typography>
                 </Stack>
 
@@ -122,7 +122,7 @@ const SalesOverview = () => {
                         }}
                     />
                     <Typography variant="subtitle2" sx={{ color: "secondary.main" }}>
-                        Pixel Admin
+                        Gerente
                     </Typography>
                 </Stack>
             </Stack>
