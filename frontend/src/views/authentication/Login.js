@@ -1,16 +1,14 @@
-
 import { Link } from 'react-router-dom';
-import { Grid2 as Grid, Box, Card, Stack, Typography } from '@mui/material';
+import { Grid, Box, Card, Stack, Typography } from '@mui/material';
 
 // components
-import PageContainer from 'src/components/container/PageContainer';
-import Logo from 'src/layouts/full/shared/logo/Logo';
-import AuthLogin from './auth/AuthLogin';
+import PageContainer from '../../components/container/PageContainer';
+import Logo from '../../layouts/full/shared/logo/Logo';
+import AuthLogin from './auth/AuthLogin.jsx';
 
 const Login2 = () => {
-
   return (
-    <PageContainer title="Login" description="this is Login page">
+    <PageContainer title="Iniciar sesión" description="Esta es la página de inicio de sesión">
       <Box
         sx={{
           position: 'relative',
@@ -28,7 +26,7 @@ const Login2 = () => {
       >
         <Grid container spacing={0} justifyContent="center" sx={{ height: '100vh' }}>
           <Grid
-            item size={{ xs: 12, lg: 4, xl: 3, sm: 12 }}
+            item xs={12} sm={12} lg={4} xl={3}
             display="flex"
             justifyContent="center"
             alignItems="center"
@@ -40,13 +38,13 @@ const Login2 = () => {
               <AuthLogin
                 subtext={
                   <Typography variant="subtitle1" textAlign="center" color="textSecondary" mb={1}>
-                    Your Social Campaigns
+                    Tus campañas sociales
                   </Typography>
                 }
                 subtitle={
                   <Stack direction="row" spacing={1} justifyContent="center" mt={3}>
                     <Typography color="textSecondary" variant="h6" fontWeight="500">
-                      New to Flexy?
+                      ¿Nuevo en Flexy?
                     </Typography>
                     <Typography
                       component={Link}
@@ -57,7 +55,7 @@ const Login2 = () => {
                         color: 'primary.main',
                       }}
                     >
-                      Create an account
+                      Crea una cuenta
                     </Typography>
                   </Stack>
                 }

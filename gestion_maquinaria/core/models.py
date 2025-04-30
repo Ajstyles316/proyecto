@@ -57,7 +57,7 @@ class Impuesto(models.Model):
     aporte = models.FloatField()
 
     def __str__(self):
-        return f"{self.maquinaria.detalle} - {self.aporte}"
+        return f"{self.maquinaria.detalle} - {self.detalle}"
 
 
 class ITV(models.Model):
@@ -74,3 +74,4 @@ class Seguro(models.Model):
 
     def __str__(self):
         return f"{self.maquinaria.detalle} - {self.aporte}"
+    

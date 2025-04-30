@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
 
 /* ***Layouts**** */
@@ -31,14 +31,14 @@ const Router = [
       { path: '/', element: <Navigate to="/dashboard" /> },
       { path: '/dashboard', exact: true, element: <Dashboard /> },
       { path: '/sample-page', exact: true, element: <SamplePage /> },
-      { path: "/tables/basic-table", element: <BasicTable /> },
+      { path: "/maquinaria", element: <BasicTable /> },
       { path: "/form-layouts", element: <FormLayouts /> },
-      { path: "/form-elements/autocomplete", element: <ExAutoComplete /> },
-      { path: "/form-elements/button", element: <ExButton /> },
-      { path: "/form-elements/checkbox", element: <ExCheckbox /> },
-      { path: "/form-elements/radio", element: <ExRadio /> },
-      { path: "/form-elements/slider", element: <ExSlider /> },
-      { path: "/form-elements/switch", element: <ExSwitch /> },
+      { path: "/control", element: <ExAutoComplete /> },
+      { path: "/mantenimiento", element: <ExButton /> },
+      { path: "/asignacion", element: <ExCheckbox /> },
+      { path: "/seguro", element: <ExRadio /> },
+      { path: "/itv", element: <ExSlider /> },
+      { path: "/impuesto", element: <ExSwitch /> },
 
       { path: '*', element: <Navigate to="/auth/404" /> },
     ],

@@ -14,15 +14,9 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
-const detalles = [
-  "ACOPLE DE TRAILER",
-  "AMBULANCIA",
-  "AUTOMOVIL",
-  // ... (otros detalles)
-];
-
 const Impuestos = () => {
   const [impuestos, setImpuestos] = useState([]);
+  const [maquinarias, setMaquinarias] = useState([]);
   const [form, setForm] = useState({
     maquinaria: "",
     aporte: "",
@@ -33,6 +27,7 @@ const Impuestos = () => {
 
   useEffect(() => {
     fetchImpuestos();
+    fetchMaquinarias();
   }, []);
 
   const fetchImpuestos = async () => {
@@ -44,6 +39,18 @@ const Impuestos = () => {
     } catch (error) {
       console.error("Error:", error.message);
       alert("No se pudieron cargar los impuestos. Verifica la conexión con el backend.");
+    }
+  };
+
+  const fetchMaquinarias = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/maquinaria/");
+      if (!response.ok) throw new Error("Error al cargar las maquinarias");
+      const data = await response.json();
+      setMaquinarias(data);
+    } catch (error) {
+      console.error("Error:", error.message);
+      alert("No se pudieron cargar las maquinarias. Verifica la conexión con el backend.");
     }
   };
 
@@ -69,7 +76,7 @@ const Impuestos = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria.";
     if (!form.aporte || isNaN(form.aporte) || parseFloat(form.aporte) <= 0)
       newErrors.aporte = "El aporte debe ser un número mayor que cero.";
     setErrors(newErrors);
@@ -80,19 +87,25 @@ const Impuestos = () => {
     if (!validateForm()) return;
 
     try {
+      const payload = {
+        ...form,
+        maquinaria: Number(form.maquinaria), // Asegurar que se mande como número
+      };
+
       if (editingId) {
         await fetch(`http://localhost:8000/api/impuestos/${editingId}/`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       } else {
         await fetch("http://localhost:8000/api/impuestos/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       }
+
       handleClose();
       fetchImpuestos(); // Recargar datos después de guardar
     } catch (error) {
@@ -112,7 +125,10 @@ const Impuestos = () => {
   };
 
   const handleEdit = (item) => {
-    setForm(item);
+    setForm({
+      ...item,
+      maquinaria: item.maquinaria_id || item.maquinaria, // Usar el ID de la maquinaria
+    });
     setEditingId(item.id);
     setOpenModal(true);
     setErrors({});
@@ -150,8 +166,8 @@ const Impuestos = () => {
           {impuestos.map((i, index) => (
             <TableRow key={i.id}>
               <TableCell>{index + 1}</TableCell>
-              <TableCell>{i.maquinaria}</TableCell>
-              <TableCell>{`$${parseFloat(i.aporte).toFixed(2)}`}</TableCell>
+              <TableCell>{i.maquinaria_detalle || "N/A"}</TableCell>
+              <TableCell>{`Bs. ${parseFloat(i.aporte).toFixed(2)}`}</TableCell>
               <TableCell align="right">
                 <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(i)}>
                   Editar
@@ -196,9 +212,9 @@ const Impuestos = () => {
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {detalles.map((detalle) => (
-                <MenuItem key={detalle} value={detalle}>
-                  {detalle}
+              {maquinarias.map((maq) => (
+                <MenuItem key={maq.id} value={maq.id}>
+                  {maq.detalle}
                 </MenuItem>
               ))}
             </TextField>

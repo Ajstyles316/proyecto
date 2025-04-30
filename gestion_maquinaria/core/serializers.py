@@ -40,15 +40,21 @@ class AsignacionSerializer(serializers.ModelSerializer):
 
 
 class ImpuestoSerializer(serializers.ModelSerializer):
+    maquinaria_detalle = serializers.SerializerMethodField()
     class Meta:
         model = Impuesto
         fields = '__all__'
+    def get_maquinaria_detalle(self, obj):
+        return obj.maquinaria.detalle
 
 
 class ITVSerializer(serializers.ModelSerializer):
+    maquinaria_detalle = serializers.SerializerMethodField()
     class Meta:
         model = ITV
         fields = '__all__'
+    def get_maquinaria_detalle(self, obj):
+        return obj.maquinaria.detalle
 
 
 class SeguroSerializer(serializers.ModelSerializer):

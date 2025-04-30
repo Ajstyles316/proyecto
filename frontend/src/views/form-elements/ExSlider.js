@@ -14,15 +14,9 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
-const detalles = [
-  "ACOPLE DE TRAILER",
-  "AMBULANCIA",
-  "AUTOMOVIL",
-  // ... (otros detalles)
-];
-
 const ITVTable = () => {
   const [itvs, setItvs] = useState([]);
+  const [maquinarias, setMaquinarias] = useState([]);
   const [form, setForm] = useState({
     maquinaria: "",
     detalle: "",
@@ -33,6 +27,7 @@ const ITVTable = () => {
 
   useEffect(() => {
     fetchItvs();
+    fetchMaquinarias();
   }, []);
 
   const fetchItvs = async () => {
@@ -44,6 +39,18 @@ const ITVTable = () => {
     } catch (error) {
       console.error("Error:", error.message);
       alert("No se pudieron cargar los registros de ITV. Verifica la conexión con el backend.");
+    }
+  };
+
+  const fetchMaquinarias = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/maquinaria/");
+      if (!response.ok) throw new Error("Error al cargar las maquinarias");
+      const data = await response.json();
+      setMaquinarias(data);
+    } catch (error) {
+      console.error("Error:", error.message);
+      alert("No se pudieron cargar las maquinarias. Verifica la conexión con el backend.");
     }
   };
 
@@ -69,8 +76,8 @@ const ITVTable = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria";
-    if (!form.detalle.trim()) newErrors.detalle = "Ingrese el detalle";
+    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.detalle || isNaN(form.detalle)) newErrors.detalle = "Ingrese un valor numérico válido.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -79,19 +86,25 @@ const ITVTable = () => {
     if (!validateForm()) return;
 
     try {
+      const payload = {
+        ...form,
+        maquinaria: Number(form.maquinaria), // Asegurar que se mande como número
+      };
+
       if (editingId) {
         await fetch(`http://localhost:8000/api/itv/${editingId}/`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       } else {
         await fetch("http://localhost:8000/api/itv/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       }
+
       handleClose();
       fetchItvs(); // Recargar datos después de guardar
     } catch (error) {
@@ -111,7 +124,10 @@ const ITVTable = () => {
   };
 
   const handleEdit = (item) => {
-    setForm(item);
+    setForm({
+      ...item,
+      maquinaria: item.maquinaria_id || item.maquinaria, // Usar el ID de la maquinaria
+    });
     setEditingId(item.id);
     setOpenModal(true);
     setErrors({});
@@ -149,8 +165,8 @@ const ITVTable = () => {
           {itvs.map((itv, index) => (
             <TableRow key={itv.id}>
               <TableCell>{index + 1}</TableCell>
-              <TableCell>{itv.maquinaria}</TableCell>
-              <TableCell>{itv.detalle}</TableCell>
+              <TableCell>{itv.maquinaria_detalle || "N/A"}</TableCell>
+              <TableCell>{`Bs. ${parseFloat(itv.detalle).toFixed(2)}`}</TableCell>
               <TableCell align="right">
                 <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(itv)}>
                   Editar
@@ -192,15 +208,19 @@ const ITVTable = () => {
               error={!!errors.maquinaria}
               helperText={errors.maquinaria}
             >
-              {detalles.map((detalle) => (
-                <MenuItem key={detalle} value={detalle}>
-                  {detalle}
+              <MenuItem value="" disabled>
+                Seleccione una maquinaria
+              </MenuItem>
+              {maquinarias.map((maq) => (
+                <MenuItem key={maq.id} value={maq.id}>
+                  {maq.detalle}
                 </MenuItem>
               ))}
             </TextField>
 
             <TextField
               label="Detalle"
+              type="number"
               name="detalle"
               value={form.detalle}
               onChange={handleChange}

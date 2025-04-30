@@ -15,7 +15,7 @@ router.register(r'maquinaria', MaquinariaViewSet)
 router.register(r'control', ControlViewSet)
 router.register(r'mantenimiento', MantenimientoViewSet)
 router.register(r'asignacion', AsignacionViewSet)
-router.register(r'impuesto', ImpuestoViewSet)
+router.register(r'impuestos', ImpuestoViewSet)
 router.register(r'itv', ITVViewSet)
 router.register(r'seguros', SeguroViewSet)
 

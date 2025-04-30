@@ -1,6 +1,7 @@
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets
+from rest_framework.views import APIView
 from .models import Maquinaria, Control, Mantenimiento, Asignacion, Impuesto, ITV, Seguro
 from .serializers import (
     MaquinariaSerializer,
@@ -50,3 +51,18 @@ class ITVViewSet(viewsets.ModelViewSet):
 class SeguroViewSet(viewsets.ModelViewSet):
     queryset = Seguro.objects.all()
     serializer_class = SeguroSerializer
+    
+class DashboardStatsView(APIView):
+    def get(self, request):
+        total_seguros = Seguro.objects.count()
+        mantenimientos_pendientes = Mantenimiento.objects.filter(estado="PENDIENTE").count()
+        unidades_en_control = Control.objects.count()
+        horas_totales_operativas = sum(m.horasOperacion for m in Mantenimiento.objects.all())
+
+        data = [
+            {"title": "Total de Seguros", "value": str(total_seguros), "icon": "mdi:file-document-outline", "color": "primary.main"},
+            {"title": "Mantenimientos Pendientes", "value": str(mantenimientos_pendientes), "icon": "mdi:wrench", "color": "warning.main"},
+            {"title": "Unidades en Control", "value": str(unidades_en_control), "icon": "mdi:truck-fast", "color": "success.main"},
+            {"title": "Horas Totales Operativas", "value": f"{horas_totales_operativas:,}", "icon": "mdi:clock-time-eight", "color": "info.main"},
+        ]
+        return Response(data)
