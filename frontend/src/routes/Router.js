@@ -8,9 +8,9 @@ const BlankLayout = lazy(() => import('../layouts/blank/BlankLayout'));
 /* ****Pages***** */
 const Dashboard = lazy(() => import('../views/dashboard/Dashboard'))
 const SamplePage = lazy(() => import('../views/sample-page/SamplePage'))
-const Error = lazy(() => import('../views/autenticacion/Error.js'));
-const Register = lazy(() => import('../views/autenticacion/Registro.js'));
-const Login = lazy(() => import('../views/autenticacion/Login.js'));
+const Error = lazy(() => import('../views/authentication/Error'));
+const Register = lazy(() => import('../views/authentication/Register'));
+const Login = lazy(() => import('../views/authentication/Login'));
 
 const BasicTable = lazy(() => import("../views/tables/BasicTable"));
 const ExAutoComplete = lazy(() =>
@@ -44,13 +44,13 @@ const Router = [
     ],
   },
   {
-    path: '/',
+    path: '/auth',
     element: <BlankLayout />,
     children: [
       { path: '404', element: <Error /> },
-      { path: '/registro', element: <Register /> },
-      { path: '/login', element: <Login /> },
-      { path: '*', element: <Navigate to="/404" /> },
+      { path: '/auth/register', element: <Register /> },
+      { path: '/auth/login', element: <Login /> },
+      { path: '*', element: <Navigate to="/auth/404" /> },
     ],
   },
 ];
