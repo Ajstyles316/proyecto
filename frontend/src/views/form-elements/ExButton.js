@@ -8,9 +8,9 @@ import {
   MenuItem,
   Table,
   TableHead,
-  TableBody,
-  TableCell,
   TableRow,
+  TableCell,
+  TableBody,
   FormControl,
   FormHelperText,
 } from "@mui/material";
@@ -69,6 +69,11 @@ const Mantenimiento = () => {
     }
   };
 
+  const getMaquinariaNombre = (maqId) => {
+    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    return maq?.detalle || "Desconocido";
+  };
+
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
@@ -77,7 +82,7 @@ const Mantenimiento = () => {
       setMaquinarias(data);
     } catch (error) {
       console.error("Error:", error.message);
-      alert("No se pudieron cargar las maquinarias. Verifica la conexión.");
+      alert("No se pudieron cargar las máquinas. Verifica la conexión.");
     }
   };
 
@@ -96,22 +101,35 @@ const Mantenimiento = () => {
     setErrors({});
   };
 
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    setForm({
+      maquinaria: "",
+      tipo: "",
+      cantidad: "",
+      recorrido: "",
+      ultimaRevision: "",
+      horasOperacion: "",
+      unidad: "",
+    });
+    setErrors({});
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: name === "tipo" ? value.toLowerCase() : value });
+    setForm({ ...form, [name]: value });
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria.";
     if (!form.tipo.trim()) newErrors.tipo = "Seleccione un tipo.";
     if (!form.cantidad.trim()) newErrors.cantidad = "Ingrese una cantidad.";
     if (!form.recorrido.trim()) newErrors.recorrido = "Ingrese un recorrido.";
     if (!form.ultimaRevision.trim()) newErrors.ultimaRevision = "Ingrese la fecha de última revisión.";
     if (!form.horasOperacion.trim()) newErrors.horasOperacion = "Ingrese las horas de operación por día.";
-    if (!form.unidad.trim()) newErrors.unidad = "Seleccione una unidad.";
+    if (!form.unidad.trim()) newErrors.unidad = "Ingrese una unidad.";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -121,48 +139,68 @@ const Mantenimiento = () => {
 
     try {
       const payload = {
-        ...form,
-        maquinaria: Number(form.maquinaria), // Asegurar que se mande como número
+        maquinaria_id: form.maquinaria,  // ✅ Usa maquinaria_id en lugar de maquinaria
+        tipo: form.tipo,
+        cantidad: form.cantidad,
+        recorrido: form.recorrido,
+        ultimaRevision: form.ultimaRevision,
+        horasOperacion: form.horasOperacion,
+        unidad: form.unidad,
       };
 
-      if (editingId) {
-        await fetch(`http://localhost:8000/api/mantenimiento/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch("http://localhost:8000/api/mantenimiento/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-      handleClose();
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/mantenimiento/${editingId}/`
+        : "http://localhost:8000/api/mantenimiento/";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error("Error al guardar");
+
       fetchMantenimientos();
+      handleClose();
     } catch (error) {
-      console.error("Error al guardar los datos:", error);
       alert("Ocurrió un error al guardar los datos.");
+      console.error("Error al guardar:", error);
     }
   };
 
   const handleEdit = (item) => {
+    const _id = item._id?.$oid || item._id;
     setForm({
       ...item,
-      maquinaria: item.maquinaria_id || item.maquinaria, // Usar el id
+      maquinaria: item.maquinaria_id?.$oid || item.maquinaria_id || item.maquinaria,
+      tipo: item.tipo || "",
+      cantidad: item.cantidad?.toString() || "",
+      recorrido: item.recorrido?.toString() || "",
+      ultimaRevision: item.ultimaRevision || "",
+      horasOperacion: item.horasOperacion?.toString() || "",
+      unidad: item.unidad || "",
     });
-    setEditingId(item.id);
+    setEditingId(_id);
     setOpen(true);
     setErrors({});
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (_id) => {
+    const id = _id?.$oid || _id;
+    if (!id) return alert("ID inválido");
+
     try {
-      await fetch(`http://localhost:8000/api/mantenimiento/${id}/`, { method: "DELETE" });
+      const response = await fetch(`http://localhost:8000/api/mantenimiento/${id}/`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
       fetchMantenimientos();
     } catch (error) {
-      console.error("Error al eliminar el mantenimiento:", error);
-      alert("Ocurrió un error al eliminar el mantenimiento.");
+      alert("No se pudo eliminar");
+      console.error("Error al eliminar:", error.message);
     }
   };
 
@@ -224,36 +262,37 @@ const Mantenimiento = () => {
       <Table>
         <TableHead>
           <TableRow>
-            {["N°", "Maquinaria", "Unidad", "Tipo", "Fecha", "Horas/día", "Recorrido (km)", "Pronóstico", "Acción"].map(
-              (h) => (
-                <TableCell key={h}>
-                  <b>{h}</b>
-                </TableCell>
-              )
-            )}
+            {["N°", "Maquinaria", "Unidad", "Tipo", "Fecha", "Horas/día", "Recorrido (km)", "Pronóstico", "Acción"].map((h) => (
+              <TableCell key={h}>
+                <b>{h}</b>
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {data.map((d, i) => (
-            <TableRow key={d.id}>
-              <TableCell>{i + 1}</TableCell>
-              <TableCell>{d.maquinaria_nombre || d.maquinaria}</TableCell>
-              <TableCell>{d.unidad}</TableCell>
-              <TableCell>{d.tipo.toUpperCase()}</TableCell>
-              <TableCell>{d.ultimaRevision}</TableCell>
-              <TableCell>{`${d.horasOperacion} hrs/día`}</TableCell>
-              <TableCell>{`${d.recorrido} km`}</TableCell>
-              <TableCell>{getMantenimientoRecomendado(Number(d.horasOperacion) * 30)}</TableCell>
-              <TableCell>
-                <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(d)}>
-                  Editar
-                </Button>
-                <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(d.id)}>
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {data.map((d, i) => {
+            const _id = d._id?.$oid || d._id;
+            return (
+              <TableRow key={_id}>
+                <TableCell>{i + 1}</TableCell>
+                <TableCell>{getMaquinariaNombre(d.maquinaria_id || d.maquinaria)}</TableCell>
+                <TableCell>{d.unidad}</TableCell>
+                <TableCell>{d.tipo.toUpperCase()}</TableCell>
+                <TableCell>{d.ultimaRevision}</TableCell>
+                <TableCell>{`${d.horasOperacion} hrs/día`}</TableCell>
+                <TableCell>{`${d.recorrido} km`}</TableCell>
+                <TableCell>{getMantenimientoRecomendado(Number(d.horasOperacion) * 30)}</TableCell>
+                <TableCell>
+                  <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(d)}>
+                    Editar
+                  </Button>
+                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
@@ -274,25 +313,28 @@ const Mantenimiento = () => {
             {editingId ? "Editar" : "Agregar"} Mantenimiento
           </Typography>
           <Box display="flex" flexDirection="column" gap={2}>
-            <FormControl fullWidth error={!!errors.maquinaria}>
-              <TextField
-                select
-                label="Maquinaria"
-                name="maquinaria"
-                value={form.maquinaria}
-                onChange={handleChange}
-              >
-                <MenuItem value="" disabled>
-                  Seleccione una maquinaria
-                </MenuItem>
-                {maquinarias.map((maq) => (
-                  <MenuItem key={maq.id} value={maq.id}>
-                    {maq.detalle}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <FormHelperText>{errors.maquinaria}</FormHelperText>
-            </FormControl>
+          <FormControl fullWidth error={!!errors.maquinaria}>
+  <TextField
+    select
+    label="Maquinaria"
+    name="maquinaria"
+    value={form.maquinaria}
+    onChange={handleChange}
+  >
+    <MenuItem value="" disabled>
+      Seleccione una maquinaria
+    </MenuItem>
+    {maquinarias.map((maq) => {
+      const _id = maq._id?.$oid || maq._id;
+      return (
+        <MenuItem key={_id} value={_id}>
+          {maq.detalle}
+        </MenuItem>
+      );
+    })}
+  </TextField>
+  <FormHelperText>{errors.maquinaria}</FormHelperText>
+</FormControl>
 
             <FormControl fullWidth error={!!errors.unidad}>
               <TextField
@@ -375,7 +417,7 @@ const Mantenimiento = () => {
             <Button variant="contained" color="error" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button variant="contained" onClick={handleSubmit}>
+            <Button variant="contained" color="secondary" onClick={handleSubmit}>
               Guardar
             </Button>
           </Box>

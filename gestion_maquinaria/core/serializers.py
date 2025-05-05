@@ -1,5 +1,5 @@
 # serializers.py
-
+from dateutil import parser
 from rest_framework import serializers
 
 class MaquinariaSerializer(serializers.Serializer):
@@ -19,13 +19,13 @@ class MaquinariaSerializer(serializers.Serializer):
 
 
 class ControlSerializer(serializers.Serializer):
-    estado = serializers.CharField()
-    ubicacion = serializers.CharField()
-    gerente = serializers.CharField()
-    encargado = serializers.CharField()
-    fecha = serializers.DateField()
-    observaciones = serializers.CharField(required=False, allow_blank=True)
-
+    estado = serializers.CharField(required=True)
+    ubicacion = serializers.CharField(required=True)
+    gerente = serializers.CharField(required=True)
+    encargado = serializers.CharField(required=True)
+    fecha = serializers.CharField(required=True)
+    observaciones = serializers.CharField(required=True)
+    
     def create(self, validated_data):
         return validated_data
 
@@ -39,7 +39,7 @@ class MantenimientoSerializer(serializers.Serializer):
     tipo = serializers.CharField()
     cantidad = serializers.IntegerField()
     recorrido = serializers.FloatField()
-    ultimaRevision = serializers.DateField()
+    ultimaRevision = serializers.CharField()
     horasOperacion = serializers.IntegerField()
     unidad = serializers.CharField()
 
@@ -53,7 +53,7 @@ class MantenimientoSerializer(serializers.Serializer):
 
 class AsignacionSerializer(serializers.Serializer):
     maquinaria_id = serializers.CharField()
-    fechaAsignacion = serializers.DateField()
+    fechaAsignacion = serializers.CharField()
     gestion = serializers.CharField()
     encargado_id = serializers.CharField()
 
@@ -90,12 +90,12 @@ class ITVSerializer(serializers.Serializer):
 
 
 class SeguroSerializer(serializers.Serializer):
-    maquinaria_id = serializers.CharField()
-    aporte = serializers.FloatField()
-
-    def create(self, validated_data):
-        return validated_data
+    maquinaria_id = serializers.CharField(required=True)
+    aporte = serializers.FloatField(required=True)
 
     def update(self, instance, validated_data):
         instance.update(validated_data)
         return instance
+
+    def create(self, validated_data):
+        return validated_data

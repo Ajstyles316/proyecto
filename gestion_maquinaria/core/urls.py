@@ -20,7 +20,7 @@ router.register(r'mantenimiento', MantenimientoViewSet, basename='mantenimiento'
 router.register(r'asignacion', AsignacionViewSet, basename='asignacion')
 router.register(r'impuesto', ImpuestoViewSet, basename='impuesto')
 router.register(r'itv', ITVViewSet, basename='itv')
-router.register(r'seguro', SeguroViewSet, basename='seguro')
+router.register(r'seguros', SeguroViewSet, basename='seguros')
 
 urlpatterns = [
     path('', include(router.urls)),

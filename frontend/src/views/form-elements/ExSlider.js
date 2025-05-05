@@ -25,6 +25,13 @@ const ITVTable = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
+  // Busca el nombre de la máquina por su _id
+  const getMaquinariaNombre = (maqId) => {
+    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    return maq?.detalle || "Desconocido";
+  };
+
+  // Cargar datos
   useEffect(() => {
     fetchItvs();
     fetchMaquinarias();
@@ -33,24 +40,24 @@ const ITVTable = () => {
   const fetchItvs = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/itv/");
-      if (!response.ok) throw new Error("Error al cargar los registros de ITV");
+      if (!response.ok) throw new Error("Error al cargar los registros");
       const data = await response.json();
       setItvs(data);
     } catch (error) {
       console.error("Error:", error.message);
-      alert("No se pudieron cargar los registros de ITV. Verifica la conexión con el backend.");
+      alert("No se pudieron cargar los registros. Verifica la conexión con el backend.");
     }
   };
 
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
-      if (!response.ok) throw new Error("Error al cargar las maquinarias");
+      if (!response.ok) throw new Error("Error al cargar las máquinas");
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
-      console.error("Error:", error.message);
-      alert("No se pudieron cargar las maquinarias. Verifica la conexión con el backend.");
+      console.error("Error al cargar máquinas:", error.message);
+      alert("No se pudieron cargar las máquinas. Verifica la conexión.");
     }
   };
 
@@ -76,8 +83,10 @@ const ITVTable = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria.";
-    if (!form.detalle || isNaN(form.detalle)) newErrors.detalle = "Ingrese un valor numérico válido.";
+    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.detalle.trim() || isNaN(parseFloat(form.detalle)) || parseFloat(form.detalle) <= 0) {
+      newErrors.detalle = "El detalle debe ser un número mayor que cero.";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -85,57 +94,65 @@ const ITVTable = () => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    const payload = {
+      maquinaria_id: form.maquinaria,
+      detalle: parseFloat(form.detalle),
+    };
+
     try {
-      const payload = {
-        ...form,
-        maquinaria: Number(form.maquinaria), // Asegurar que se mande como número
-      };
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/itv/${editingId}/`
+        : "http://localhost:8000/api/itv/";
 
-      if (editingId) {
-        await fetch(`http://localhost:8000/api/itv/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch("http://localhost:8000/api/itv/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
+      if (!response.ok) throw new Error("Error al guardar");
+
+      fetchItvs();
       handleClose();
-      fetchItvs(); // Recargar datos después de guardar
     } catch (error) {
-      console.error("Error al guardar los datos:", error);
-      alert("Ocurrió un error al guardar los datos.");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`http://localhost:8000/api/itv/${id}/`, { method: "DELETE" });
-      fetchItvs(); // Recargar datos después de eliminar
-    } catch (error) {
-      console.error("Error al eliminar el registro de ITV:", error);
-      alert("Ocurrió un error al eliminar el registro de ITV.");
+      console.error("Error al guardar:", error.message);
+      alert("Ocurrió un error al guardar.");
     }
   };
 
   const handleEdit = (item) => {
+    const _id = item._id?.$oid || item._id;
     setForm({
       ...item,
-      maquinaria: item.maquinaria_id || item.maquinaria, // Usar el ID de la maquinaria
+      maquinaria: item.maquinaria_id || item.maquinaria,
+      detalle: item.detalle.toString(),
     });
-    setEditingId(item.id);
+    setEditingId(_id);
     setOpenModal(true);
     setErrors({});
   };
 
+  const handleDelete = async (_id) => {
+    const id = _id?.$oid || _id;
+    if (!id) return alert("ID inválido");
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/itv/${id}/`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
+      fetchItvs();
+    } catch (error) {
+      alert("No se pudo eliminar el registro");
+      console.error("Error al eliminar:", error.message);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      {/* Título e Icono Nuevo */}
       <Box
         sx={{
           display: "flex",
@@ -162,21 +179,24 @@ const ITVTable = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {itvs.map((itv, index) => (
-            <TableRow key={itv.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{itv.maquinaria_detalle || "N/A"}</TableCell>
-              <TableCell>{`Bs. ${parseFloat(itv.detalle).toFixed(2)}`}</TableCell>
-              <TableCell align="right">
-                <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(itv)}>
-                  Editar
-                </Button>
-                <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(itv.id)}>
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {itvs.map((itv, index) => {
+            const _id = itv._id?.$oid || itv._id;
+            return (
+              <TableRow key={_id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{getMaquinariaNombre(itv.maquinaria_id || itv.maquinaria)}</TableCell>
+                <TableCell>{`Bs. ${parseFloat(itv.detalle).toFixed(2)}`}</TableCell>
+                <TableCell align="right">
+                  <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(itv)}>
+                    Editar
+                  </Button>
+                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
@@ -195,7 +215,7 @@ const ITVTable = () => {
           }}
         >
           <Typography variant="h6" mb={2}>
-            {editingId ? "Editar" : "Agregar"} ITV
+            {editingId ? "Editar ITV" : "Agregar ITV"}
           </Typography>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -211,11 +231,14 @@ const ITVTable = () => {
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {maquinarias.map((maq) => (
-                <MenuItem key={maq.id} value={maq.id}>
-                  {maq.detalle}
-                </MenuItem>
-              ))}
+              {maquinarias.map((maq) => {
+                const _id = maq._id?.$oid || maq._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {maq.detalle}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
             <TextField

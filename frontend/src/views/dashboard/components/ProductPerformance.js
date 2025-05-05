@@ -37,7 +37,7 @@ const Maquinaria = () => {
   function isValidObjectId(id) {
     return /^[0-9a-fA-F]{24}$/.test(id);
   }
-  
+
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
@@ -88,7 +88,7 @@ const Maquinaria = () => {
     try {
       const method = editingId ? "PUT" : "POST";
       const url = editingId
-        ? `http://localhost:8000/api/maquinaria/${editingId}`
+        ? `http://localhost:8000/api/maquinaria/${editingId}/`
         : "http://localhost:8000/api/maquinaria/";
 
       const response = await fetch(url, {
@@ -107,7 +107,7 @@ const Maquinaria = () => {
   };
 
   const handleDelete = async (_id) => {
-    
+    const url = `http://localhost:8000/api/maquinaria/${_id}/`;
     // Validación del ID
     if (!_id || !isValidObjectId(_id)) {
       alert("ID inválido");
@@ -116,7 +116,7 @@ const Maquinaria = () => {
     }
   
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${_id}`, {
+      const response = await fetch(url, {
         method: "DELETE",
       });
   

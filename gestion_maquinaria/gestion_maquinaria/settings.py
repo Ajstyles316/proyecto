@@ -57,7 +57,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Puerto del frontend
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
-
+APPEND_SLASH = False
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

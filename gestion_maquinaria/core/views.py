@@ -3,14 +3,25 @@ from rest_framework import status
 from rest_framework.viewsets import ViewSet
 from rest_framework.views import APIView
 from bson import json_util, ObjectId
+import datetime
+from dateutil import parser
 import json
 import logging
 
 logger = logging.getLogger(__name__)
 
-from .serializers import MaquinariaSerializer, ControlSerializer, MantenimientoSerializer, AsignacionSerializer, SeguroSerializer, ImpuestoSerializer, ITVSerializer
+from .serializers import (
+    MaquinariaSerializer,
+    ControlSerializer,
+    MantenimientoSerializer,
+    AsignacionSerializer,
+    SeguroSerializer,
+    ImpuestoSerializer,
+    ITVSerializer,
+)
 from .mongo_connection import get_collection
 from .models import Maquinaria, Control, Mantenimiento, Asignacion, Seguro, Impuesto, ITV
+
 
 class BaseViewSet(ViewSet):
     model_class = None
@@ -30,16 +41,24 @@ class BaseViewSet(ViewSet):
 
     def create(self, request):
         try:
-            serializer = self.serializer_class(data=request.data)
+            # Convertir request.data a dict seguro
+            data = dict(request.data)  # ← Aquí el cambio importante
+            print("Datos recibidos:", data)
+            # Validación del serializador
+            serializer = self.serializer_class(data=data)
             if serializer.is_valid():
                 collection = self.get_collection()
                 result = collection.insert_one(serializer.validated_data)
                 inserted = collection.find_one({"_id": result.inserted_id})
                 return Response(json.loads(json_util.dumps(inserted)), status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
-            logger.error(f"Error al crear: {str(e)}")
-            return Response({"error": f"Error al crear recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error al crear recurso: {str(e)}", exc_info=True)
+            return Response(
+                {"error": f"Error al crear recurso: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def retrieve(self, request, pk=None):
         try:
@@ -57,36 +76,37 @@ class BaseViewSet(ViewSet):
             return Response(json.loads(json_util.dumps(item)))
 
         except Exception as e:
-            logger.error(f"Error al obtener: {str(e)}")
+            logger.error(f"Error al obtener recurso: {str(e)}", exc_info=True)
             return Response({"error": f"Error al obtener recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def update(self, request, pk=None):
         try:
-            try:
-                obj_id = ObjectId(pk)
-            except Exception:
-                return Response({"error": "ID inválido"}, status=status.HTTP_400_BAD_REQUEST)
+            data = dict(request.data)  # ← Aquí también usamos dict() para evitar problemas
+            print("Datos actualizados:", data)
 
-            serializer = self.serializer_class(data=request.data, partial=True)
+            serializer = self.serializer_class(data=data, partial=True)
             if serializer.is_valid():
                 collection = self.get_collection()
-                result = collection.update_one({"_id": obj_id}, {"$set": serializer.validated_data})
+                result = collection.update_one(
+                    {"_id": ObjectId(pk)},
+                    {"$set": serializer.validated_data}
+                )
                 if result.matched_count == 0:
-                    return Response({"error": "No encontrado"}, status=status.HTTP_404_NOT_FOUND)
-                updated = collection.find_one({"_id": obj_id})
+                    return Response({"error": "No encontrado"}, status=404)
+                updated = collection.find_one({"_id": ObjectId(pk)})
                 return Response(json.loads(json_util.dumps(updated)))
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=400)
 
         except Exception as e:
-            logger.error(f"Error al actualizar: {str(e)}")
+            logger.error(f"Error al actualizar recurso: {str(e)}", exc_info=True)
             return Response({"error": f"Error al actualizar recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk=None):
         try:
             try:
                 obj_id = ObjectId(pk)
-            except Exception as e:
-                return Response({"error": "ID inválido", "detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception:
+                return Response({"error": "ID inválido"}, status=status.HTTP_400_BAD_REQUEST)
 
             collection = self.get_collection()
             result = collection.delete_one({"_id": obj_id})
@@ -97,16 +117,21 @@ class BaseViewSet(ViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as e:
+            logger.error(f"Error al eliminar recurso: {str(e)}", exc_info=True)
             return Response({"error": f"Error al eliminar recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+# === Tus ViewSets ===
 
 class MaquinariaViewSet(BaseViewSet):
     model_class = Maquinaria
     serializer_class = MaquinariaSerializer
-    
+
+
 class ControlViewSet(BaseViewSet):
     model_class = Control
     serializer_class = ControlSerializer
+
 
 class MantenimientoViewSet(BaseViewSet):
     model_class = Mantenimiento

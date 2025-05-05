@@ -1,4 +1,5 @@
 // server.js
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -6,14 +7,17 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 
 const app = express();
+
 app.use(cors());
 app.use(bodyParser.json());
 
-mongoose.connect('mongodb://localhost:27017/activos_fijos', {
+// Conexión a MongoDB
+mongoose.connect('mongodb://localhost:27017/gestion_maquinaria', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
+// Modelos
 const Usuario = mongoose.model('Usuario', new mongoose.Schema({
   Nombre: String,
   Apellido: String,
@@ -25,11 +29,20 @@ const Usuario = mongoose.model('Usuario', new mongoose.Schema({
   Password: String,
 }));
 
+const Maquinaria = mongoose.model('Maquinaria', new mongoose.Schema({
+  detalle: String,
+  placa: String,
+  unidad: String,
+  tipo: String,
+  marca: String,
+  modelo: String,
+}));
+
 // Registro
 app.post('/api/register', async (req, res) => {
   const { captchaValue, ...data } = req.body;
 
-  // Validar captcha
+  // Validar captcha (simulado)
   const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
     params: {
       secret: '6Lcs9ysrAAAAAMmuLFBZVQxquWieQ6lkcU35Cko5',
@@ -58,4 +71,3 @@ app.post('/api/login', async (req, res) => {
   res.status(200).json({ message: 'Inicio de sesión correcto' });
 });
 
-app.listen(5000, () => console.log('Servidor en puerto 5000'));

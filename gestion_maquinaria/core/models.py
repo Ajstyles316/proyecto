@@ -19,4 +19,4 @@ class ITV:
     collection_name = "itv"
 
 class Seguro:
-    collection_name = "seguro"
+    collection_name = "seguros"

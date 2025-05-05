@@ -56,7 +56,7 @@ const Menuitems = [
     id: uniqueId(),
     title: 'Seguros',
     icon: IconRadar,
-    href: '/seguro',
+    href: '/seguros',
   },
   {
     id: uniqueId(),

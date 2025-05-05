@@ -25,6 +25,13 @@ const Seguros = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
+  // Busca el nombre de la máquina
+  const getMaquinariaNombre = (maqId) => {
+    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    return maq?.detalle || "Desconocido";
+  };
+
+  // Cargar datos
   useEffect(() => {
     fetchSeguros();
     fetchMaquinarias();
@@ -45,12 +52,10 @@ const Seguros = () => {
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
-      if (!response.ok) throw new Error("Error al cargar las maquinarias");
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
-      console.error("Error:", error.message);
-      alert("No se pudieron cargar las maquinarias. Verifica la conexión con el backend.");
+      console.error("Error cargando maquinarias:", error.message);
     }
   };
 
@@ -76,9 +81,10 @@ const Seguros = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria.";
-    if (!form.aporte || isNaN(form.aporte) || parseFloat(form.aporte) <= 0)
+    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.aporte.trim() || isNaN(parseFloat(form.aporte)) || parseFloat(form.aporte) <= 0) {
       newErrors.aporte = "El aporte debe ser un número mayor que cero.";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -86,57 +92,64 @@ const Seguros = () => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    const payload = {
+      maquinaria_id: form.maquinaria,
+      aporte: parseFloat(form.aporte),
+    };
+
     try {
-      const payload = {
-        maquinaria: Number(form.maquinaria), // Asegurar que se mande como número
-        aporte: parseFloat(form.aporte),
-      };
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/seguros/${editingId}/`
+        : "http://localhost:8000/api/seguros/";
 
-      if (editingId) {
-        await fetch(`http://localhost:8000/api/seguros/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch("http://localhost:8000/api/seguros/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
+      if (!response.ok) throw new Error("Error al guardar");
+
+      fetchSeguros();
       handleClose();
-      fetchSeguros(); // Recargar datos después de guardar
     } catch (error) {
-      console.error("Error al guardar los datos:", error);
-      alert("Ocurrió un error al guardar los datos.");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`http://localhost:8000/api/seguros/${id}/`, { method: "DELETE" });
-      fetchSeguros(); // Recargar datos después de eliminar
-    } catch (error) {
-      console.error("Error al eliminar el seguro:", error);
-      alert("Ocurrió un error al eliminar el seguro.");
+      alert("Ocurrió un error al guardar.");
+      console.error("Error al guardar:", error.message);
     }
   };
 
   const handleEdit = (item) => {
+    const _id = item._id?.$oid || item._id;
     setForm({
-      maquinaria: item.maquinaria.id || item.maquinaria, // Usar el ID de la maquinaria
-      aporte: item.aporte.toString(),
+      maquinaria: item.maquinaria_id?.$oid || item.maquinaria_id || item.maquinaria,
+      aporte: item.aporte?.toString() || "",
     });
-    setEditingId(item.id);
+    setEditingId(_id);
     setOpenModal(true);
     setErrors({});
   };
 
+  const handleDelete = async (_id) => {
+    const id = _id?.$oid || _id;
+    if (!id) return alert("ID inválido");
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/seguros/${id}/`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
+      fetchSeguros();
+    } catch (error) {
+      alert("No se pudo eliminar el seguro");
+      console.error("Error al eliminar:", error.message);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      {/* Título e Icono Nuevo */}
       <Box
         sx={{
           display: "flex",
@@ -156,28 +169,39 @@ const Seguros = () => {
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
         <TableHead>
           <TableRow>
-            <TableCell><Typography fontWeight={600}>N°</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Maquinaria</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Aporte</Typography></TableCell>
-            <TableCell align="right"><Typography fontWeight={600}>Acciones</Typography></TableCell>
+            <TableCell>
+              <Typography fontWeight={600}>N°</Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontWeight={600}>Maquinaria</Typography>
+            </TableCell>
+            <TableCell>
+              <Typography fontWeight={600}>Aporte</Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography fontWeight={600}>Acciones</Typography>
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {seguros.map((s, index) => (
-            <TableRow key={s.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{s.maquinaria_detalle || "N/A"}</TableCell>
-              <TableCell>{`Bs. ${parseFloat(s.aporte).toFixed(2)}`}</TableCell>
-              <TableCell align="right">
-                <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(s)}>
-                  Editar
-                </Button>
-                <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(s.id)}>
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {seguros.map((s, index) => {
+            const _id = s._id?.$oid || s._id || index.toString();
+            return (
+              <TableRow key={_id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{getMaquinariaNombre(s.maquinaria_id || s.maquinaria)}</TableCell>
+                <TableCell>{`Bs. ${parseFloat(s.aporte).toFixed(2)}`}</TableCell>
+                <TableCell align="right">
+                  <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(s)}>
+                    Editar
+                  </Button>
+                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
@@ -196,7 +220,7 @@ const Seguros = () => {
           }}
         >
           <Typography variant="h6" mb={2}>
-            {editingId ? "Editar" : "Agregar"} Seguro
+            {editingId ? "Editar Seguro" : "Agregar Seguro"}
           </Typography>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -212,11 +236,14 @@ const Seguros = () => {
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {maquinarias.map((maq) => (
-                <MenuItem key={maq.id} value={maq.id}>
-                  {maq.detalle}
-                </MenuItem>
-              ))}
+              {maquinarias.map((maq) => {
+                const _id = maq._id?.$oid || maq._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {maq.detalle}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
             <TextField

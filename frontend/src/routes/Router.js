@@ -36,7 +36,7 @@ const Router = [
       { path: "/control", element: <ExAutoComplete /> },
       { path: "/mantenimiento", element: <ExButton /> },
       { path: "/asignacion", element: <ExCheckbox /> },
-      { path: "/seguro", element: <ExRadio /> },
+      { path: "/seguros", element: <ExRadio /> },
       { path: "/itv", element: <ExSlider /> },
       { path: "/impuesto", element: <ExSwitch /> },
 

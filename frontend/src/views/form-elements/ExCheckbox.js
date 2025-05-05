@@ -28,6 +28,18 @@ const AssignmentTable = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
+  // Función para obtener el nombre de la maquinaria
+  const getMaquinariaNombre = (maqId) => {
+    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    return maq?.detalle || "Desconocido";
+  };
+
+  // Función para obtener el nombre del encargado desde controles
+  const getEncargadoNombre = (encId) => {
+    const enc = controles.find(c => c._id?.$oid === encId || c._id === encId);
+    return enc?.encargado || "Desconocido";
+  };
+
   useEffect(() => {
     fetchAssignments();
     fetchMaquinarias();
@@ -42,7 +54,7 @@ const AssignmentTable = () => {
       setAssignments(data);
     } catch (error) {
       console.error("Error:", error.message);
-      alert("No se pudieron cargar las asignaciones. Verifica la conexión con el backend..");
+      alert("No se pudieron cargar las asignaciones.");
     }
   };
 
@@ -52,7 +64,7 @@ const AssignmentTable = () => {
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
-      console.error("Error cargando maquinarias:", error.message);
+      console.error("Error al cargar máquinas:", error.message);
     }
   };
 
@@ -62,7 +74,7 @@ const AssignmentTable = () => {
       const data = await response.json();
       setControles(data);
     } catch (error) {
-      console.error("Error cargando controles:", error.message);
+      console.error("Error al cargar controles:", error.message);
     }
   };
 
@@ -81,6 +93,12 @@ const AssignmentTable = () => {
   const handleClose = () => {
     setOpenModal(false);
     setErrors({});
+    setForm({
+      maquinaria: "",
+      fechaAsignacion: new Date().toISOString().split("T")[0],
+      gestion: "",
+      encargado: "",
+    });
   };
 
   const handleChange = (e) => {
@@ -90,10 +108,23 @@ const AssignmentTable = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria";
-    if (!form.fechaAsignacion.trim()) newErrors.fechaAsignacion = "Ingrese la fecha de asignación";
-    if (!form.gestion.trim()) newErrors.gestion = "Seleccione una gestión";
-    if (!form.encargado) newErrors.encargado = "Seleccione un encargado";
+
+    if (!form.maquinaria || form.maquinaria.trim() === "") {
+      newErrors.maquinaria = "Seleccione una maquinaria";
+    }
+
+    if (!form.fechaAsignacion || form.fechaAsignacion.trim() === "") {
+      newErrors.fechaAsignacion = "Ingrese la fecha de asignación";
+    }
+
+    if (!form.gestion || form.gestion.trim() === "") {
+      newErrors.gestion = "Seleccione una gestión";
+    }
+
+    if (!form.encargado || form.encargado.trim() === "") {
+      newErrors.encargado = "Seleccione un encargado";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -103,53 +134,62 @@ const AssignmentTable = () => {
 
     try {
       const payload = {
-        maquinaria: form.maquinaria,
+        maquinaria_id: form.maquinaria,
         fechaAsignacion: form.fechaAsignacion,
         gestion: form.gestion,
-        encargado: form.encargado,
+        encargado_id: form.encargado,
       };
 
-      if (editingId) {
-        await fetch(`http://localhost:8000/api/asignacion/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch("http://localhost:8000/api/asignacion/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-      handleClose();
-      fetchAssignments(); // Recargar datos después de guardar
-    } catch (error) {
-      console.error("Error al guardar los datos:", error);
-      alert("Ocurrió un error al guardar los datos.");
-    }
-  };
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/asignacion/${editingId}/`
+        : "http://localhost:8000/api/asignacion/";
 
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`http://localhost:8000/api/asignacion/${id}/`, { method: "DELETE" });
-      fetchAssignments(); // Recargar datos después de eliminar
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error("Error al guardar");
+
+      fetchAssignments();
+      handleClose();
     } catch (error) {
-      console.error("Error al eliminar la asignación:", error);
-      alert("Ocurrió un error al eliminar la asignación.");
+      console.error("Error al guardar:", error.message);
+      alert("Ocurrió un error al guardar.");
     }
   };
 
   const handleEdit = (item) => {
+    const _id = item._id?.$oid || item._id;
     setForm({
-      maquinaria: item.maquinaria.id,
-      fechaAsignacion: item.fechaAsignacion,
-      gestion: item.gestion,
-      encargado: item.encargado.id,
+      maquinaria: item.maquinaria_id?.$oid || item.maquinaria_id || item.maquinaria || "",
+      fechaAsignacion: item.fechaAsignacion || "",
+      gestion: item.gestion || "",
+      encargado: item.encargado_id?.$oid || item.encargado_id || item.encargado || "",
     });
-    setEditingId(item.id);
+    setEditingId(_id);
     setOpenModal(true);
     setErrors({});
+  };
+
+  const handleDelete = async (_id) => {
+    const id = _id?.$oid || _id;
+    if (!id) return alert("ID inválido");
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/asignacion/${id}/`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
+      fetchAssignments();
+    } catch (error) {
+      alert("No se pudo eliminar la asignación");
+      console.error("Error al eliminar:", error.message);
+    }
   };
 
   return (
@@ -175,23 +215,36 @@ const AssignmentTable = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {assignments.map((a, index) => (
-            <TableRow key={a.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{a.maquinaria_detalle || "N/A"}</TableCell>
-              <TableCell>{a.encargado_nombre || "N/A"}</TableCell>
-              <TableCell>{new Date(a.fechaAsignacion).toLocaleDateString()}</TableCell>
-              <TableCell>{a.gestion}</TableCell>
-              <TableCell align="right">
-                <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(a)}>
-                  Editar
-                </Button>
-                <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(a.id)}>
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {assignments.map((a, index) => {
+            const _id = a._id?.$oid || a._id || index.toString();
+            return (
+              <TableRow key={_id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{getMaquinariaNombre(a.maquinaria_id || a.maquinaria)}</TableCell>
+                <TableCell>{getEncargadoNombre(a.encargado_id || a.encargado)}</TableCell>
+                <TableCell>{new Date(a.fechaAsignacion).toLocaleDateString()}</TableCell>
+                <TableCell>{a.gestion}</TableCell>
+                <TableCell align="right">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => handleEdit(a)}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleDelete(_id)}
+                  >
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
@@ -223,11 +276,17 @@ const AssignmentTable = () => {
               error={!!errors.maquinaria}
               helperText={errors.maquinaria}
             >
-              {maquinarias.map((item) => (
-                <MenuItem key={item.id} value={item.id}>
-                  {item.detalle}
-                </MenuItem>
-              ))}
+              <MenuItem value="" disabled>
+                Seleccione una maquinaria
+              </MenuItem>
+              {maquinarias.map((maq) => {
+                const _id = maq._id?.$oid || maq._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {maq.detalle}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
             <TextField
@@ -250,9 +309,11 @@ const AssignmentTable = () => {
               error={!!errors.gestion}
               helperText={errors.gestion}
             >
+              <MenuItem value="" disabled>
+                Seleccione una gestión
+              </MenuItem>
               <MenuItem value="CUSTODIA">CUSTODIA</MenuItem>
               <MenuItem value="UPCM">UPCM</MenuItem>
-              {/* Puedes agregar más gestiones aquí si quieres */}
             </TextField>
 
             <TextField
@@ -264,11 +325,17 @@ const AssignmentTable = () => {
               error={!!errors.encargado}
               helperText={errors.encargado}
             >
-              {controles.map((item) => (
-                <MenuItem key={item.id} value={item.id}>
-                  {item.encargado}
-                </MenuItem>
-              ))}
+              <MenuItem value="" disabled>
+                Seleccione un encargado
+              </MenuItem>
+              {controles.map((c) => {
+                const _id = c._id?.$oid || c._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {c.encargado}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
             <Button variant="contained" color="error" onClick={handleClose}>

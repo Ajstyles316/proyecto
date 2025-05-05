@@ -25,6 +25,13 @@ const Impuestos = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
+  // Función para obtener el nombre de la máquina
+  const getMaquinariaNombre = (maqId) => {
+    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    return maq?.detalle || "Desconocido";
+  };
+
+  // Cargar datos
   useEffect(() => {
     fetchImpuestos();
     fetchMaquinarias();
@@ -32,25 +39,25 @@ const Impuestos = () => {
 
   const fetchImpuestos = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/impuestos/");
+      const response = await fetch("http://localhost:8000/api/impuesto/");
       if (!response.ok) throw new Error("Error al cargar los impuestos");
       const data = await response.json();
       setImpuestos(data);
     } catch (error) {
       console.error("Error:", error.message);
-      alert("No se pudieron cargar los impuestos. Verifica la conexión con el backend.");
+      alert("No se pudieron cargar los impuestos. Verifica la conexión.");
     }
   };
 
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
-      if (!response.ok) throw new Error("Error al cargar las maquinarias");
+      if (!response.ok) throw new Error("Error al cargar máquinas");
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
       console.error("Error:", error.message);
-      alert("No se pudieron cargar las maquinarias. Verifica la conexión con el backend.");
+      alert("No se pudieron cargar las máquinas. Verifica la conexión.");
     }
   };
 
@@ -67,6 +74,10 @@ const Impuestos = () => {
   const handleClose = () => {
     setOpenModal(false);
     setErrors({});
+    setForm({
+      maquinaria: "",
+      aporte: "",
+    });
   };
 
   const handleChange = (e) => {
@@ -76,9 +87,10 @@ const Impuestos = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.maquinaria) newErrors.maquinaria = "Seleccione una maquinaria.";
-    if (!form.aporte || isNaN(form.aporte) || parseFloat(form.aporte) <= 0)
+    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.aporte.trim() || isNaN(parseFloat(form.aporte)) || parseFloat(form.aporte) <= 0) {
       newErrors.aporte = "El aporte debe ser un número mayor que cero.";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -86,57 +98,65 @@ const Impuestos = () => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    const payload = {
+      maquinaria_id: form.maquinaria,
+      aporte: parseFloat(form.aporte),
+    };
+
     try {
-      const payload = {
-        ...form,
-        maquinaria: Number(form.maquinaria), // Asegurar que se mande como número
-      };
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/impuesto/${editingId}/`
+        : "http://localhost:8000/api/impuesto/";
 
-      if (editingId) {
-        await fetch(`http://localhost:8000/api/impuestos/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch("http://localhost:8000/api/impuestos/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
+      if (!response.ok) throw new Error("Error al guardar");
+
+      fetchImpuestos();
       handleClose();
-      fetchImpuestos(); // Recargar datos después de guardar
     } catch (error) {
-      console.error("Error al guardar los datos:", error);
-      alert("Ocurrió un error al guardar los datos.");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`http://localhost:8000/api/impuestos/${id}/`, { method: "DELETE" });
-      fetchImpuestos(); // Recargar datos después de eliminar
-    } catch (error) {
-      console.error("Error al eliminar el impuesto:", error);
-      alert("Ocurrió un error al eliminar el impuesto.");
+      console.error("Error al guardar:", error.message);
+      alert("Ocurrió un error al guardar.");
     }
   };
 
   const handleEdit = (item) => {
+    const _id = item._id?.$oid || item._id;
     setForm({
       ...item,
-      maquinaria: item.maquinaria_id || item.maquinaria, // Usar el ID de la maquinaria
+      maquinaria: item.maquinaria_id || item.maquinaria,
+      aporte: item.aporte?.toString() || "",
     });
-    setEditingId(item.id);
+    setEditingId(_id);
     setOpenModal(true);
     setErrors({});
   };
 
+  const handleDelete = async (_id) => {
+    const id = _id?.$oid || _id;
+    if (!id) return alert("ID inválido");
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/impuesto/${id}/`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
+      fetchImpuestos();
+    } catch (error) {
+      alert("No se pudo eliminar");
+      console.error("Error al eliminar:", error.message);
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      {/* Título e Icono Nuevo */}
       <Box
         sx={{
           display: "flex",
@@ -163,21 +183,24 @@ const Impuestos = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {impuestos.map((i, index) => (
-            <TableRow key={i.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{i.maquinaria_detalle || "N/A"}</TableCell>
-              <TableCell>{`Bs. ${parseFloat(i.aporte).toFixed(2)}`}</TableCell>
-              <TableCell align="right">
-                <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(i)}>
-                  Editar
-                </Button>
-                <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(i.id)}>
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {impuestos.map((i, index) => {
+            const _id = i._id?.$oid || i._id || index.toString();
+            return (
+              <TableRow key={_id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{getMaquinariaNombre(i.maquinaria_id || i.maquinaria)}</TableCell>
+                <TableCell>{`Bs. ${parseFloat(i.aporte).toFixed(2)}`}</TableCell>
+                <TableCell align="right">
+                  <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(i)}>
+                    Editar
+                  </Button>
+                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
@@ -196,7 +219,7 @@ const Impuestos = () => {
           }}
         >
           <Typography variant="h6" mb={2}>
-            {editingId ? "Editar" : "Agregar"} Impuesto
+            {editingId ? "Editar Impuesto" : "Agregar Impuesto"}
           </Typography>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -212,11 +235,14 @@ const Impuestos = () => {
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {maquinarias.map((maq) => (
-                <MenuItem key={maq.id} value={maq.id}>
-                  {maq.detalle}
-                </MenuItem>
-              ))}
+              {maquinarias.map((maq) => {
+                const _id = maq._id?.$oid || maq._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {maq.detalle}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
             <TextField

@@ -19,7 +19,7 @@ import {
 const Control = () => {
   const [openModal, setOpenModal] = useState(false);
   const [controlData, setControlData] = useState([]);
-  const [editingId, setEditingId] = useState(null); // Usamos _id en lugar de índice
+  const [editingId, setEditingId] = useState(null); // Para edición
   const [searchTerm, setSearchTerm] = useState("");
   const [form, setForm] = useState({
     estado: "",
@@ -41,7 +41,11 @@ const Control = () => {
       const response = await fetch("http://localhost:8000/api/control/");
       if (!response.ok) throw new Error("Error al cargar los datos");
       const data = await response.json();
-      setControlData(data);
+      const formateddata = data.map(item => ({
+        ...item,
+        fecha: item.fecha?.split("T")[0] || item.fecha, // Si es ISO, quita la hora
+      }));
+      setControlData(formateddata);
     } catch (error) {
       console.error("Error:", error.message);
       alert("No se pudieron cargar los datos. Verifica la conexión con el backend.");
@@ -67,55 +71,61 @@ const Control = () => {
 
   const handleSave = async () => {
     if (!validateForm()) return;
-
+    
     try {
-      if (editingId) {
-        // Actualizar un registro existente
-        await fetch(`http://localhost:8000/api/control/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-      } else {
-        // Crear un nuevo registro
-        await fetch("http://localhost:8000/api/control/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-      }
-      fetchControlData(); // Recargar datos después de guardar
-      setForm({
-        estado: "",
-        ubicacion: "",
-        gerente: "",
-        encargado: "",
-        fecha: "",
-        observaciones: "",
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/control/${editingId}/`
+        : "http://localhost:8000/api/control/";
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
-      setEditingId(null);
-      setOpenModal(false);
-      setErrors({});
+
+      if (!response.ok) throw new Error("Error al guardar");
+      handleCloseModal();
+      fetchControlData(); // Recargar datos
+      
     } catch (error) {
-      console.error("Error al guardar los datos:", error);
-      alert("Ocurrió un error al guardar los datos.");
+      console.error("Error al guardar:", error.message);
+      alert("Ocurrió un error al guardar.");
     }
   };
 
   const handleEdit = (item) => {
-    setForm(item);
-    setEditingId(item.id); // Usamos el ID proporcionado por Django
+    const _id = item._id?.$oid || item._id; // Asegúrate de usar el ID correcto
+    setForm({
+      estado: item.estado || "",
+      ubicacion: item.ubicacion || "",
+      gerente: item.gerente || "",
+      encargado: item.encargado || "",
+      fecha: item.fecha || "",
+      observaciones: item.observaciones || "",
+    });
+    setEditingId(_id);
     setOpenModal(true);
     setErrors({});
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (_id) => {
+    const id = _id?.$oid || _id;
+    if (!id || id.toString().trim().length !== 24) {
+      alert("ID inválido");
+      console.error("ID inválido:", id);
+      return;
+    }
     try {
-      await fetch(`http://localhost:8000/api/control/${id}/`, { method: "DELETE" });
-      fetchControlData(); // Recargar datos después de eliminar
+      const response = await fetch(`http://localhost:8000/api/control/${id}/`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
+      fetchControlData(); // Recargar datos
     } catch (error) {
-      console.error("Error al eliminar el registro:", error);
-      alert("Ocurrió un error al eliminar el registro.");
+      console.error("Error al eliminar:", error.message);
+      alert("Ocurrió un error al eliminar.");
     }
   };
 
@@ -133,26 +143,45 @@ const Control = () => {
     setErrors({});
   };
 
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setForm({
+      estado: "",
+      ubicacion: "",
+      gerente: "",
+      encargado: "",
+      fecha: "",
+      observaciones: "",
+    });
+    setEditingId(null);
+    setErrors({});
+  };
+
   const filteredData = controlData.filter((row) =>
-    row.ubicacion.toLowerCase().includes(searchTerm.toLowerCase())
+    row.ubicacion?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Título y botón nuevo */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h6">Control</Typography>
         <Button variant="contained" color="success" onClick={handleOpenNew}>
           + Nuevo
         </Button>
       </Box>
+
+      {/* Campo de búsqueda */}
       <TextField
-        label="Buscar por unidad"
+        label="Buscar por ubicación"
         fullWidth
         variant="outlined"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         sx={{ mb: 2 }}
       />
+
+      {/* Tabla */}
       <Table>
         <TableHead>
           <TableRow>
@@ -165,26 +194,42 @@ const Control = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {filteredData.map((row, index) => (
-            <TableRow key={row.id}>
-              <TableCell sx={{ fontSize: "15px" }}>{index + 1}</TableCell>
-              <TableCell sx={{ fontSize: "15px" }}>{row.ubicacion}</TableCell>
-              <TableCell sx={{ fontSize: "15px" }}>{row.encargado}</TableCell>
-              <TableCell sx={{ fontSize: "15px" }}>{row.estado}</TableCell>
-              <TableCell sx={{ fontSize: "15px" }}>{row.observaciones}</TableCell>
-              <TableCell>
-                <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(row)}>
-                  Editar
-                </Button>{" "}
-                <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(row.id)}>
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {filteredData.map((row, index) => {
+            const _id = row._id?.$oid || row._id || index.toString();
+
+            return (
+              <TableRow key={_id}>
+                <TableCell sx={{ fontSize: "15px" }}>{index + 1}</TableCell>
+                <TableCell sx={{ fontSize: "15px" }}>{row.ubicacion}</TableCell>
+                <TableCell sx={{ fontSize: "15px" }}>{row.encargado}</TableCell>
+                <TableCell sx={{ fontSize: "15px" }}>{row.estado}</TableCell>
+                <TableCell sx={{ fontSize: "15px" }}>{row.observaciones}</TableCell>
+                <TableCell>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => handleEdit(row)}
+                  >
+                    Editar
+                  </Button>{" "}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleDelete(_id)}
+                  >
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
-      <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
+
+      {/* Modal para crear/editar */}
+      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
         <DialogTitle
           sx={{ textAlign: "left", fontSize: 18, fontWeight: "bold", pl: 2, pt: 2 }}
         >
@@ -312,7 +357,7 @@ const Control = () => {
             pb: 2,
           }}
         >
-          <Button fullWidth onClick={() => setOpenModal(false)} variant="contained" color="error">
+          <Button fullWidth onClick={handleCloseModal} variant="contained" color="error">
             Cancelar
           </Button>
           <Button fullWidth onClick={handleSave} variant="contained" color="secondary">
