@@ -1,68 +1,101 @@
+# serializers.py
+
 from rest_framework import serializers
-from .models import Maquinaria, Control, Mantenimiento, Asignacion, Impuesto, ITV, Seguro
 
-class MaquinariaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Maquinaria
-        fields = '__all__'
+class MaquinariaSerializer(serializers.Serializer):
+    detalle = serializers.CharField(required=True)
+    placa = serializers.CharField(required=True)
+    unidad = serializers.CharField(required=True)
+    tipo = serializers.CharField(allow_blank=True, required=False)
+    marca = serializers.CharField(allow_blank=True, required=False)
+    modelo = serializers.CharField(allow_blank=True, required=False)
 
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance
 
-class ControlSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Control
-        fields = '__all__'
-
-
-class MantenimientoSerializer(serializers.ModelSerializer):
-    maquinaria_nombre = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Mantenimiento
-        fields = '__all__'
-
-    def get_maquinaria_nombre(self, obj):
-        return obj.maquinaria.detalle
+    def create(self, validated_data):
+        return validated_data
 
 
-class AsignacionSerializer(serializers.ModelSerializer):
-    maquinaria_detalle = serializers.SerializerMethodField()
-    encargado_nombre = serializers.SerializerMethodField()
+class ControlSerializer(serializers.Serializer):
+    estado = serializers.CharField()
+    ubicacion = serializers.CharField()
+    gerente = serializers.CharField()
+    encargado = serializers.CharField()
+    fecha = serializers.DateField()
+    observaciones = serializers.CharField(required=False, allow_blank=True)
 
-    class Meta:
-        model = Asignacion
-        fields = '__all__'
+    def create(self, validated_data):
+        return validated_data
 
-    def get_maquinaria_detalle(self, obj):
-        return obj.maquinaria.detalle
-
-    def get_encargado_nombre(self, obj):
-        return obj.encargado.encargado
-
-
-class ImpuestoSerializer(serializers.ModelSerializer):
-    maquinaria_detalle = serializers.SerializerMethodField()
-    class Meta:
-        model = Impuesto
-        fields = '__all__'
-    def get_maquinaria_detalle(self, obj):
-        return obj.maquinaria.detalle
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance
 
 
-class ITVSerializer(serializers.ModelSerializer):
-    maquinaria_detalle = serializers.SerializerMethodField()
-    class Meta:
-        model = ITV
-        fields = '__all__'
-    def get_maquinaria_detalle(self, obj):
-        return obj.maquinaria.detalle
+class MantenimientoSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField()
+    tipo = serializers.CharField()
+    cantidad = serializers.IntegerField()
+    recorrido = serializers.FloatField()
+    ultimaRevision = serializers.DateField()
+    horasOperacion = serializers.IntegerField()
+    unidad = serializers.CharField()
+
+    def create(self, validated_data):
+        return validated_data
+
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance
 
 
-class SeguroSerializer(serializers.ModelSerializer):
-    maquinaria_detalle = serializers.SerializerMethodField()
+class AsignacionSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField()
+    fechaAsignacion = serializers.DateField()
+    gestion = serializers.CharField()
+    encargado_id = serializers.CharField()
 
-    class Meta:
-        model = Seguro
-        fields = '__all__'
+    def create(self, validated_data):
+        return validated_data
 
-    def get_maquinaria_detalle(self, obj):
-        return obj.maquinaria.detalle
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance
+
+
+class ImpuestoSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField()
+    aporte = serializers.FloatField()
+
+    def create(self, validated_data):
+        return validated_data
+
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance
+
+
+class ITVSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField()
+    detalle = serializers.FloatField()
+
+    def create(self, validated_data):
+        return validated_data
+
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance
+
+
+class SeguroSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField()
+    aporte = serializers.FloatField()
+
+    def create(self, validated_data):
+        return validated_data
+
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance

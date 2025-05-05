@@ -42,7 +42,7 @@ const AssignmentTable = () => {
       setAssignments(data);
     } catch (error) {
       console.error("Error:", error.message);
-      alert("No se pudieron cargar las asignaciones. Verifica la conexión con el backend.");
+      alert("No se pudieron cargar las asignaciones. Verifica la conexión con el backend..");
     }
   };
 

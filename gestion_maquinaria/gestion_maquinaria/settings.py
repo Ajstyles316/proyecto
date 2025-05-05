@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'core',
     'rest_framework',
+    'gestion_maquinaria',
     'corsheaders',
 ]
 
@@ -78,11 +79,12 @@ WSGI_APPLICATION = 'gestion_maquinaria.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+# settings.py
+
+MONGODB_SETTINGS = {
+    'host': 'mongodb://localhost:27017/gestion_maquinaria',
+    # o si usas MongoDB Atlas:
+    # 'host': 'mongodb+srv://usuario:contraseña@cluster.mongodb.net/gestion_maquinaria?retryWrites=true&w=majority',
 }
 
 

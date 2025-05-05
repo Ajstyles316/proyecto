@@ -29,11 +29,15 @@ const Maquinaria = () => {
 
   const añoActual = new Date().getFullYear();
 
-  // Cargar datos de maquinaria al iniciar el componente
+  // Cargar datos al iniciar
   useEffect(() => {
     fetchMaquinarias();
   }, []);
 
+  function isValidObjectId(id) {
+    return /^[0-9a-fA-F]{24}$/.test(id);
+  }
+  
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
@@ -41,8 +45,7 @@ const Maquinaria = () => {
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
-      console.error("Error:", error.message);
-      alert("No se pudieron cargar las máquinas. Verifica la conexión con el backend.");
+      alert("No se pudieron cargar las máquinas.");
     }
   };
 
@@ -72,15 +75,9 @@ const Maquinaria = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!form.detalle.trim()) newErrors.detalle = "El detalle es obligatorio";
     if (!form.placa.trim()) newErrors.placa = "La placa es obligatoria";
     if (!form.unidad.trim()) newErrors.unidad = "La unidad es obligatoria";
-    if (!form.tipo.trim()) newErrors.tipo = "El tipo es obligatorio";
-    if (!form.marca.trim()) newErrors.marca = "La marca es obligatoria";
-    if (!form.modelo || form.modelo < 1980 || form.modelo > añoActual)
-      newErrors.modelo = `El modelo debe estar entre 1980 y ${añoActual}`;
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -89,36 +86,46 @@ const Maquinaria = () => {
     if (!validateForm()) return;
 
     try {
-      if (editingId) {
-        // Actualizar un registro existente
-        await fetch(`http://localhost:8000/api/maquinaria/${editingId}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-      } else {
-        // Crear un nuevo registro
-        await fetch("http://localhost:8000/api/maquinaria/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-      }
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId
+        ? `http://localhost:8000/api/maquinaria/${editingId}`
+        : "http://localhost:8000/api/maquinaria/";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) throw new Error("Error al guardar");
+
       handleClose();
-      fetchMaquinarias(); // Recargar datos después de guardar
+      fetchMaquinarias();
     } catch (error) {
-      console.error("Error al guardar los datos:", error);
       alert("Ocurrió un error al guardar los datos.");
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (_id) => {
+    
+    // Validación del ID
+    if (!_id || !isValidObjectId(_id)) {
+      alert("ID inválido");
+      console.error("ID no válido:", _id);
+      return;
+    }
+  
     try {
-      await fetch(`http://localhost:8000/api/maquinaria/${id}/`, { method: "DELETE" });
-      fetchMaquinarias(); // Recargar datos después de eliminar
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${_id}`, {
+        method: "DELETE",
+      });
+  
+      if (!response.ok) throw new Error("Error al eliminar");
+  
+      fetchMaquinarias();
     } catch (error) {
-      console.error("Error al eliminar la máquina:", error);
-      alert("Ocurrió un error al eliminar la máquina.");
+      console.error("Error al eliminar:", error.message);
+      alert("No se pudo eliminar la máquina.");
     }
   };
 
@@ -147,39 +154,42 @@ const Maquinaria = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {maquinarias.map((m, index) => (
-            <TableRow key={m.id}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{m.detalle}</TableCell>
-              <TableCell>{m.placa}</TableCell>
-              <TableCell>{m.unidad}</TableCell>
-              <TableCell>{m.tipo}</TableCell>
-              <TableCell>{m.marca}</TableCell>
-              <TableCell>{m.modelo}</TableCell>
-              <TableCell align="right">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => {
-                    setForm(m);
-                    setEditingId(m.id);
-                    setOpenModal(true);
-                  }}
-                >
-                  Editar
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={() => handleDelete(m.id)}
-                >
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {maquinarias.map((m, index) => {
+            const _id = m._id?.$oid || m._id || index.toString();
+            return (
+              <TableRow key={_id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{m.detalle}</TableCell>
+                <TableCell>{m.placa}</TableCell>
+                <TableCell>{m.unidad}</TableCell>
+                <TableCell>{m.tipo}</TableCell>
+                <TableCell>{m.marca}</TableCell>
+                <TableCell>{m.modelo}</TableCell>
+                <TableCell align="right">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => {
+                      setForm(m);
+                      setEditingId(_id);
+                      setOpenModal(true);
+                    }}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleDelete(_id)}
+                  >
+                    Eliminar
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
@@ -252,8 +262,8 @@ const Maquinaria = () => {
               type="number"
               inputProps={{ min: 1980, max: añoActual }}
               name="modelo"
-              value={form.modelo}
-              onChange={(e) => setForm({ ...form, modelo: parseInt(e.target.value) })}
+              value={form.modelo || ""}
+              onChange={(e) => setForm({ ...form, modelo: e.target.value })}
               error={!!errors.modelo}
               helperText={errors.modelo}
             />
