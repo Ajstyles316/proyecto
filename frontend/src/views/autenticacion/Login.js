@@ -1,131 +1,140 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from "react";
 import {
-  Grid,
   Box,
-  Card,
-  Stack,
+  Button,
   Typography,
   TextField,
-  Button,
   InputAdornment,
   IconButton,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-
-// components
-import PageContainer from '../../components/container/PageContainer';
+  Stack
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { Link } from "react-router-dom";
 
 const Login = () => {
-  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    Email: "",
+    Password: "",
   });
 
+  const [errors, setErrors] = useState({
+    Email: "",
+    Password: "",
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+
   const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.Email.trim()) newErrors.Email = "El correo es obligatorio";
+    if (!formData.Password.trim()) newErrors.Password = "La contraseña es obligatoria";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Aquí puedes manejar la autenticación
-    console.log('Datos enviados:', formData);
+    if (!validateForm()) return;
+
+    try {
+      const response = await fetch("http://localhost:8000/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Email: formData.Email,
+          Password: formData.Password,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Credenciales inválidas");
+
+      const data = await response.json();
+      localStorage.setItem("user", JSON.stringify(data));
+      window.location.href = "/dashboard/";
+    } catch (error) {
+      alert("No se pudo iniciar sesión");
+      console.error("Error al iniciar sesión:", error.message);
+    }
   };
 
   return (
-    <PageContainer title="Iniciar sesión" description="Página de inicio de sesión">
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        bgcolor: "#f5f5f5",
+        p: 2,
+      }}
+    >
       <Box
         sx={{
-          position: 'relative',
-          '&:before': {
-            content: '""',
-            background: 'radial-gradient(#d2f1df, #d3d7fa, #bad8f4)',
-            backgroundSize: '400% 400%',
-            animation: 'gradient 15s ease infinite',
-            position: 'absolute',
-            height: '100%',
-            width: '100%',
-            opacity: '0.3',
-          },
+          width: { xs: "90%", sm: "400px" },
+          p: 3,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 3,
         }}
       >
-        <Grid container justifyContent="center" sx={{ height: '100vh' }}>
-          <Grid
-            item xs={12} sm={10} md={6} lg={4} xl={3}
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <Card elevation={9} sx={{ p: 4, zIndex: 1, width: '100%', maxWidth: '500px' }}>
-              <Box display="flex" justifyContent="center" mb={2}>
-                
-              </Box>
-              <Typography variant="h5" textAlign="center" mb={1}>
-                Bienvenido de nuevo
-              </Typography>
-              <Typography variant="subtitle1" textAlign="center" color="textSecondary" mb={3}>
-                Inicia sesión con tu cuenta
-              </Typography>
+        <Typography variant="h5" textAlign="center" mb={2}>
+          Iniciar Sesión
+        </Typography>
 
-              <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
-                  <TextField
-                    label="Correo electrónico"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                  />
-                  <TextField
-                    label="Contraseña"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            onClick={() => setShowPassword(!showPassword)}
-                            edge="end"
-                          >
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  <Button variant="contained" color="primary" type="submit" fullWidth>
-                    Iniciar sesión
-                  </Button>
-                </Stack>
-              </form>
+        <form onSubmit={handleSubmit}>
+          <Stack spacing={2}>
+            <TextField
+              label="Correo electrónico"
+              name="Email"
+              value={formData.Email}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Email}
+              helperText={errors.Email}
+            />
 
-              <Stack direction="row" spacing={1} justifyContent="center" mt={3}>
-                <Typography color="textSecondary" variant="body2">
-                  ¿No tienes cuenta?
-                </Typography>
-                <Typography
-                  component={Link}
-                  to="/registro"
-                  sx={{ textDecoration: 'none', color: 'primary.main' }}
-                >
-                  Regístrate
-                </Typography>
-              </Stack>
-            </Card>
-          </Grid>
-        </Grid>
+            <TextField
+              label="Contraseña"
+              name="Password"
+              type={showPassword ? "text" : "password"}
+              value={formData.Password}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Password}
+              helperText={errors.Password}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
+              Iniciar Sesión
+            </Button>
+          </Stack>
+        </form>
+
+        <Box mt={2} textAlign="center">
+          <Typography>
+            ¿No tienes cuenta?{" "}
+            <Link to="/registro" style={{ textDecoration: "none", color: "primary.main" }}>
+              Regístrate
+            </Link>
+          </Typography>
+        </Box>
       </Box>
-    </PageContainer>
+    </Box>
   );
 };
 

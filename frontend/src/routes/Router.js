@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
-
+import PrivateRoute from './PrivateRoute.js';
 /* ***Layouts**** */
 const FullLayout = lazy(() => import('../layouts/full/FullLayout'));
 const BlankLayout = lazy(() => import('../layouts/blank/BlankLayout'));
@@ -25,22 +25,22 @@ const FormLayouts = lazy(() => import("../views/form-layouts/FormLayouts"));
 
 const Router = [
   {
-    path: '/',
+    path: "/",
     element: <FullLayout />,
     children: [
-      { path: '/', element: <Navigate to="/dashboard" /> },
-      { path: '/dashboard', exact: true, element: <Dashboard /> },
-      { path: '/sample-page', exact: true, element: <SamplePage /> },
-      { path: "/maquinaria", element: <BasicTable /> },
-      { path: "/form-layouts", element: <FormLayouts /> },
-      { path: "/control", element: <ExAutoComplete /> },
-      { path: "/mantenimiento", element: <ExButton /> },
-      { path: "/asignacion", element: <ExCheckbox /> },
-      { path: "/seguros", element: <ExRadio /> },
-      { path: "/itv", element: <ExSlider /> },
-      { path: "/impuesto", element: <ExSwitch /> },
-
-      { path: '*', element: <Navigate to="/auth/404" /> },
+      { path: "/", element: <Navigate to="/dashboard" /> },
+      {
+        path: "/dashboard",
+        element: <PrivateRoute><Dashboard /></PrivateRoute>,
+      },
+      { path: "/maquinaria", element: <PrivateRoute><BasicTable /></PrivateRoute> },
+      { path: "/control", element: <PrivateRoute><ExAutoComplete /></PrivateRoute> },
+      { path: "/mantenimiento", element: <PrivateRoute><ExButton /></PrivateRoute> },
+      { path: "/asignacion", element: <PrivateRoute><ExCheckbox /></PrivateRoute> },
+      { path: "/seguros", element: <PrivateRoute><ExRadio /></PrivateRoute> },
+      { path: "/itv", element: <PrivateRoute><ExSlider /></PrivateRoute> },
+      { path: "/impuesto", element: <PrivateRoute><ExSwitch /></PrivateRoute> },
+      { path: "*", element: <Navigate to="/auth/404" /> },
     ],
   },
   {
@@ -48,8 +48,9 @@ const Router = [
     element: <BlankLayout />,
     children: [
       { path: '404', element: <Error /> },
-      { path: '/registro', element: <Register /> },
       { path: '/login', element: <Login /> },
+      { path: '/registro', element: <Register /> },
+
       { path: '*', element: <Navigate to="/404" /> },
     ],
   },

@@ -1,5 +1,7 @@
 # models.py
-
+class Usuario:
+    collection_name = "usuarios"
+    
 class Maquinaria:
     collection_name = "maquinaria"
 

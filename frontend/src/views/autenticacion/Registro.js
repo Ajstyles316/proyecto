@@ -1,163 +1,217 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from "react";
 import {
-  Grid,
   Box,
-  Card,
-  Stack,
+  Button,
   Typography,
   TextField,
-  Button,
+  Stack,
   InputAdornment,
   IconButton,
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-
-// components
-import PageContainer from '../../components/container/PageContainer';
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { Link } from "react-router-dom";
 
 const Register = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    Nombre: "",
+    Cargo: "",
+    Unidad: "",
+    Email: "",
+    Password: "",
+    confirmPassword: "",
   });
 
+  const [errors, setErrors] = useState({
+    Nombre: "",
+    Cargo: "",
+    Unidad: "",
+    Email: "",
+    Password: "",
+    confirmPassword: "",
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleSubmit = (e) => {
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.Nombre.trim()) newErrors.Nombre = "El nombre es obligatorio";
+    if (!formData.Cargo.trim()) newErrors.Cargo = "El cargo es obligatorio";
+    if (!formData.Unidad.trim()) newErrors.Unidad = "La unidad es obligatoria";
+    if (!formData.Email.trim()) newErrors.Email = "El correo es obligatorio";
+    if (!formData.Password.trim()) newErrors.Password = "La contraseña es obligatoria";
+    if (formData.Password !== formData.confirmPassword)
+      newErrors.confirmPassword = "Las contraseñas no coinciden";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (formData.password !== formData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
-      return;
+    if (!validateForm()) return;
+  
+    try {
+      const payload = {
+        Nombre: formData.Nombre,
+        Cargo: formData.Cargo,
+        Unidad: formData.Unidad,
+        Email: formData.Email,
+        Password: formData.Password,
+        confirmPassword: formData.confirmPassword,  // ✅ Asegura que llegue al backend
+      };
+  
+      const response = await fetch("http://localhost:8000/registro/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      if (!response.ok) throw new Error("Error en el registro");
+      alert("Registro exitoso");
+      setFormData({
+        Nombre: "",
+        Cargo: "",
+        Unidad: "",
+        Email: "",
+        Password: "",
+        confirmPassword: "",
+      });
+      window.location.href = "/login/";
+    } catch (error) {
+      alert("Ocurrió un error al registrarse");
+      console.error("Error al registrarse:", error.message);
     }
-
-    // Aquí puedes enviar los datos al backend
-    console.log('Datos enviados:', formData);
   };
 
   return (
-    <PageContainer title="Registro" description="Página de registro de usuarios">
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        bgcolor: "#f5f5f5",
+        p: 2,
+      }}
+    >
       <Box
         sx={{
-          position: 'relative',
-          '&:before': {
-            content: '""',
-            background: 'radial-gradient(#d2f1df, #d3d7fa, #bad8f4)',
-            backgroundSize: '400% 400%',
-            animation: 'gradient 15s ease infinite',
-            position: 'absolute',
-            height: '100%',
-            width: '100%',
-            opacity: '0.3',
-          },
+          width: { xs: "90%", sm: "400px" },
+          p: 3,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 3,
         }}
       >
-        <Grid container justifyContent="center" sx={{ height: '100vh' }}>
-          <Grid
-            item xs={12} sm={10} md={6} lg={4} xl={3}
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <Card elevation={9} sx={{ p: 4, zIndex: 1, width: '100%', maxWidth: '500px' }}>
-              <Box display="flex" justifyContent="center" mb={2}>
-              
-              </Box>
-              <Typography variant="h5" textAlign="center" mb={1}>
-                Crear una cuenta
-              </Typography>
-              <Typography variant="subtitle1" textAlign="center" color="textSecondary" mb={3}>
-                Ingresa tus datos para registrarte
-              </Typography>
+        <Typography variant="h5" textAlign="center" mb={2}>
+          Registro
+        </Typography>
 
-              <form onSubmit={handleSubmit}>
-                <Stack spacing={2}>
-                  <TextField
-                    label="Nombre completo"
-                    name="nombre"
-                    value={formData.nombre}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                  />
-                  <TextField
-                    label="Correo electrónico"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                  />
-                  <TextField
-                    label="Contraseña"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setShowPassword(!showPassword)}>
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  <TextField
-                    label="Confirmar contraseña"
-                    name="confirmPassword"
-                    type={showConfirm ? 'text' : 'password'}
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                    fullWidth
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton onClick={() => setShowConfirm(!showConfirm)}>
-                            {showConfirm ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  <Button variant="contained" color="primary" type="submit" fullWidth>
-                    Registrarse
-                  </Button>
-                </Stack>
-              </form>
+        <form onSubmit={handleSubmit}>
+          <Stack spacing={2}>
+            <TextField
+              label="Nombre completo"
+              name="Nombre"
+              value={formData.Nombre}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Nombre}
+              helperText={errors.Nombre}
+            />
 
-              <Stack direction="row" spacing={1} justifyContent="center" mt={3}>
-                <Typography color="textSecondary" variant="body2">
-                  ¿Ya tienes cuenta?
-                </Typography>
-                <Typography
-                  component={Link}
-                  to="/login"
-                  sx={{ textDecoration: 'none', color: 'primary.main' }}
-                >
-                  Inicia sesión
-                </Typography>
-              </Stack>
-            </Card>
-          </Grid>
-        </Grid>
+            <TextField
+              label="Cargo"
+              name="Cargo"
+              value={formData.Cargo}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Cargo}
+              helperText={errors.Cargo}
+            />
+
+            <TextField
+              label="Unidad"
+              name="Unidad"
+              value={formData.Unidad}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Unidad}
+              helperText={errors.Unidad}
+            />
+
+            <TextField
+              label="Correo electrónico"
+              name="Email"
+              value={formData.Email}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Email}
+              helperText={errors.Email}
+            />
+
+            <TextField
+              label="Contraseña"
+              name="Password"
+              type={showPassword ? "text" : "password"}
+              value={formData.Password}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.Password}
+              helperText={errors.Password}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <TextField
+              label="Confirmar contraseña"
+              name="confirmPassword"
+              type={showConfirm ? "text" : "password"}
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              fullWidth
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowConfirm(!showConfirm)}>
+                      {showConfirm ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
+              Registrarse
+            </Button>
+          </Stack>
+        </form>
+
+        <Box mt={2} textAlign="center">
+          <Typography>
+            ¿Ya tienes cuenta?{" "}
+            <Link to="/login" style={{ textDecoration: "none", color: "primary.main" }}>
+              Inicia sesión
+            </Link>
+          </Typography>
+        </Box>
       </Box>
-    </PageContainer>
+    </Box>
   );
 };
 

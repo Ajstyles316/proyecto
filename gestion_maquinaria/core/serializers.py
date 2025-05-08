@@ -2,6 +2,37 @@
 from dateutil import parser
 from rest_framework import serializers
 
+from rest_framework import serializers
+
+class RegistroSerializer(serializers.Serializer):
+    Nombre = serializers.CharField(required=True)
+    Cargo = serializers.CharField(required=True)
+    Unidad = serializers.CharField(required=True)
+    Email = serializers.EmailField(required=True)
+    Password = serializers.CharField(required=True)
+    confirmPassword = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data["Password"] != data["confirmPassword"]:
+            raise serializers.ValidationError({"confirmPassword": "Las contraseñas no coinciden"})
+        return data
+
+    def update(self, instance, validated_data):
+        return validated_data
+
+    def create(self, validated_data):
+        return validated_data
+
+class LoginSerializer(serializers.Serializer):
+    Email = serializers.EmailField(required=True)
+    Password = serializers.CharField(required=True)
+    
+    def update(self, instance, validated_data):
+        return validated_data
+
+    def create(self, validated_data):
+        return validated_data
+
 class MaquinariaSerializer(serializers.Serializer):
     detalle = serializers.CharField(required=True)
     placa = serializers.CharField(required=True)

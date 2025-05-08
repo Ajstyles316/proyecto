@@ -11,6 +11,8 @@ from .views import (
     ITVViewSet,
     SeguroViewSet,
     DashboardStatsView,
+    RegistroView,
+    LoginView,
 )
 
 router = DefaultRouter()
@@ -24,5 +26,10 @@ router.register(r'seguros', SeguroViewSet, basename='seguros')
 
 urlpatterns = [
     path('', include(router.urls)),
+    
+    path('login/', LoginView.as_view(), name='login'),
+    path('registro/', RegistroView.as_view(), name='registro'),
+    
+    
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
 ]

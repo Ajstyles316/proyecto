@@ -3,11 +3,12 @@ from rest_framework import status
 from rest_framework.viewsets import ViewSet
 from rest_framework.views import APIView
 from bson import json_util, ObjectId
+from bson.json_util import dumps
 import datetime
 from dateutil import parser
 import json
 import logging
-
+from pymongo import MongoClient
 logger = logging.getLogger(__name__)
 
 from .serializers import (
@@ -18,10 +19,12 @@ from .serializers import (
     SeguroSerializer,
     ImpuestoSerializer,
     ITVSerializer,
+    RegistroSerializer,
+    LoginSerializer
 )
 from .mongo_connection import get_collection
-from .models import Maquinaria, Control, Mantenimiento, Asignacion, Seguro, Impuesto, ITV
-
+from .models import Maquinaria, Control, Mantenimiento, Asignacion, Seguro, Impuesto, ITV, Usuario
+import bcrypt
 
 class BaseViewSet(ViewSet):
     model_class = None
@@ -122,6 +125,75 @@ class BaseViewSet(ViewSet):
 
 
 # === Tus ViewSets ===
+
+class RegistroView(APIView):
+    model_class = Usuario
+    serializer_class = RegistroSerializer
+
+    def post(self, request):
+        try:
+            data = dict(request.data)
+            print("Datos recibidos:", data)  # ✅ Imprime todo el payload para validar
+
+            # Validación del serializador
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                print("Errores del serializador:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # ✅ Elimina confirmPassword antes de guardar
+            data.pop("confirmPassword", None)
+
+            # Encripta la contraseña
+            data["Password"] = bcrypt.hashpw(
+                data["Password"].encode("utf-8"),
+                bcrypt.gensalt()
+            ).decode("utf-8")
+
+            # Guarda en MongoDB
+            collection = get_collection(self.model_class)
+            result = collection.insert_one(data)
+            inserted = collection.find_one({"_id": result.inserted_id})
+
+            return Response(json.loads(json_util.dumps(inserted)), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {"error": f"Error al registrar: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class LoginView(APIView):
+    model_class = Usuario
+    serializer_class = LoginSerializer  # ✅ Cambiamos el serializador
+
+    def post(self, request):
+        try:
+            data = dict(request.data)
+            print("Datos recibidos:", data)
+
+            # Usamos el nuevo LoginSerializer
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                print("Errores del serializador:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            collection = get_collection(self.model_class)
+            user = collection.find_one({"Email": data["Email"]})
+            if not user:
+                return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+            if not bcrypt.checkpw(data["Password"].encode("utf-8"), user["Password"].encode("utf-8")):
+                return Response({"error": "Contraseña inválida"}, status=status.HTTP_401_UNAUTHORIZED)
+
+            return Response(json.loads(json_util.dumps(user)), status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print("Error interno:", str(e))
+            return Response(
+                {"error": f"Error al iniciar sesión: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class MaquinariaViewSet(BaseViewSet):
     model_class = Maquinaria
