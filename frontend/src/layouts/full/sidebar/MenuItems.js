@@ -1,29 +1,40 @@
-
 import { uniqueId } from 'lodash';
 
 import {
-  IconLayoutDashboard,  IconTypography,
+  IconLayoutDashboard,
+  IconTypography,
   IconUserCircle,
   IconLogin,
   IconAperture,
-  IconAlignBoxLeftBottom, IconCheckbox, IconRadar, IconSlideshow, IconCaretUpDown, IconTable, 
+  IconAlignBoxLeftBottom,
+  IconCheckbox,
+  IconRadar,
+  IconSlideshow,
+  IconCaretUpDown,
+  IconTable,
   IconForms
 } from '@tabler/icons-react';
 
+// Función para cerrar sesión
+const handleLogout = () => {
+  // ✅ Elimina el usuario del localStorage
+  localStorage.removeItem("user");
+  
+  // ✅ Redirige a la página de login
+  window.location.href = "/login";
+};
 
 const Menuitems = [
   {
     navlabel: true,
     subheader: 'Inicio',
   },
-
   {
     id: uniqueId(),
     title: 'Dashboard',
     icon: IconLayoutDashboard,
     href: '/dashboard',
   },
-
   {
     navlabel: true,
     subheader: 'Utilidades',
@@ -70,7 +81,6 @@ const Menuitems = [
     icon: IconCaretUpDown,
     href: '/impuesto',
   },
-  
   {
     id: uniqueId(),
     title: 'Form Layouts',
@@ -89,17 +99,11 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
-    title: 'Iniciar Sesión',
+    title: 'Cerrar Sesión',
     icon: IconLogin,
     href: '/login',
+    onClick: handleLogout,
   },
-  {
-    id: uniqueId(),
-    title: 'Registro',
-    icon: IconUserCircle,
-    href: '/registro',
-  },
-  
 ];
 
 export default Menuitems;

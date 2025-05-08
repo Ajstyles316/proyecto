@@ -11,6 +11,9 @@ import {
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 
+// ✅ Importa la imagen desde la carpeta assets
+import logo from "../../../src/assets/images/logos/logo_login.png";  // Asegúrate de que esta ruta sea correcta
+
 const Register = () => {
   const [formData, setFormData] = useState({
     Nombre: "",
@@ -56,7 +59,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-  
+
     try {
       const payload = {
         Nombre: formData.Nombre,
@@ -64,16 +67,17 @@ const Register = () => {
         Unidad: formData.Unidad,
         Email: formData.Email,
         Password: formData.Password,
-        confirmPassword: formData.confirmPassword,  // ✅ Asegura que llegue al backend
+        confirmPassword: formData.confirmPassword,
       };
-  
+
       const response = await fetch("http://localhost:8000/registro/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-  
+
       if (!response.ok) throw new Error("Error en el registro");
+
       alert("Registro exitoso");
       setFormData({
         Nombre: "",
@@ -113,6 +117,19 @@ const Register = () => {
         <Typography variant="h5" textAlign="center" mb={2}>
           Registro
         </Typography>
+
+        {/* ✅ Imagen después del título */}
+        <Box textAlign="center" mb={2}>
+          <img
+            src={logo}  // ← Si usas import
+            alt="Logo Registro"
+            style={{ width: "100%", maxWidth: "250px", height: "auto" }}
+            onError={(e) => {
+              console.error("Error al cargar imagen:", e.target.src);
+              e.target.style.display = "none";  // ← Oculta si hay error
+            }}
+          />
+        </Box>
 
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>

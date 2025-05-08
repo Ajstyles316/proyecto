@@ -40,6 +40,8 @@ const Router = [
       { path: "/seguros", element: <PrivateRoute><ExRadio /></PrivateRoute> },
       { path: "/itv", element: <PrivateRoute><ExSlider /></PrivateRoute> },
       { path: "/impuesto", element: <PrivateRoute><ExSwitch /></PrivateRoute> },
+      { path: "/form-layouts", element: <PrivateRoute><FormLayouts /></PrivateRoute> },
+      { path: "/sample-page", element: <PrivateRoute><SamplePage /></PrivateRoute> },
       { path: "*", element: <Navigate to="/auth/404" /> },
     ],
   },

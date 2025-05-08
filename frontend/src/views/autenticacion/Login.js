@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -6,7 +6,8 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Stack
+  Stack,
+  Divider,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
@@ -63,6 +64,10 @@ const Login = () => {
     }
   };
 
+  useEffect(() => {
+    localStorage.removeItem("user");
+  }, []);
+
   return (
     <Box
       sx={{
@@ -83,9 +88,25 @@ const Login = () => {
           boxShadow: 3,
         }}
       >
-        <Typography variant="h5" textAlign="center" mb={2}>
-          Iniciar Sesión
-        </Typography>
+        {/* Contenedor del título e imagen */}
+        <Box display="flex" flexDirection="column" alignItems="center" mb={3}>
+          <Typography variant="h5" textAlign="center">
+            Bienvenido
+          </Typography>
+          
+          {/* Imagen */}
+          <Box mt={1} sx={{ width: "80%", maxWidth: "250px" }}>
+            <img 
+              src="../../../src/assets/images/logos/logo_login.png"
+              alt="Logo Login"
+              style={{ width: "100%", height: "auto", display: "block" }}
+              onError={(e) => {
+                console.error("Error al cargar la imagen:", e.target.src);
+                e.target.style.display = "none";
+              }}
+            />
+          </Box>
+        </Box>
 
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>

@@ -7,6 +7,7 @@ import {
   TableRow,
   Typography,
   Box,
+  MenuItem,
   Button,
   Modal,
   TextField,
@@ -27,16 +28,18 @@ const Maquinaria = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
-  const añoActual = new Date().getFullYear();
+  // ✅ Estado para mostrar cantidad de registros
+  const [pageSize, setPageSize] = useState(10); // Por defecto: 10 registros
+  const pageSizeOptions = [5, 10, 20, 50, "Todos"];
 
   // Cargar datos al iniciar
   useEffect(() => {
     fetchMaquinarias();
   }, []);
 
-  function isValidObjectId(id) {
+  const isValidObjectId = (id) => {
     return /^[0-9a-fA-F]{24}$/.test(id);
-  }
+  };
 
   const fetchMaquinarias = async () => {
     try {
@@ -46,6 +49,7 @@ const Maquinaria = () => {
       setMaquinarias(data);
     } catch (error) {
       alert("No se pudieron cargar las máquinas.");
+      console.error("Error al cargar maquinaria:", error.message);
     }
   };
 
@@ -65,6 +69,14 @@ const Maquinaria = () => {
 
   const handleClose = () => {
     setOpenModal(false);
+    setForm({
+      detalle: "",
+      placa: "",
+      unidad: "",
+      tipo: "",
+      marca: "",
+      modelo: "",
+    });
     setErrors({});
   };
 
@@ -99,47 +111,85 @@ const Maquinaria = () => {
 
       if (!response.ok) throw new Error("Error al guardar");
 
-      handleClose();
       fetchMaquinarias();
+      handleClose();
     } catch (error) {
       alert("Ocurrió un error al guardar los datos.");
+      console.error("Error al guardar:", error.message);
     }
   };
 
   const handleDelete = async (_id) => {
     const url = `http://localhost:8000/api/maquinaria/${_id}/`;
-    // Validación del ID
     if (!_id || !isValidObjectId(_id)) {
       alert("ID inválido");
       console.error("ID no válido:", _id);
       return;
     }
-  
+
     try {
-      const response = await fetch(url, {
-        method: "DELETE",
-      });
-  
+      const response = await fetch(url, { method: "DELETE" });
       if (!response.ok) throw new Error("Error al eliminar");
-  
       fetchMaquinarias();
     } catch (error) {
-      console.error("Error al eliminar:", error.message);
       alert("No se pudo eliminar la máquina.");
+      console.error("Error al eliminar:", error.message);
     }
+  };
+
+  const handleEdit = (m) => {
+    const _id = m._id?.$oid || m._id;
+    setForm(m);
+    setEditingId(_id);
+    setOpenModal(true);
+    setErrors({});
+  };
+
+  // ✅ Función para obtener los datos según el tamaño de página
+  const getDisplayedData = () => {
+    if (pageSize === "Todos") return maquinarias;
+    const limit = parseInt(pageSize, 10);
+    return maquinarias.slice(0, limit);
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+      {/* Título y botón nuevo */}
+      <Box sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        mb: 2,
+        flexWrap: "wrap",
+      }}>
         <Typography variant="h5" fontWeight={600}>
           Maquinaria
         </Typography>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
-          Nuevo
-        </Button>
+
+        {/* Menú desplegable para seleccionar tamaño de página */}
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <TextField
+            select
+            label="Mostrar"
+            value={pageSize}
+            onChange={(e) => setPageSize(e.target.value)}
+            size="small"
+            sx={{ width: 120 }}
+          >
+            {pageSizeOptions.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option === "Todos" ? "Todos" : `${option} registros`}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
+            Nuevo
+          </Button>
+        </Box>
       </Box>
 
+      {/* Tabla */}
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
         <TableHead>
           <TableRow>
@@ -154,7 +204,8 @@ const Maquinaria = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {maquinarias.map((m, index) => {
+          {/* ✅ Mostrar solo los registros según el tamaño de página */}
+          {getDisplayedData().map((m, index) => {
             const _id = m._id?.$oid || m._id || index.toString();
             return (
               <TableRow key={_id}>
@@ -170,11 +221,7 @@ const Maquinaria = () => {
                     size="small"
                     variant="outlined"
                     color="secondary"
-                    onClick={() => {
-                      setForm(m);
-                      setEditingId(_id);
-                      setOpenModal(true);
-                    }}
+                    onClick={() => handleEdit(m)}
                   >
                     Editar
                   </Button>
@@ -193,6 +240,7 @@ const Maquinaria = () => {
         </TableBody>
       </Table>
 
+      {/* Modal */}
       <Modal open={openModal} onClose={handleClose}>
         <Box
           sx={{
@@ -260,7 +308,6 @@ const Maquinaria = () => {
             <TextField
               label="Modelo"
               type="number"
-              inputProps={{ min: 1980, max: añoActual }}
               name="modelo"
               value={form.modelo || ""}
               onChange={(e) => setForm({ ...form, modelo: e.target.value })}
