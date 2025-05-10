@@ -28,9 +28,12 @@ const Maquinaria = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
 
-  // ✅ Estado para mostrar cantidad de registros
   const [pageSize, setPageSize] = useState(10); // Por defecto: 10 registros
   const pageSizeOptions = [5, 10, 20, 50, "Todos"];
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = pageSize === "Todos" ? 1 : Math.ceil(maquinarias.length / parseInt(pageSize, 10));
+
+
 
   // Cargar datos al iniciar
   useEffect(() => {
@@ -145,12 +148,14 @@ const Maquinaria = () => {
     setErrors({});
   };
 
-  // ✅ Función para obtener los datos según el tamaño de página
   const getDisplayedData = () => {
     if (pageSize === "Todos") return maquinarias;
     const limit = parseInt(pageSize, 10);
-    return maquinarias.slice(0, limit);
+    const start = (currentPage - 1) * limit;
+    const end = start + limit;
+    return maquinarias.slice(start, end);
   };
+  
 
   return (
     <Box sx={{ p: 3 }}>
@@ -324,6 +329,30 @@ const Maquinaria = () => {
           </Box>
         </Box>
       </Modal>
+      {pageSize !== "Todos" && (
+  <Box sx={{ mt: 2, display: "flex", justifyContent: "center", gap: 2 }}>
+    <Button
+      variant="outlined"
+      color="warning"
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+    >
+      Anterior
+    </Button>
+    <Typography sx={{ alignSelf: "center" }}>
+      Página {currentPage}
+    </Typography>
+    <Button
+      variant="outlined"
+      color="warning"
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+    >
+      Siguiente
+    </Button>
+  </Box>
+)}
+
     </Box>
   );
 };

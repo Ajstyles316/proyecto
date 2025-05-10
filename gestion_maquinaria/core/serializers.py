@@ -50,6 +50,7 @@ class MaquinariaSerializer(serializers.Serializer):
 
 
 class ControlSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField()
     estado = serializers.CharField(required=True)
     ubicacion = serializers.CharField(required=True)
     gerente = serializers.CharField(required=True)

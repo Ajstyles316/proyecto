@@ -24,8 +24,11 @@ import {
   LinearScale,
   CategoryScale,
 } from "chart.js";
+
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale);
+
 const tipos = ["PREVENTIVO", "CORRECTIVO"];
+
 const getMantenimientoRecomendado = (horas) => {
   if (horas > 10000) return "Sustitución urgente de componentes críticos";
   if (horas > 9500) return "Inspección completa de transmisión y motor";
@@ -48,10 +51,6 @@ const Mantenimiento = () => {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
-  
-  // ✅ Nuevos estados para paginación
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10); // Opciones: 5, 10, 20, 50, "Todos"
 
   useEffect(() => {
     fetchMantenimientos();
@@ -68,6 +67,11 @@ const Mantenimiento = () => {
       console.error("Error:", error.message);
       alert("No se pudieron cargar los mantenimientos. Verifica la conexión con el backend.");
     }
+  };
+
+  const getMaquinariaNombre = (maqId) => {
+    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    return maq?.detalle || "Desconocido";
   };
 
   const fetchMaquinarias = async () => {
@@ -125,27 +129,38 @@ const Mantenimiento = () => {
     if (!form.ultimaRevision.trim()) newErrors.ultimaRevision = "Ingrese la fecha de última revisión.";
     if (!form.horasOperacion.trim()) newErrors.horasOperacion = "Ingrese las horas de operación por día.";
     if (!form.unidad.trim()) newErrors.unidad = "Ingrese una unidad.";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
+
     try {
       const payload = {
-        ...form,
-        maquinaria_id: form.maquinaria, // Asegurar que sea un número
+        maquinaria_id: form.maquinaria,  // ✅ Usa maquinaria_id en lugar de maquinaria
+        tipo: form.tipo,
+        cantidad: form.cantidad,
+        recorrido: form.recorrido,
+        ultimaRevision: form.ultimaRevision,
+        horasOperacion: form.horasOperacion,
+        unidad: form.unidad,
       };
+
       const method = editingId ? "PUT" : "POST";
       const url = editingId
         ? `http://localhost:8000/api/mantenimiento/${editingId}/`
         : "http://localhost:8000/api/mantenimiento/";
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       if (!response.ok) throw new Error("Error al guardar");
+
       fetchMantenimientos();
       handleClose();
     } catch (error) {
@@ -159,6 +174,12 @@ const Mantenimiento = () => {
     setForm({
       ...item,
       maquinaria: item.maquinaria_id?.$oid || item.maquinaria_id || item.maquinaria,
+      tipo: item.tipo || "",
+      cantidad: item.cantidad?.toString() || "",
+      recorrido: item.recorrido?.toString() || "",
+      ultimaRevision: item.ultimaRevision || "",
+      horasOperacion: item.horasOperacion?.toString() || "",
+      unidad: item.unidad || "",
     });
     setEditingId(_id);
     setOpen(true);
@@ -168,32 +189,19 @@ const Mantenimiento = () => {
   const handleDelete = async (_id) => {
     const id = _id?.$oid || _id;
     if (!id) return alert("ID inválido");
+
     try {
-      await fetch(`http://localhost:8000/api/mantenimiento/${id}/`, {
+      const response = await fetch(`http://localhost:8000/api/mantenimiento/${id}/`, {
         method: "DELETE",
       });
+
+      if (!response.ok) throw new Error("Error al eliminar");
+
       fetchMantenimientos();
     } catch (error) {
       alert("No se pudo eliminar");
       console.error("Error al eliminar:", error.message);
     }
-  };
-
-  // ✅ Funciones para paginación
-  const totalPages = Math.ceil(data.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const displayedData = pageSize === "Todos" ? data : data.slice(startIndex, endIndex);
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
-
-  const handlePageSizeChange = (e) => {
-    setPageSize(e.target.value);
-    setCurrentPage(1); // Reiniciar página al cambiar tamaño
   };
 
   const forecastData = () => {
@@ -229,24 +237,6 @@ const Mantenimiento = () => {
         </Button>
       </Box>
 
-      {/* ✅ Menú desplegable para seleccionar tamaño de página */}
-      <Box display="flex" justifyContent="flex-end" mb={2}>
-        <FormControl fullWidth sx={{ maxWidth: 150 }}>
-          <TextField
-            select
-            label="Mostrar"
-            value={pageSize}
-            onChange={handlePageSizeChange}
-          >
-            <MenuItem value={5}>5 registros</MenuItem>
-            <MenuItem value={10}>10 registros</MenuItem>
-            <MenuItem value={20}>20 registros</MenuItem>
-            <MenuItem value={50}>50 registros</MenuItem>
-            <MenuItem value="Todos">Todos</MenuItem>
-          </TextField>
-        </FormControl>
-      </Box>
-
       <Box sx={{ mb: 3, height: 200 }}>
         <Typography variant="h6">Pronóstico</Typography>
         <Line
@@ -272,17 +262,7 @@ const Mantenimiento = () => {
       <Table>
         <TableHead>
           <TableRow>
-            {[
-              "N°",
-              "Maquinaria",
-              "Unidad",
-              "Tipo",
-              "Fecha",
-              "Horas/día",
-              "Recorrido (km)",
-              "Pronóstico",
-              "Acción",
-            ].map((h) => (
+            {["N°", "Maquinaria", "Unidad", "Tipo", "Fecha", "Horas/día", "Recorrido (km)", "Pronóstico", "Acción"].map((h) => (
               <TableCell key={h}>
                 <b>{h}</b>
               </TableCell>
@@ -290,12 +270,12 @@ const Mantenimiento = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {displayedData.map((d, i) => {
+          {data.map((d, i) => {
             const _id = d._id?.$oid || d._id;
             return (
               <TableRow key={_id}>
                 <TableCell>{i + 1}</TableCell>
-                <TableCell>{d.maquinaria_nombre || d.maquinaria_id || d.maquinaria || "Desconocido"}</TableCell>
+                <TableCell>{getMaquinariaNombre(d.maquinaria_id || d.maquinaria)}</TableCell>
                 <TableCell>{d.unidad}</TableCell>
                 <TableCell>{d.tipo.toUpperCase()}</TableCell>
                 <TableCell>{d.ultimaRevision}</TableCell>
@@ -316,35 +296,6 @@ const Mantenimiento = () => {
         </TableBody>
       </Table>
 
-      {/* ✅ Paginación */}
-      {totalPages > 1 && (
-        <Box display="flex" justifyContent="center" mt={2}>
-          <Button
-            disabled={currentPage === 1}
-            onClick={() => handlePageChange(currentPage - 1)}
-          >
-            Anterior
-          </Button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <Button
-              key={page}
-              variant={page === currentPage ? "contained" : "text"}
-              color="primary"
-              onClick={() => handlePageChange(page)}
-              sx={{ mx: 1 }}
-            >
-              {page}
-            </Button>
-          ))}
-          <Button
-            disabled={currentPage === totalPages}
-            onClick={() => handlePageChange(currentPage + 1)}
-          >
-            Siguiente
-          </Button>
-        </Box>
-      )}
-
       <Modal open={open} onClose={handleClose}>
         <Box
           sx={{
@@ -362,28 +313,29 @@ const Mantenimiento = () => {
             {editingId ? "Editar" : "Agregar"} Mantenimiento
           </Typography>
           <Box display="flex" flexDirection="column" gap={2}>
-            <FormControl fullWidth error={!!errors.maquinaria}>
-              <TextField
-                select
-                label="Maquinaria"
-                name="maquinaria"
-                value={form.maquinaria}
-                onChange={handleChange}
-              >
-                <MenuItem value="" disabled>
-                  Seleccione una maquinaria
-                </MenuItem>
-                {maquinarias.map((maq) => {
-                  const _id = maq._id?.$oid || maq._id;
-                  return (
-                    <MenuItem key={_id} value={_id}>
-                      {maq.detalle}
-                    </MenuItem>
-                  );
-                })}
-              </TextField>
-              <FormHelperText>{errors.maquinaria}</FormHelperText>
-            </FormControl>
+          <FormControl fullWidth error={!!errors.maquinaria}>
+  <TextField
+    select
+    label="Maquinaria"
+    name="maquinaria"
+    value={form.maquinaria}
+    onChange={handleChange}
+  >
+    <MenuItem value="" disabled>
+      Seleccione una maquinaria
+    </MenuItem>
+    {maquinarias.map((maq) => {
+      const _id = maq._id?.$oid || maq._id;
+      return (
+        <MenuItem key={_id} value={_id}>
+          {maq.detalle}
+        </MenuItem>
+      );
+    })}
+  </TextField>
+  <FormHelperText>{errors.maquinaria}</FormHelperText>
+</FormControl>
+
             <FormControl fullWidth error={!!errors.unidad}>
               <TextField
                 select
@@ -403,6 +355,7 @@ const Mantenimiento = () => {
               </TextField>
               <FormHelperText>{errors.unidad}</FormHelperText>
             </FormControl>
+
             <FormControl fullWidth error={!!errors.tipo}>
               <TextField
                 select
@@ -422,6 +375,7 @@ const Mantenimiento = () => {
               </TextField>
               <FormHelperText>{errors.tipo}</FormHelperText>
             </FormControl>
+
             <TextField
               label="Cantidad"
               name="cantidad"
@@ -430,6 +384,7 @@ const Mantenimiento = () => {
               error={!!errors.cantidad}
               helperText={errors.cantidad}
             />
+
             <TextField
               label="Recorrido (km)"
               name="recorrido"
@@ -438,6 +393,7 @@ const Mantenimiento = () => {
               error={!!errors.recorrido}
               helperText={errors.recorrido}
             />
+
             <TextField
               label="Fecha última revisión"
               type="date"
@@ -448,6 +404,7 @@ const Mantenimiento = () => {
               error={!!errors.ultimaRevision}
               helperText={errors.ultimaRevision}
             />
+
             <TextField
               label="Horas de operación por día"
               name="horasOperacion"
@@ -456,10 +413,11 @@ const Mantenimiento = () => {
               error={!!errors.horasOperacion}
               helperText={errors.horasOperacion}
             />
+
             <Button variant="contained" color="error" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button variant="contained" onClick={handleSubmit}>
+            <Button variant="contained" color="secondary" onClick={handleSubmit}>
               Guardar
             </Button>
           </Box>
