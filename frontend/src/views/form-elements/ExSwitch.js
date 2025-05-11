@@ -24,6 +24,10 @@ const Impuestos = () => {
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Función para obtener el nombre de la máquina
   const getMaquinariaNombre = (maqId) => {
@@ -119,6 +123,7 @@ const Impuestos = () => {
 
       fetchImpuestos();
       handleClose();
+      setCurrentPage(1); // Reiniciar a la primera página después de guardar
     } catch (error) {
       console.error("Error al guardar:", error.message);
       alert("Ocurrió un error al guardar.");
@@ -155,6 +160,35 @@ const Impuestos = () => {
     }
   };
 
+  // Funciones de paginación
+  const getTotalPages = () => {
+    return rowsPerPage === "all" 
+      ? 1 
+      : Math.ceil(impuestos.length / rowsPerPage);
+  };
+
+  const handlePageChange = (direction) => {
+    if (direction === 'prev') {
+      setCurrentPage(prev => Math.max(prev - 1, 1));
+    } else if (direction === 'next') {
+      setCurrentPage(prev => Math.min(prev + 1, getTotalPages()));
+    }
+  };
+
+  const handleRowsPerPageChange = (e) => {
+    const value = e.target.value;
+    setRowsPerPage(value);
+    setCurrentPage(1);
+  };
+
+  // Datos paginados
+  const paginatedImpuestos = rowsPerPage === "all" 
+    ? impuestos 
+    : impuestos.slice(
+        (currentPage - 1) * rowsPerPage, 
+        currentPage * rowsPerPage
+      );
+
   return (
     <Box sx={{ p: 3 }}>
       <Box
@@ -168,9 +202,24 @@ const Impuestos = () => {
         <Typography variant="h5" fontWeight={600}>
           Impuestos
         </Typography>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
-          Nuevo
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <TextField
+            select
+            label="Registros"
+            size="small"
+            value={rowsPerPage}
+            onChange={handleRowsPerPageChange}
+          >
+            <MenuItem value={5}>5 registros</MenuItem>
+            <MenuItem value={10}>10 registros</MenuItem>
+            <MenuItem value={20}>20 registros</MenuItem>
+            <MenuItem value={50}>50 registros</MenuItem>
+            <MenuItem value="all">Todos</MenuItem>
+          </TextField>
+          <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
+            Nuevo
+          </Button>
+        </Box>
       </Box>
 
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
@@ -183,11 +232,11 @@ const Impuestos = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {impuestos.map((i, index) => {
+          {paginatedImpuestos.map((i, index) => {
             const _id = i._id?.$oid || i._id || index.toString();
             return (
               <TableRow key={_id}>
-                <TableCell>{index + 1}</TableCell>
+                <TableCell>{(currentPage - 1) * rowsPerPage + index + 1}</TableCell>
                 <TableCell>{getMaquinariaNombre(i.maquinaria_id || i.maquinaria)}</TableCell>
                 <TableCell>{`Bs. ${parseFloat(i.aporte).toFixed(2)}`}</TableCell>
                 <TableCell align="right">
@@ -203,6 +252,27 @@ const Impuestos = () => {
           })}
         </TableBody>
       </Table>
+
+      {/* Paginación */}
+      <Box display="flex" justifyContent="center" mt={2} gap={2}>
+        <Button
+          variant="outlined"
+          color="warning"
+          disabled={currentPage === 1 || rowsPerPage === "all"}
+          onClick={() => handlePageChange('prev')}
+        >
+          Anterior
+        </Button>
+        <Typography sx={{ alignSelf: "center" }}>Página {currentPage}</Typography>
+        <Button
+          variant="outlined"
+          color="warning"
+          disabled={currentPage === getTotalPages() || rowsPerPage === "all"}
+          onClick={() => handlePageChange('next')}
+        >
+          Siguiente
+        </Button>
+      </Box>
 
       <Modal open={openModal} onClose={handleClose}>
         <Box

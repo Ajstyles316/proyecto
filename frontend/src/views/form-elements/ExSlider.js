@@ -24,6 +24,10 @@ const ITVTable = () => {
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Busca el nombre de la máquina por su _id
   const getMaquinariaNombre = (maqId) => {
@@ -115,6 +119,7 @@ const ITVTable = () => {
 
       fetchItvs();
       handleClose();
+      setCurrentPage(1); // Reiniciar a la primera página después de guardar
     } catch (error) {
       console.error("Error al guardar:", error.message);
       alert("Ocurrió un error al guardar.");
@@ -151,6 +156,35 @@ const ITVTable = () => {
     }
   };
 
+  // Funciones de paginación
+  const getTotalPages = () => {
+    return rowsPerPage === "all" 
+      ? 1 
+      : Math.ceil(itvs.length / rowsPerPage);
+  };
+
+  const handlePageChange = (direction) => {
+    if (direction === 'prev') {
+      setCurrentPage(prev => Math.max(prev - 1, 1));
+    } else if (direction === 'next') {
+      setCurrentPage(prev => Math.min(prev + 1, getTotalPages()));
+    }
+  };
+
+  const handleRowsPerPageChange = (e) => {
+    const value = e.target.value;
+    setRowsPerPage(value);
+    setCurrentPage(1);
+  };
+
+  // Datos paginados
+  const paginatedItvs = rowsPerPage === "all" 
+    ? itvs 
+    : itvs.slice(
+        (currentPage - 1) * rowsPerPage, 
+        currentPage * rowsPerPage
+      );
+
   return (
     <Box sx={{ p: 3 }}>
       <Box
@@ -164,9 +198,24 @@ const ITVTable = () => {
         <Typography variant="h5" fontWeight={600}>
           ITV
         </Typography>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
-          Nuevo
-        </Button>
+        <Box display="flex" alignItems="center" gap={2}>
+          <TextField
+            select
+            label="Registros"
+            size="small"
+            value={rowsPerPage}
+            onChange={handleRowsPerPageChange}
+          >
+            <MenuItem value={5}>5 registros</MenuItem>
+            <MenuItem value={10}>10 registros</MenuItem>
+            <MenuItem value={20}>20 registros</MenuItem>
+            <MenuItem value={50}>50 registros</MenuItem>
+            <MenuItem value="all">Todos</MenuItem>
+          </TextField>
+          <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
+            Nuevo
+          </Button>
+        </Box>
       </Box>
 
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
@@ -179,11 +228,11 @@ const ITVTable = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {itvs.map((itv, index) => {
+          {paginatedItvs.map((itv, index) => {
             const _id = itv._id?.$oid || itv._id;
             return (
               <TableRow key={_id}>
-                <TableCell>{index + 1}</TableCell>
+                <TableCell>{(currentPage - 1) * rowsPerPage + index + 1}</TableCell>
                 <TableCell>{getMaquinariaNombre(itv.maquinaria_id || itv.maquinaria)}</TableCell>
                 <TableCell>{`Bs. ${parseFloat(itv.detalle).toFixed(2)}`}</TableCell>
                 <TableCell align="right">
@@ -199,6 +248,27 @@ const ITVTable = () => {
           })}
         </TableBody>
       </Table>
+
+      {/* Paginación */}
+      <Box display="flex" justifyContent="center" mt={2} gap={2}>
+        <Button
+          variant="outlined"
+          color="warning"
+          disabled={currentPage === 1 || rowsPerPage === "all"}
+          onClick={() => handlePageChange('prev')}
+        >
+          Anterior
+        </Button>
+        <Typography sx={{ alignSelf: "center" }}>Página {currentPage}</Typography>
+        <Button
+          variant="outlined"
+          color="warning"
+          disabled={currentPage === getTotalPages() || rowsPerPage === "all"}
+          onClick={() => handlePageChange('next')}
+        >
+          Siguiente
+        </Button>
+      </Box>
 
       <Modal open={openModal} onClose={handleClose}>
         <Box

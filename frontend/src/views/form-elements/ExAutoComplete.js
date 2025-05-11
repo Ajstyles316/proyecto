@@ -326,6 +326,7 @@ const Control = () => {
       <Box display="flex" justifyContent="center" mt={2} gap={2}>
         <Button
           variant="outlined"
+          color="warning"
           disabled={currentPage === 1 || rowsPerPage === "all"}
           onClick={() => handlePageChange('prev')}
         >
