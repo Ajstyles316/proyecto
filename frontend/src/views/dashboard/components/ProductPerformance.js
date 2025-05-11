@@ -27,18 +27,26 @@ const Maquinaria = () => {
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
-
   const [pageSize, setPageSize] = useState(10); // Por defecto: 10 registros
   const pageSizeOptions = [5, 10, 20, 50, "Todos"];
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = pageSize === "Todos" ? 1 : Math.ceil(maquinarias.length / parseInt(pageSize, 10));
+  const [uniqueUnidades, setUniqueUnidades] = useState([]);
 
+  // Calcular total de páginas
+  const totalPages = pageSize === "Todos" 
+    ? 1 
+    : Math.ceil(maquinarias.length / parseInt(pageSize, 10));
 
-
-  // Cargar datos al iniciar
+  // Cargar datos al iniciar y calcular unidades únicas
   useEffect(() => {
     fetchMaquinarias();
   }, []);
+
+  useEffect(() => {
+    // Extraer unidades únicas cuando cambian las maquinarias
+    const unidades = [...new Set(maquinarias.map(m => m.unidad).filter(Boolean))];
+    setUniqueUnidades(unidades);
+  }, [maquinarias]);
 
   const isValidObjectId = (id) => {
     return /^[0-9a-fA-F]{24}$/.test(id);
@@ -99,21 +107,17 @@ const Maquinaria = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     try {
       const method = editingId ? "PUT" : "POST";
       const url = editingId
         ? `http://localhost:8000/api/maquinaria/${editingId}/`
         : "http://localhost:8000/api/maquinaria/";
-
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
       if (!response.ok) throw new Error("Error al guardar");
-
       fetchMaquinarias();
       handleClose();
     } catch (error) {
@@ -129,7 +133,6 @@ const Maquinaria = () => {
       console.error("ID no válido:", _id);
       return;
     }
-
     try {
       const response = await fetch(url, { method: "DELETE" });
       if (!response.ok) throw new Error("Error al eliminar");
@@ -148,6 +151,7 @@ const Maquinaria = () => {
     setErrors({});
   };
 
+  // Obtener datos paginados
   const getDisplayedData = () => {
     if (pageSize === "Todos") return maquinarias;
     const limit = parseInt(pageSize, 10);
@@ -155,7 +159,6 @@ const Maquinaria = () => {
     const end = start + limit;
     return maquinarias.slice(start, end);
   };
-  
 
   return (
     <Box sx={{ p: 3 }}>
@@ -170,14 +173,18 @@ const Maquinaria = () => {
         <Typography variant="h5" fontWeight={600}>
           Maquinaria
         </Typography>
-
         {/* Menú desplegable para seleccionar tamaño de página */}
         <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
           <TextField
             select
             label="Mostrar"
             value={pageSize}
-            onChange={(e) => setPageSize(e.target.value)}
+            onChange={(e) => {
+              setPageSize(e.target.value);
+              if (e.target.value === "Todos") {
+                setCurrentPage(1);
+              }
+            }}
             size="small"
             sx={{ width: 120 }}
           >
@@ -187,13 +194,12 @@ const Maquinaria = () => {
               </MenuItem>
             ))}
           </TextField>
-
           <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
             Nuevo
           </Button>
         </Box>
       </Box>
-
+      
       {/* Tabla */}
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
         <TableHead>
@@ -209,12 +215,16 @@ const Maquinaria = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {/* ✅ Mostrar solo los registros según el tamaño de página */}
+          {/* ✅ Numeración correcta con paginación */}
           {getDisplayedData().map((m, index) => {
             const _id = m._id?.$oid || m._id || index.toString();
+            const rowNumber = pageSize === "Todos" 
+              ? index + 1 
+              : (currentPage - 1) * parseInt(pageSize, 10) + index + 1;
+            
             return (
               <TableRow key={_id}>
-                <TableCell>{index + 1}</TableCell>
+                <TableCell>{rowNumber}</TableCell>
                 <TableCell>{m.detalle}</TableCell>
                 <TableCell>{m.placa}</TableCell>
                 <TableCell>{m.unidad}</TableCell>
@@ -263,7 +273,6 @@ const Maquinaria = () => {
           <Typography variant="h6" mb={2}>
             {editingId ? "Editar Vehículo" : "Agregar Vehículo"}
           </Typography>
-
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
               label="Detalle"
@@ -273,7 +282,6 @@ const Maquinaria = () => {
               error={!!errors.detalle}
               helperText={errors.detalle}
             />
-
             <TextField
               label="Placa"
               name="placa"
@@ -282,16 +290,22 @@ const Maquinaria = () => {
               error={!!errors.placa}
               helperText={errors.placa}
             />
-
+            {/* ✅ Campo de unidad como select con opciones únicas */}
             <TextField
+              select
               label="Unidad"
               name="unidad"
               value={form.unidad}
               onChange={handleChange}
               error={!!errors.unidad}
               helperText={errors.unidad}
-            />
-
+            >
+              {uniqueUnidades.map((unidad) => (
+                <MenuItem key={unidad} value={unidad}>
+                  {unidad}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               label="Tipo"
               name="tipo"
@@ -300,7 +314,6 @@ const Maquinaria = () => {
               error={!!errors.tipo}
               helperText={errors.tipo}
             />
-
             <TextField
               label="Marca"
               name="marca"
@@ -309,7 +322,6 @@ const Maquinaria = () => {
               error={!!errors.marca}
               helperText={errors.marca}
             />
-
             <TextField
               label="Modelo"
               type="number"
@@ -319,7 +331,6 @@ const Maquinaria = () => {
               error={!!errors.modelo}
               helperText={errors.modelo}
             />
-
             <Button variant="contained" color="error" onClick={handleClose}>
               Cancelar
             </Button>
@@ -329,30 +340,31 @@ const Maquinaria = () => {
           </Box>
         </Box>
       </Modal>
-      {pageSize !== "Todos" && (
-  <Box sx={{ mt: 2, display: "flex", justifyContent: "center", gap: 2 }}>
-    <Button
-      variant="outlined"
-      color="warning"
-      disabled={currentPage === 1}
-      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-    >
-      Anterior
-    </Button>
-    <Typography sx={{ alignSelf: "center" }}>
-      Página {currentPage}
-    </Typography>
-    <Button
-      variant="outlined"
-      color="warning"
-      disabled={currentPage === totalPages}
-      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-    >
-      Siguiente
-    </Button>
-  </Box>
-)}
 
+      {/* Paginación */}
+      {pageSize !== "Todos" && (
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "center", gap: 2 }}>
+          <Button
+            variant="outlined"
+            color="warning"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          >
+            Anterior
+          </Button>
+          <Typography sx={{ alignSelf: "center" }}>
+            Página {currentPage}
+          </Typography>
+          <Button
+            variant="outlined"
+            color="warning"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          >
+            Siguiente
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 };
