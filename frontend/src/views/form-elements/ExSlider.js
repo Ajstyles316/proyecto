@@ -28,10 +28,13 @@ const ITVTable = () => {
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [uniqueMaquinarias, setUniqueMaquinarias] = useState([]);
 
-  // Busca el nombre de la máquina por su _id
+  // Función para obtener el nombre de la máquina
   const getMaquinariaNombre = (maqId) => {
-    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    const maq = maquinarias.find(m => 
+      m._id?.$oid === maqId || m._id === maqId
+    );
     return maq?.detalle || "Desconocido";
   };
 
@@ -40,6 +43,19 @@ const ITVTable = () => {
     fetchItvs();
     fetchMaquinarias();
   }, []);
+
+  // Extraer maquinarias únicas por detalle
+  useEffect(() => {
+    if (maquinarias.length > 0) {
+      const seen = new Set();
+      const filtered = maquinarias.filter(maq => {
+        const duplicate = seen.has(maq.detalle);
+        seen.add(maq.detalle);
+        return !duplicate;
+      });
+      setUniqueMaquinarias(filtered);
+    }
+  }, [maquinarias]);
 
   const fetchItvs = async () => {
     try {
@@ -56,16 +72,19 @@ const ITVTable = () => {
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
-      if (!response.ok) throw new Error("Error al cargar las máquinas");
+      if (!response.ok) throw new Error("Error al cargar máquinas");
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
       console.error("Error al cargar máquinas:", error.message);
-      alert("No se pudieron cargar las máquinas. Verifica la conexión.");
     }
   };
 
   const handleOpen = () => {
+    if (uniqueMaquinarias.length === 0) {
+      alert("Espere a que se carguen las maquinarias antes de continuar.");
+      return;
+    }
     setForm({
       maquinaria: "",
       detalle: "",
@@ -78,6 +97,10 @@ const ITVTable = () => {
   const handleClose = () => {
     setOpenModal(false);
     setErrors({});
+    setForm({
+      maquinaria: "",
+      detalle: "",
+    });
   };
 
   const handleChange = (e) => {
@@ -97,29 +120,23 @@ const ITVTable = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     const payload = {
       maquinaria_id: form.maquinaria,
       detalle: parseFloat(form.detalle),
     };
-
     try {
       const method = editingId ? "PUT" : "POST";
       const url = editingId
         ? `http://localhost:8000/api/itv/${editingId}/`
         : "http://localhost:8000/api/itv/";
-
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) throw new Error("Error al guardar");
-
       fetchItvs();
       handleClose();
-      setCurrentPage(1); // Reiniciar a la primera página después de guardar
     } catch (error) {
       console.error("Error al guardar:", error.message);
       alert("Ocurrió un error al guardar.");
@@ -129,7 +146,6 @@ const ITVTable = () => {
   const handleEdit = (item) => {
     const _id = item._id?.$oid || item._id;
     setForm({
-      ...item,
       maquinaria: item.maquinaria_id || item.maquinaria,
       detalle: item.detalle.toString(),
     });
@@ -141,14 +157,11 @@ const ITVTable = () => {
   const handleDelete = async (_id) => {
     const id = _id?.$oid || _id;
     if (!id) return alert("ID inválido");
-
     try {
       const response = await fetch(`http://localhost:8000/api/itv/${id}/`, {
         method: "DELETE",
       });
-
       if (!response.ok) throw new Error("Error al eliminar");
-
       fetchItvs();
     } catch (error) {
       alert("No se pudo eliminar el registro");
@@ -287,8 +300,8 @@ const ITVTable = () => {
           <Typography variant="h6" mb={2}>
             {editingId ? "Editar ITV" : "Agregar ITV"}
           </Typography>
-
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* Maquinaria - Sin repetidos */}
             <TextField
               select
               label="Maquinaria"
@@ -301,14 +314,19 @@ const ITVTable = () => {
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {maquinarias.map((maq) => {
-                const _id = maq._id?.$oid || maq._id;
-                return (
-                  <MenuItem key={_id} value={_id}>
-                    {maq.detalle}
-                  </MenuItem>
-                );
-              })}
+              
+              {uniqueMaquinarias.length > 0 ? (
+                uniqueMaquinarias.map((maq) => {
+                  const _id = maq._id?.$oid || maq._id;
+                  return (
+                    <MenuItem key={_id} value={_id}>
+                      {maq.detalle}
+                    </MenuItem>
+                  );
+                })
+              ) : (
+                <MenuItem disabled>No hay maquinarias disponibles</MenuItem>
+              )}
             </TextField>
 
             <TextField

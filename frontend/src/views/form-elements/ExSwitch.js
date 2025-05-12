@@ -28,18 +28,34 @@ const Impuestos = () => {
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [uniqueMaquinarias, setUniqueMaquinarias] = useState([]);
 
-  // Función para obtener el nombre de la máquina
+  // Función para obtener nombre de maquinaria
   const getMaquinariaNombre = (maqId) => {
-    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
-    return maq?.detalle || "Desconocido";
+    const maq = maquinarias.find(m => 
+      m._id?.$oid === maqId || m._id === maqId
+    );
+    return maq?.detalle || "Desconocida";
   };
 
-  // Cargar datos
+  // Cargar datos iniciales
   useEffect(() => {
     fetchImpuestos();
     fetchMaquinarias();
   }, []);
+
+  // Extraer maquinarias únicas por detalle
+  useEffect(() => {
+    if (maquinarias.length > 0) {
+      const seen = new Set();
+      const filtered = maquinarias.filter(maq => {
+        const duplicate = seen.has(maq.detalle);
+        seen.add(maq.detalle);
+        return !duplicate;
+      });
+      setUniqueMaquinarias(filtered);
+    }
+  }, [maquinarias]);
 
   const fetchImpuestos = async () => {
     try {
@@ -66,6 +82,10 @@ const Impuestos = () => {
   };
 
   const handleOpen = () => {
+    if (uniqueMaquinarias.length === 0) {
+      alert("Espere a que se carguen las maquinarias antes de continuar.");
+      return;
+    }
     setForm({
       maquinaria: "",
       aporte: "",
@@ -101,29 +121,23 @@ const Impuestos = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     const payload = {
       maquinaria_id: form.maquinaria,
       aporte: parseFloat(form.aporte),
     };
-
     try {
       const method = editingId ? "PUT" : "POST";
       const url = editingId
         ? `http://localhost:8000/api/impuesto/${editingId}/`
         : "http://localhost:8000/api/impuesto/";
-
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) throw new Error("Error al guardar");
-
       fetchImpuestos();
       handleClose();
-      setCurrentPage(1); // Reiniciar a la primera página después de guardar
     } catch (error) {
       console.error("Error al guardar:", error.message);
       alert("Ocurrió un error al guardar.");
@@ -133,9 +147,8 @@ const Impuestos = () => {
   const handleEdit = (item) => {
     const _id = item._id?.$oid || item._id;
     setForm({
-      ...item,
       maquinaria: item.maquinaria_id || item.maquinaria,
-      aporte: item.aporte?.toString() || "",
+      aporte: item.aporte.toString(),
     });
     setEditingId(_id);
     setOpenModal(true);
@@ -145,14 +158,11 @@ const Impuestos = () => {
   const handleDelete = async (_id) => {
     const id = _id?.$oid || _id;
     if (!id) return alert("ID inválido");
-
     try {
       const response = await fetch(`http://localhost:8000/api/impuesto/${id}/`, {
         method: "DELETE",
       });
-
       if (!response.ok) throw new Error("Error al eliminar");
-
       fetchImpuestos();
     } catch (error) {
       alert("No se pudo eliminar");
@@ -177,7 +187,7 @@ const Impuestos = () => {
 
   const handleRowsPerPageChange = (e) => {
     const value = e.target.value;
-    setRowsPerPage(value);
+    setRowsPerPage(value === "all" ? "all" : parseInt(value, 10));
     setCurrentPage(1);
   };
 
@@ -191,6 +201,7 @@ const Impuestos = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* Título y controles */}
       <Box
         sx={{
           display: "flex",
@@ -216,12 +227,19 @@ const Impuestos = () => {
             <MenuItem value={50}>50 registros</MenuItem>
             <MenuItem value="all">Todos</MenuItem>
           </TextField>
-          <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
+          <Button 
+            variant="contained" 
+            color="success" 
+            startIcon={<AddIcon />} 
+            onClick={handleOpen}
+            disabled={uniqueMaquinarias.length === 0}
+          >
             Nuevo
           </Button>
         </Box>
       </Box>
 
+      {/* Tabla */}
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
         <TableHead>
           <TableRow>
@@ -240,10 +258,21 @@ const Impuestos = () => {
                 <TableCell>{getMaquinariaNombre(i.maquinaria_id || i.maquinaria)}</TableCell>
                 <TableCell>{`Bs. ${parseFloat(i.aporte).toFixed(2)}`}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(i)}>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    color="secondary" 
+                    onClick={() => handleEdit(i)}
+                  >
                     Editar
                   </Button>
-                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    color="error" 
+                    onClick={() => handleDelete(_id)}
+                    sx={{ ml: 1 }}
+                  >
                     Eliminar
                   </Button>
                 </TableCell>
@@ -274,6 +303,7 @@ const Impuestos = () => {
         </Button>
       </Box>
 
+      {/* Modal */}
       <Modal open={openModal} onClose={handleClose}>
         <Box
           sx={{
@@ -291,8 +321,8 @@ const Impuestos = () => {
           <Typography variant="h6" mb={2}>
             {editingId ? "Editar Impuesto" : "Agregar Impuesto"}
           </Typography>
-
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* Maquinaria (sin repetidos) */}
             <TextField
               select
               label="Maquinaria"
@@ -301,20 +331,26 @@ const Impuestos = () => {
               onChange={handleChange}
               error={!!errors.maquinaria}
               helperText={errors.maquinaria}
+              disabled={uniqueMaquinarias.length === 0}
             >
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {maquinarias.map((maq) => {
-                const _id = maq._id?.$oid || maq._id;
-                return (
-                  <MenuItem key={_id} value={_id}>
-                    {maq.detalle}
-                  </MenuItem>
-                );
-              })}
+              {uniqueMaquinarias.length > 0 ? (
+                uniqueMaquinarias.map((maq) => {
+                  const _id = maq._id?.$oid || maq._id;
+                  return (
+                    <MenuItem key={_id} value={_id}>
+                      {maq.detalle}
+                    </MenuItem>
+                  );
+                })
+              ) : (
+                <MenuItem disabled>No hay maquinarias disponibles</MenuItem>
+              )}
             </TextField>
 
+            {/* Aporte */}
             <TextField
               label="Aporte"
               type="number"
@@ -325,6 +361,7 @@ const Impuestos = () => {
               helperText={errors.aporte}
             />
 
+            {/* Botones del modal */}
             <Button variant="contained" color="error" onClick={handleClose}>
               Cancelar
             </Button>

@@ -36,11 +36,9 @@ const Control = () => {
     observaciones: "",
   });
   const [errors, setErrors] = useState({});
-  
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-
   // Datos únicos para selects
   const [uniqueUbicaciones, setUniqueUbicaciones] = useState([]);
   const [uniqueGerentes, setUniqueGerentes] = useState([]);
@@ -103,8 +101,6 @@ const Control = () => {
     return filteredData.slice(start, start + rowsPerPage);
   };
 
-  const paginatedData = getDisplayedData();
-
   // Extraer opciones únicas para selects
   useEffect(() => {
     if (controlData.length > 0) {
@@ -138,21 +134,17 @@ const Control = () => {
       const url = editingId
         ? `http://localhost:8000/api/control/${editingId}/`
         : "http://localhost:8000/api/control/";
-      
       // Mantener formato original pero enviar maquinaria_id como cadena
       const payload = {
         ...form,
         maquinaria_id: form.maquinaria_id,
       };
-      
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      
       if (!response.ok) throw new Error("Error al guardar");
-      
       handleCloseModal();
       fetchControlData();
     } catch (error) {
@@ -187,9 +179,7 @@ const Control = () => {
       const response = await fetch(`http://localhost:8000/api/control/${id}/`, {
         method: "DELETE",
       });
-      
       if (!response.ok) throw new Error("Error al eliminar");
-      
       fetchControlData();
     } catch (error) {
       console.error("Error al eliminar:", error.message);
@@ -242,6 +232,21 @@ const Control = () => {
     });
   };
 
+  // ✅ Corrección: Mostrar maquinarias sin repetidos usando detalle como clave
+  const uniqueMaquinarias = () => {
+    const seen = new Set();
+    return maquinarias.filter(item => {
+      // Usamos el campo "detalle" como clave para evitar duplicados
+      const duplicate = seen.has(item.detalle);
+      seen.add(item.detalle);
+      return !duplicate;
+    });
+  };
+
+  // ✅ Corrección: Asegurar claves seguras en la tabla
+  const paginatedData = getDisplayedData();
+  const displayedData = getDisplayedData();
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Título y botón nuevo */}
@@ -272,7 +277,7 @@ const Control = () => {
           </Button>
         </Box>
       </Box>
-      
+
       {/* Tabla */}
       <Table>
         <TableHead>
@@ -287,9 +292,13 @@ const Control = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {paginatedData.map((row, index) => {
-            const globalIndex = rowsPerPage === "all" ? index : (currentPage - 1) * rowsPerPage + index;
+          {displayedData.map((row, index) => {
+            const globalIndex = rowsPerPage === "all" 
+              ? index 
+              : (currentPage - 1) * rowsPerPage + index;
+            
             const _id = row._id?.$oid || row._id || index.toString();
+            
             return (
               <TableRow key={_id}>
                 <TableCell sx={{ fontSize: "15px" }}>{globalIndex + 1}</TableCell>
@@ -352,7 +361,7 @@ const Control = () => {
         </DialogTitle>
         <DialogContent sx={{ px: 3, pt: 1 }}>
           <Grid container direction="column" spacing={2}>
-            {/* Maquinaria */}
+            {/* ✅ Campo de maquinaria sin repetidos */}
             <Grid item>
               <FormControl fullWidth error={!!errors.maquinaria_id}>
                 <InputLabel>Maquinaria</InputLabel>
@@ -370,7 +379,9 @@ const Control = () => {
                   <MenuItem value="" disabled>
                     Seleccione una maquinaria
                   </MenuItem>
-                  {maquinarias.map((maq) => {
+                  
+                  {/* ✅ Mostrar solo maquinarias con detalle único */}
+                  {uniqueMaquinarias().map((maq) => {
                     const _id = maq._id?.$oid || maq._id;
                     return (
                       <MenuItem key={_id} value={_id}>

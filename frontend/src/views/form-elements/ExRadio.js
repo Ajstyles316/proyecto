@@ -28,10 +28,15 @@ const Seguros = () => {
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Estado para maquinarias sin duplicados
+  const [uniqueMaquinarias, setUniqueMaquinarias] = useState([]);
 
   // Busca el nombre de la máquina
   const getMaquinariaNombre = (maqId) => {
-    const maq = maquinarias.find(m => m._id?.$oid === maqId || m._id === maqId);
+    const maq = maquinarias.find(m => 
+      m._id?.$oid === maqId || m._id === maqId
+    );
     return maq?.detalle || "Desconocido";
   };
 
@@ -40,6 +45,19 @@ const Seguros = () => {
     fetchSeguros();
     fetchMaquinarias();
   }, []);
+
+  // Generar maquinarias únicas por detalle
+  useEffect(() => {
+    if (maquinarias.length > 0) {
+      const seen = new Set();
+      const filtered = maquinarias.filter(maq => {
+        const duplicate = seen.has(maq.detalle);
+        seen.add(maq.detalle);
+        return !duplicate;
+      });
+      setUniqueMaquinarias(filtered);
+    }
+  }, [maquinarias]);
 
   const fetchSeguros = async () => {
     try {
@@ -64,6 +82,10 @@ const Seguros = () => {
   };
 
   const handleOpen = () => {
+    if (maquinarias.length === 0) {
+      alert("Espere a que se carguen las maquinarias antes de continuar.");
+      return;
+    }
     setForm({
       maquinaria: "",
       aporte: "",
@@ -95,29 +117,23 @@ const Seguros = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     const payload = {
       maquinaria_id: form.maquinaria,
       aporte: parseFloat(form.aporte),
     };
-
     try {
       const method = editingId ? "PUT" : "POST";
       const url = editingId
         ? `http://localhost:8000/api/seguros/${editingId}/`
         : "http://localhost:8000/api/seguros/";
-
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) throw new Error("Error al guardar");
-
       fetchSeguros();
       handleClose();
-      setCurrentPage(1); // Reiniciar a la primera página después de guardar
     } catch (error) {
       alert("Ocurrió un error al guardar.");
       console.error("Error al guardar:", error.message);
@@ -138,14 +154,11 @@ const Seguros = () => {
   const handleDelete = async (_id) => {
     const id = _id?.$oid || _id;
     if (!id) return alert("ID inválido");
-
     try {
       const response = await fetch(`http://localhost:8000/api/seguros/${id}/`, {
         method: "DELETE",
       });
-
       if (!response.ok) throw new Error("Error al eliminar");
-
       fetchSeguros();
     } catch (error) {
       alert("No se pudo eliminar el seguro");
@@ -218,18 +231,10 @@ const Seguros = () => {
       <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
         <TableHead>
           <TableRow>
-            <TableCell>
-              <Typography fontWeight={600}>N°</Typography>
-            </TableCell>
-            <TableCell>
-              <Typography fontWeight={600}>Maquinaria</Typography>
-            </TableCell>
-            <TableCell>
-              <Typography fontWeight={600}>Aporte</Typography>
-            </TableCell>
-            <TableCell align="right">
-              <Typography fontWeight={600}>Acciones</Typography>
-            </TableCell>
+            <TableCell><Typography fontWeight={600}>N°</Typography></TableCell>
+            <TableCell><Typography fontWeight={600}>Maquinaria</Typography></TableCell>
+            <TableCell><Typography fontWeight={600}>Aporte</Typography></TableCell>
+            <TableCell align="right"><Typography fontWeight={600}>Acciones</Typography></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -292,8 +297,8 @@ const Seguros = () => {
           <Typography variant="h6" mb={2}>
             {editingId ? "Editar Seguro" : "Agregar Seguro"}
           </Typography>
-
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {/* Maquinaria - Sin repetidos */}
             <TextField
               select
               label="Maquinaria"
@@ -306,14 +311,20 @@ const Seguros = () => {
               <MenuItem value="" disabled>
                 Seleccione una maquinaria
               </MenuItem>
-              {maquinarias.map((maq) => {
-                const _id = maq._id?.$oid || maq._id;
-                return (
-                  <MenuItem key={_id} value={_id}>
-                    {maq.detalle}
-                  </MenuItem>
-                );
-              })}
+              
+              {/* ✅ Usamos uniqueMaquinarias en lugar de maquinarias */}
+              {uniqueMaquinarias.length > 0 ? (
+                uniqueMaquinarias.map((maq) => {
+                  const _id = maq._id?.$oid || maq._id;
+                  return (
+                    <MenuItem key={_id} value={_id}>
+                      {maq.detalle}
+                    </MenuItem>
+                  );
+                })
+              ) : (
+                <MenuItem disabled>No hay maquinarias disponibles</MenuItem>
+              )}
             </TextField>
 
             <TextField
