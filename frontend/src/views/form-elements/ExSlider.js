@@ -28,23 +28,23 @@ const ITVTable = () => {
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [uniqueMaquinarias, setUniqueMaquinarias] = useState([]);
+  const [uniqueMaquinariasList, setUniqueMaquinariasList] = useState([]);
 
-  // Función para obtener el nombre de la máquina
+  // Función para obtener nombre de maquinaria
   const getMaquinariaNombre = (maqId) => {
     const maq = maquinarias.find(m => 
       m._id?.$oid === maqId || m._id === maqId
     );
-    return maq?.detalle || "Desconocido";
+    return maq?.detalle || "Desconocida";
   };
 
-  // Cargar datos
+  // Cargar datos iniciales
   useEffect(() => {
     fetchItvs();
     fetchMaquinarias();
   }, []);
 
-  // Extraer maquinarias únicas por detalle
+  // Extraer maquinarias únicas
   useEffect(() => {
     if (maquinarias.length > 0) {
       const seen = new Set();
@@ -53,7 +53,7 @@ const ITVTable = () => {
         seen.add(maq.detalle);
         return !duplicate;
       });
-      setUniqueMaquinarias(filtered);
+      setUniqueMaquinariasList(filtered);
     }
   }, [maquinarias]);
 
@@ -72,19 +72,47 @@ const ITVTable = () => {
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
-      if (!response.ok) throw new Error("Error al cargar máquinas");
+      if (!response.ok) throw new Error("Error al cargar las máquinas");
       const data = await response.json();
       setMaquinarias(data);
     } catch (error) {
       console.error("Error al cargar máquinas:", error.message);
+      alert("No se pudieron cargar las máquinas. Verifica la conexión.");
     }
   };
 
-  const handleOpen = () => {
-    if (uniqueMaquinarias.length === 0) {
-      alert("Espere a que se carguen las maquinarias antes de continuar.");
-      return;
+  // Calcular total de páginas
+  const getTotalPages = () => {
+    return rowsPerPage === "all" 
+      ? 1 
+      : Math.ceil(itvs.length / rowsPerPage);
+  };
+
+  // Manejar cambio de página
+  const handlePageChange = (direction) => {
+    if (direction === 'prev') {
+      setCurrentPage(prev => Math.max(prev - 1, 1));
+    } else if (direction === 'next') {
+      setCurrentPage(prev => Math.min(prev + 1, getTotalPages()));
     }
+  };
+
+  // Manejar cambio de registros por página
+  const handleRowsPerPageChange = (e) => {
+    const value = e.target.value;
+    setRowsPerPage(value === "all" ? "all" : parseInt(value, 10));
+    setCurrentPage(1);
+  };
+
+  // Datos paginados
+  const paginatedItvs = rowsPerPage === "all" 
+    ? itvs 
+    : itvs.slice(
+        (currentPage - 1) * rowsPerPage, 
+        currentPage * rowsPerPage
+      );
+
+  const handleOpen = () => {
     setForm({
       maquinaria: "",
       detalle: "",
@@ -137,6 +165,7 @@ const ITVTable = () => {
       if (!response.ok) throw new Error("Error al guardar");
       fetchItvs();
       handleClose();
+      setCurrentPage(1);
     } catch (error) {
       console.error("Error al guardar:", error.message);
       alert("Ocurrió un error al guardar.");
@@ -146,6 +175,7 @@ const ITVTable = () => {
   const handleEdit = (item) => {
     const _id = item._id?.$oid || item._id;
     setForm({
+      ...item,
       maquinaria: item.maquinaria_id || item.maquinaria,
       detalle: item.detalle.toString(),
     });
@@ -169,49 +199,12 @@ const ITVTable = () => {
     }
   };
 
-  // Funciones de paginación
-  const getTotalPages = () => {
-    return rowsPerPage === "all" 
-      ? 1 
-      : Math.ceil(itvs.length / rowsPerPage);
-  };
-
-  const handlePageChange = (direction) => {
-    if (direction === 'prev') {
-      setCurrentPage(prev => Math.max(prev - 1, 1));
-    } else if (direction === 'next') {
-      setCurrentPage(prev => Math.min(prev + 1, getTotalPages()));
-    }
-  };
-
-  const handleRowsPerPageChange = (e) => {
-    const value = e.target.value;
-    setRowsPerPage(value);
-    setCurrentPage(1);
-  };
-
-  // Datos paginados
-  const paginatedItvs = rowsPerPage === "all" 
-    ? itvs 
-    : itvs.slice(
-        (currentPage - 1) * rowsPerPage, 
-        currentPage * rowsPerPage
-      );
-
   return (
     <Box sx={{ p: 3 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <Typography variant="h5" fontWeight={600}>
-          ITV
-        </Typography>
-        <Box display="flex" alignItems="center" gap={2}>
+      {/* Título y controles */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h5" fontWeight={600}>ITV</Typography>
+        <Box display="flex" gap={2} alignItems="center">
           <TextField
             select
             label="Registros"
@@ -231,36 +224,43 @@ const ITVTable = () => {
         </Box>
       </Box>
 
-      <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
-        <TableHead>
-          <TableRow>
-            <TableCell><Typography fontWeight={600}>N°</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Maquinaria</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Detalle</Typography></TableCell>
-            <TableCell align="right"><Typography fontWeight={600}>Acciones</Typography></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {paginatedItvs.map((itv, index) => {
-            const _id = itv._id?.$oid || itv._id;
-            return (
-              <TableRow key={_id}>
-                <TableCell>{(currentPage - 1) * rowsPerPage + index + 1}</TableCell>
-                <TableCell>{getMaquinariaNombre(itv.maquinaria_id || itv.maquinaria)}</TableCell>
-                <TableCell>{`Bs. ${parseFloat(itv.detalle).toFixed(2)}`}</TableCell>
-                <TableCell align="right">
-                  <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(itv)}>
-                    Editar
-                  </Button>
-                  <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
-                    Eliminar
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      {/* Tabla con scroll horizontal */}
+      <Box sx={{ overflowX: "auto" }}>
+        <Table sx={{ minWidth: "max-content" }}>
+          <TableHead>
+            <TableRow>
+              <TableCell><Typography fontWeight={600}>N°</Typography></TableCell>
+              <TableCell><Typography fontWeight={600}>Maquinaria</Typography></TableCell>
+              <TableCell><Typography fontWeight={600}>Detalle</Typography></TableCell>
+              <TableCell align="right"><Typography fontWeight={600}>Acciones</Typography></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedItvs.map((itv, index) => {
+              const globalIndex = rowsPerPage === "all" 
+                ? index 
+                : (currentPage - 1) * rowsPerPage + index;
+              const _id = itv._id?.$oid || itv._id || index.toString();
+              
+              return (
+                <TableRow key={_id}>
+                  <TableCell>{globalIndex + 1}</TableCell>
+                  <TableCell>{getMaquinariaNombre(itv.maquinaria_id || itv.maquinaria)}</TableCell>
+                  <TableCell>{`Bs. ${parseFloat(itv.detalle).toFixed(2)}`}</TableCell>
+                  <TableCell align="right">
+                    <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(itv)}>
+                      Editar
+                    </Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                      Eliminar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Box>
 
       {/* Paginación */}
       <Box display="flex" justifyContent="center" mt={2} gap={2}>
@@ -283,6 +283,7 @@ const ITVTable = () => {
         </Button>
       </Box>
 
+      {/* Modal */}
       <Modal open={openModal} onClose={handleClose}>
         <Box
           sx={{
@@ -301,7 +302,6 @@ const ITVTable = () => {
             {editingId ? "Editar ITV" : "Agregar ITV"}
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {/* Maquinaria - Sin repetidos */}
             <TextField
               select
               label="Maquinaria"
@@ -311,22 +311,15 @@ const ITVTable = () => {
               error={!!errors.maquinaria}
               helperText={errors.maquinaria}
             >
-              <MenuItem value="" disabled>
-                Seleccione una maquinaria
-              </MenuItem>
-              
-              {uniqueMaquinarias.length > 0 ? (
-                uniqueMaquinarias.map((maq) => {
-                  const _id = maq._id?.$oid || maq._id;
-                  return (
-                    <MenuItem key={_id} value={_id}>
-                      {maq.detalle}
-                    </MenuItem>
-                  );
-                })
-              ) : (
-                <MenuItem disabled>No hay maquinarias disponibles</MenuItem>
-              )}
+              <MenuItem value="" disabled>Seleccione una maquinaria</MenuItem>
+              {uniqueMaquinariasList.map((maq) => {
+                const _id = maq._id?.$oid || maq._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {maq.detalle}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
             <TextField

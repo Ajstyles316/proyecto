@@ -28,15 +28,49 @@ const AssignmentTable = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
   
-  // Estados para paginación
+  // Estados para paginación y búsqueda
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   
   // Estados para selects sin duplicados
-  const [uniqueMaquinarias, setUniqueMaquinarias] = useState([]);
-  const [uniqueEncargados, setUniqueEncargados] = useState([]);
-  const [uniqueGestiones, setUniqueGestiones] = useState([]);
+  const [uniqueMaquinariasList, setUniqueMaquinariasList] = useState([]);
+  const [uniqueEncargadosList, setUniqueEncargadosList] = useState([]);
+  const [uniqueGestionesList, setUniqueGestionesList] = useState([]);
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    fetchAssignments();
+    fetchMaquinarias();
+    fetchControles();
+  }, []);
+
+  // Extraer opciones únicas para selects
+  useEffect(() => {
+    if (maquinarias.length > 0) {
+      const seen = new Set();
+      const filtered = maquinarias.filter(maq => {
+        const duplicate = seen.has(maq.detalle);
+        seen.add(maq.detalle);
+        return !duplicate;
+      });
+      setUniqueMaquinariasList(filtered);
+    }
+  }, [maquinarias]);
+
+  useEffect(() => {
+    if (controles.length > 0) {
+      const filtered = controles.map(c => c.encargado).filter(Boolean);
+      setUniqueEncargadosList([...new Set(filtered)]);
+    }
+  }, [controles]);
+
+  useEffect(() => {
+    if (assignments.length > 0) {
+      const gestiones = assignments.map(a => a.gestion).filter(Boolean);
+      setUniqueGestionesList([...new Set(gestiones)]);
+    }
+  }, [assignments]);
 
   // Función para obtener nombre de maquinaria
   const getMaquinariaNombre = (maqId) => {
@@ -54,46 +88,6 @@ const AssignmentTable = () => {
     return enc?.encargado || "Desconocido";
   };
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    fetchAssignments();
-    fetchMaquinarias();
-    fetchControles();
-  }, []);
-
-  // Extraer opciones únicas para selects
-  useEffect(() => {
-    if (maquinarias.length > 0) {
-      const seen = new Set();
-      const filtered = maquinarias.filter(m => {
-        const duplicate = seen.has(m.detalle);
-        seen.add(m.detalle);
-        return !duplicate;
-      });
-      setUniqueMaquinarias(filtered);
-    }
-  }, [maquinarias]);
-
-  useEffect(() => {
-    if (controles.length > 0) {
-      const seen = new Set();
-      const filtered = controles.filter(c => {
-        const duplicate = seen.has(c.encargado);
-        seen.add(c.encargado);
-        return !duplicate;
-      });
-      setUniqueEncargados(filtered);
-    }
-  }, [controles]);
-
-  useEffect(() => {
-    if (assignments.length > 0) {
-      const gestiones = [...new Set(assignments.map(a => a.gestion).filter(Boolean))];
-      setUniqueGestiones(gestiones);
-    }
-  }, [assignments]);
-
-  // Cargar asignaciones
   const fetchAssignments = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/asignacion/");
@@ -106,7 +100,6 @@ const AssignmentTable = () => {
     }
   };
 
-  // Cargar maquinarias
   const fetchMaquinarias = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/maquinaria/");
@@ -117,7 +110,6 @@ const AssignmentTable = () => {
     }
   };
 
-  // Cargar controles
   const fetchControles = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/control/");
@@ -128,37 +120,37 @@ const AssignmentTable = () => {
     }
   };
 
-  // Validación del formulario
-  const validateForm = () => {
-    const newErrors = {};
-    if (!form.maquinaria || form.maquinaria.trim() === "") {
-      newErrors.maquinaria = "Seleccione una maquinaria";
-    }
-    if (!form.fechaAsignacion || form.fechaAsignacion.trim() === "") {
-      newErrors.fechaAsignacion = "Ingrese la fecha de asignación";
-    }
-    if (!form.gestion || form.gestion.trim() === "") {
-      newErrors.gestion = "Seleccione una gestión";
-    }
-    if (!form.encargado || form.encargado.trim() === "") {
-      newErrors.encargado = "Seleccione un encargado";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // Calcular total de páginas
+  const getTotalPages = () => {
+    return Math.ceil(assignments.length / rowsPerPage);
   };
 
-  // Manejar cambios en el formulario
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+  // Manejar cambio de página
+  const handlePageChange = (direction) => {
+    if (direction === 'prev') {
+      setCurrentPage(prev => Math.max(prev - 1, 1));
+    } else if (direction === 'next') {
+      setCurrentPage(prev => Math.min(prev + 1, getTotalPages()));
+    }
   };
 
-  // Abrir modal
+  // Manejar cambio de registros por página
+  const handleRowsPerPageChange = (e) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
+    setCurrentPage(1);
+  };
+
+  // Datos filtrados y paginados
+  const filteredAssignments = assignments.filter(a => 
+    getMaquinariaNombre(a.maquinaria_id || a.maquinaria).toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const paginatedAssignments = filteredAssignments.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
   const handleOpen = () => {
-    if (maquinarias.length === 0 || controles.length === 0) {
-      alert("Espere a que se carguen todos los datos antes de continuar.");
-      return;
-    }
     setForm({
       maquinaria: "",
       fechaAsignacion: new Date().toISOString().split("T")[0],
@@ -170,7 +162,6 @@ const AssignmentTable = () => {
     setOpenModal(true);
   };
 
-  // Cerrar modal
   const handleClose = () => {
     setOpenModal(false);
     setErrors({});
@@ -182,9 +173,24 @@ const AssignmentTable = () => {
     });
   };
 
-  // Enviar formulario
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!form.maquinaria.trim()) newErrors.maquinaria = "Seleccione una maquinaria.";
+    if (!form.fechaAsignacion.trim()) newErrors.fechaAsignacion = "Ingrese la fecha de asignación";
+    if (!form.gestion.trim()) newErrors.gestion = "Seleccione una gestión";
+    if (!form.encargado.trim()) newErrors.encargado = "Seleccione un encargado";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
+    
     try {
       const payload = {
         maquinaria_id: form.maquinaria,
@@ -192,6 +198,7 @@ const AssignmentTable = () => {
         gestion: form.gestion,
         encargado_id: form.encargado,
       };
+      
       const method = editingId ? "PUT" : "POST";
       const url = editingId
         ? `http://localhost:8000/api/asignacion/${editingId}/`
@@ -203,11 +210,8 @@ const AssignmentTable = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Error ${response.status}: ${JSON.stringify(errorData)}`);
-      }
-
+      if (!response.ok) throw new Error("Error al guardar");
+      
       fetchAssignments();
       handleClose();
     } catch (error) {
@@ -216,29 +220,30 @@ const AssignmentTable = () => {
     }
   };
 
-  // Editar registro
   const handleEdit = (item) => {
     const _id = item._id?.$oid || item._id;
     setForm({
-      maquinaria: item.maquinaria_id?.$oid || item.maquinaria_id || item.maquinaria || "",
-      fechaAsignacion: item.fechaAsignacion || new Date().toISOString().split("T")[0],
+      maquinaria: item.maquinaria_id || item.maquinaria,
+      fechaAsignacion: item.fechaAsignacion || "",
       gestion: item.gestion || "",
-      encargado: item.encargado_id?.$oid || item.encargado_id || item.encargado || "",
+      encargado: item.encargado_id || item.encargado,
     });
     setEditingId(_id);
     setOpenModal(true);
     setErrors({});
   };
 
-  // Eliminar registro
   const handleDelete = async (_id) => {
     const id = _id?.$oid || _id;
     if (!id) return alert("ID inválido");
+    
     try {
       const response = await fetch(`http://localhost:8000/api/asignacion/${id}/`, {
-        method: "DELETE",
+        method: "DELETE"
       });
+      
       if (!response.ok) throw new Error("Error al eliminar");
+      
       fetchAssignments();
     } catch (error) {
       alert("No se pudo eliminar la asignación");
@@ -246,131 +251,86 @@ const AssignmentTable = () => {
     }
   };
 
-  // Formatear fecha sin ajuste de zona horaria
-  const formatDate = (dateString) => {
-    if (!dateString) return "Fecha no disponible";
-    try {
-      const [year, month, day] = dateString.split("T")[0].split("-");
-      return `${year}-${month}-${day}`;
-    } catch (e) {
-      return "Fecha inválida";
-    }
-  };
-
-  // Paginación
-  const getTotalPages = () => {
-    return rowsPerPage === "all" 
-      ? 1 
-      : Math.ceil(assignments.length / rowsPerPage);
-  };
-
-  const handlePageChange = (direction) => {
-    if (direction === 'prev') {
-      setCurrentPage(prev => Math.max(prev - 1, 1));
-    } else if (direction === 'next') {
-      setCurrentPage(prev => Math.min(prev + 1, getTotalPages()));
-    }
-  };
-
-  const handleRowsPerPageChange = (e) => {
-    const value = e.target.value;
-    setRowsPerPage(value === "all" ? "all" : parseInt(value, 10));
-    setCurrentPage(1);
-  };
-
-  // Datos paginados
-  const paginatedAssignments = rowsPerPage === "all" 
-    ? assignments 
-    : assignments.slice(
-        (currentPage - 1) * rowsPerPage, 
-        currentPage * rowsPerPage
-      );
-
   return (
     <Box sx={{ p: 3 }}>
       {/* Título y controles */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h5" fontWeight={600}>
-          Asignación
-        </Typography>
-        <Box display="flex" alignItems="center" gap={2}>
+        <Typography variant="h5" fontWeight={600}>Asignación</Typography>
+        <Box display="flex" gap={2} alignItems="center">
+          {/* Campo de búsqueda por maquinaria */}
           <TextField
-            label="Buscar"
+            label="Buscar por maquinaria"
             size="small"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {/* Selector de registros por página */}
           <TextField
             select
-            label="Registros"
+            label="Mostrar"
             size="small"
             value={rowsPerPage}
             onChange={handleRowsPerPageChange}
+            sx={{ width: 120 }}
           >
             <MenuItem value={5}>5 registros</MenuItem>
             <MenuItem value={10}>10 registros</MenuItem>
             <MenuItem value={20}>20 registros</MenuItem>
             <MenuItem value={50}>50 registros</MenuItem>
-            <MenuItem value="all">Todos</MenuItem>
+            <MenuItem value={100}>100 registros</MenuItem>
           </TextField>
           <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={handleOpen}>
             Nuevo
           </Button>
         </Box>
       </Box>
-      
-      {/* Tabla */}
-      <Table aria-label="simple table" sx={{ whiteSpace: "nowrap" }}>
-        <TableHead>
-          <TableRow>
-            <TableCell><Typography fontWeight={600}>N°</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Maquinaria</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Encargado</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Fecha Asignación</Typography></TableCell>
-            <TableCell><Typography fontWeight={600}>Gestión</Typography></TableCell>
-            <TableCell align="right"><Typography fontWeight={600}>Acciones</Typography></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {paginatedAssignments.map((a, index) => {
-            const _id = a._id?.$oid || a._id || index.toString();
-            return (
-              <TableRow key={_id}>
-                <TableCell>{(currentPage - 1) * rowsPerPage + index + 1}</TableCell>
-                <TableCell>{getMaquinariaNombre(a.maquinaria_id || a.maquinaria)}</TableCell>
-                <TableCell>{getEncargadoNombre(a.encargado_id || a.encargado)}</TableCell>
-                <TableCell>{formatDate(a.fechaAsignacion)}</TableCell>
-                <TableCell>{a.gestion}</TableCell>
-                <TableCell align="right">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="secondary"
-                    onClick={() => handleEdit(a)}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    onClick={() => handleDelete(_id)}
-                  >
-                    Eliminar
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+
+      {/* Tabla con scroll horizontal */}
+      <Box sx={{ overflowX: "auto" }}>
+        <Table sx={{ minWidth: "max-content" }}>
+          <TableHead>
+            <TableRow>
+              <TableCell><Typography fontWeight={600}>N°</Typography></TableCell>
+              <TableCell><Typography fontWeight={600}>Maquinaria</Typography></TableCell>
+              <TableCell><Typography fontWeight={600}>Encargado</Typography></TableCell>
+              <TableCell><Typography fontWeight={600}>Fecha</Typography></TableCell>
+              <TableCell><Typography fontWeight={600}>Gestión</Typography></TableCell>
+              <TableCell align="right"><Typography fontWeight={600}>Acciones</Typography></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedAssignments.map((a, index) => {
+              const globalIndex = (currentPage - 1) * rowsPerPage + index;
+              const _id = a._id?.$oid || a._id;
+              
+              return (
+                <TableRow key={_id}>
+                  <TableCell>{globalIndex + 1}</TableCell>
+                  <TableCell>{getMaquinariaNombre(a.maquinaria_id || a.maquinaria)}</TableCell>
+                  <TableCell>{getEncargadoNombre(a.encargado_id || a.encargado)}</TableCell>
+                  <TableCell>{a.fechaAsignacion}</TableCell>
+                  <TableCell>{a.gestion}</TableCell>
+                  <TableCell align="right">
+                    <Button size="small" variant="outlined" color="secondary" onClick={() => handleEdit(a)}>
+                      Editar
+                    </Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(_id)}>
+                      Eliminar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Box>
 
       {/* Paginación */}
       <Box display="flex" justifyContent="center" mt={2} gap={2}>
         <Button
           variant="outlined"
           color="warning"
-          disabled={currentPage === 1 || rowsPerPage === "all"}
+          disabled={currentPage === 1}
           onClick={() => handlePageChange('prev')}
         >
           Anterior
@@ -379,11 +339,24 @@ const AssignmentTable = () => {
         <Button
           variant="outlined"
           color="warning"
-          disabled={currentPage === getTotalPages() || rowsPerPage === "all"}
+          disabled={currentPage === getTotalPages()}
           onClick={() => handlePageChange('next')}
         >
           Siguiente
         </Button>
+        <TextField
+          select
+          label="Registros"
+          size="small"
+          value={rowsPerPage}
+          onChange={handleRowsPerPageChange}
+        >
+          <MenuItem value={5}>5 registros</MenuItem>
+          <MenuItem value={10}>10 registros</MenuItem>
+          <MenuItem value={20}>20 registros</MenuItem>
+          <MenuItem value={50}>50 registros</MenuItem>
+          <MenuItem value={100}>100 registros</MenuItem>
+        </TextField>
       </Box>
 
       {/* Modal */}
@@ -405,7 +378,6 @@ const AssignmentTable = () => {
             {editingId ? "Editar Asignación" : "Agregar Asignación"}
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {/* Maquinaria */}
             <TextField
               select
               label="Maquinaria"
@@ -415,24 +387,17 @@ const AssignmentTable = () => {
               error={!!errors.maquinaria}
               helperText={errors.maquinaria}
             >
-              <MenuItem value="" disabled>
-                Seleccione una maquinaria
-              </MenuItem>
-              {uniqueMaquinarias.length > 0 ? (
-                uniqueMaquinarias.map((maq) => {
-                  const _id = maq._id?.$oid || maq._id;
-                  return (
-                    <MenuItem key={_id} value={_id}>
-                      {maq.detalle}
-                    </MenuItem>
-                  );
-                })
-              ) : (
-                <MenuItem disabled>No hay maquinarias disponibles</MenuItem>
-              )}
+              <MenuItem value="" disabled>Seleccione una maquinaria</MenuItem>
+              {uniqueMaquinariasList.map((maq) => {
+                const _id = maq._id?.$oid || maq._id;
+                return (
+                  <MenuItem key={_id} value={_id}>
+                    {maq.detalle}
+                  </MenuItem>
+                );
+              })}
             </TextField>
 
-            {/* Fecha Asignación */}
             <TextField
               type="date"
               label="Fecha Asignación"
@@ -444,7 +409,6 @@ const AssignmentTable = () => {
               InputLabelProps={{ shrink: true }}
             />
 
-            {/* Gestión */}
             <TextField
               select
               label="Gestión"
@@ -454,21 +418,14 @@ const AssignmentTable = () => {
               error={!!errors.gestion}
               helperText={errors.gestion}
             >
-              <MenuItem value="" disabled>
-                Seleccione una gestión
-              </MenuItem>
-              {uniqueGestiones.length > 0 ? (
-                uniqueGestiones.map((gestion, index) => (
-                  <MenuItem key={index} value={gestion}>
-                    {gestion}
-                  </MenuItem>
-                ))
-              ) : (
-                <MenuItem disabled>No hay gestiones disponibles</MenuItem>
-              )}
+              <MenuItem value="" disabled>Seleccione una gestión</MenuItem>
+              {uniqueGestionesList.map((gestion, index) => (
+                <MenuItem key={index} value={gestion}>
+                  {gestion}
+                </MenuItem>
+              ))}
             </TextField>
 
-            {/* Encargado */}
             <TextField
               select
               label="Encargado"
@@ -478,24 +435,14 @@ const AssignmentTable = () => {
               error={!!errors.encargado}
               helperText={errors.encargado}
             >
-              <MenuItem value="" disabled>
-                Seleccione un encargado
-              </MenuItem>
-              {uniqueEncargados.length > 0 ? (
-                uniqueEncargados.map((c) => {
-                  const _id = c._id?.$oid || c._id;
-                  return (
-                    <MenuItem key={_id} value={_id}>
-                      {c.encargado}
-                    </MenuItem>
-                  );
-                })
-              ) : (
-                <MenuItem disabled>No hay encargados disponibles</MenuItem>
-              )}
+              <MenuItem value="" disabled>Seleccione un encargado</MenuItem>
+              {uniqueEncargadosList.map((encargado, index) => (
+                <MenuItem key={index} value={encargado}>
+                  {encargado}
+                </MenuItem>
+              ))}
             </TextField>
 
-            {/* Botones */}
             <Button variant="contained" color="error" onClick={handleClose}>
               Cancelar
             </Button>
