@@ -131,3 +131,19 @@ class SeguroSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return validated_data
+    
+    
+class MantenimientoActSerializer(serializers.Serializer):
+    maquinaria_id = serializers.CharField(required=True)
+    tipo = serializers.CharField(max_length=20)
+    cantidad = serializers.IntegerField()
+    recorrido = serializers.FloatField()
+    horasOperacion = serializers.IntegerField()
+    unidad = serializers.CharField(max_length=100)
+
+    def create(self, validated_data):
+        return validated_data
+
+    def update(self, instance, validated_data):
+        instance.update(validated_data)
+        return instance

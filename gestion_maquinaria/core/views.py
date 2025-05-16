@@ -20,10 +20,11 @@ from .serializers import (
     ImpuestoSerializer,
     ITVSerializer,
     RegistroSerializer,
-    LoginSerializer
+    LoginSerializer,
+    MantenimientoActSerializer,
 )
 from .mongo_connection import get_collection
-from .models import Maquinaria, Control, Mantenimiento, Asignacion, Seguro, Impuesto, ITV, Usuario
+from .models import Maquinaria, Control, Mantenimiento, Asignacion, Seguro, Impuesto, ITV, Usuario, MantenimientoAct
 import bcrypt
 
 class BaseViewSet(ViewSet):
@@ -209,7 +210,10 @@ class MantenimientoViewSet(BaseViewSet):
     model_class = Mantenimiento
     serializer_class = MantenimientoSerializer
 
-
+class MantenimientoActViewSet(BaseViewSet):
+    model_class = MantenimientoAct
+    serializer_class = MantenimientoActSerializer
+    
 class AsignacionViewSet(BaseViewSet):
     model_class = Asignacion
     serializer_class = AsignacionSerializer

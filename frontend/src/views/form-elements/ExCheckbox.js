@@ -344,19 +344,6 @@ const AssignmentTable = () => {
         >
           Siguiente
         </Button>
-        <TextField
-          select
-          label="Registros"
-          size="small"
-          value={rowsPerPage}
-          onChange={handleRowsPerPageChange}
-        >
-          <MenuItem value={5}>5 registros</MenuItem>
-          <MenuItem value={10}>10 registros</MenuItem>
-          <MenuItem value={20}>20 registros</MenuItem>
-          <MenuItem value={50}>50 registros</MenuItem>
-          <MenuItem value={100}>100 registros</MenuItem>
-        </TextField>
       </Box>
 
       {/* Modal */}

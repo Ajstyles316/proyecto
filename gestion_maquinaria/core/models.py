@@ -11,6 +11,9 @@ class Control:
 class Mantenimiento:
     collection_name = "mantenimiento"
 
+class MantenimientoAct:
+    collection_name = "mantenimientoact"
+    
 class Asignacion:
     collection_name = "asignacion"
 

@@ -218,8 +218,8 @@ const Control = () => {
   };
 
   const handleChangeRowsPerPage = (e) => {
-    const value = e.target.value;
-    setRowsPerPage(value === 'all' ? 'all' : parseInt(value, 10));
+    const value = parseInt(e.target.value, 10);
+    setRowsPerPage(value);
     setCurrentPage(1);
   };
 
@@ -243,8 +243,6 @@ const Control = () => {
     });
   };
 
-  // ✅ Corrección: Asegurar claves seguras en la tabla
-  const paginatedData = getDisplayedData();
   const displayedData = getDisplayedData();
 
   return (
@@ -270,7 +268,8 @@ const Control = () => {
             <MenuItem value={10}>10 registros</MenuItem>
             <MenuItem value={15}>15 registros</MenuItem>
             <MenuItem value={20}>20 registros</MenuItem>
-            <MenuItem value="all">Todos</MenuItem>
+            <MenuItem value={50}>50 registros</MenuItem>
+            <MenuItem value={100}>100 registros</MenuItem>
           </TextField>
           <Button variant="contained" color="success" onClick={handleOpenNew}>
             + Nuevo
