@@ -324,7 +324,6 @@ const Maquinaria = () => {
             />
             <TextField
               label="Modelo"
-              type="number"
               name="modelo"
               value={form.modelo || ""}
               onChange={(e) => setForm({ ...form, modelo: e.target.value })}

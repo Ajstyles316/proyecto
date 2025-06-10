@@ -10,9 +10,11 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
+import ReCAPTCHA from "react-google-recaptcha";
 
-// ✅ Importa la imagen desde la carpeta assets
-import logo from "../../../src/assets/images/logos/logo_login.png";  // Asegúrate de que esta ruta sea correcta
+import logo from "../../../src/assets/images/logos/logo_login.png";
+
+const SITE_KEY = "6LeCz1orAAAAAGxMyOuZp9h4JXox2JwBCM4fgunu"; 
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -31,15 +33,22 @@ const Register = () => {
     Email: "",
     Password: "",
     confirmPassword: "",
+    captcha: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const onCaptchaChange = (token) => {
+    setCaptchaToken(token);
+    setErrors((prev) => ({ ...prev, captcha: "" }));
   };
 
   const validateForm = () => {
@@ -51,6 +60,7 @@ const Register = () => {
     if (!formData.Password.trim()) newErrors.Password = "La contraseña es obligatoria";
     if (formData.Password !== formData.confirmPassword)
       newErrors.confirmPassword = "Las contraseñas no coinciden";
+    if (!captchaToken) newErrors.captcha = "Por favor, completa el CAPTCHA";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -68,6 +78,7 @@ const Register = () => {
         Email: formData.Email,
         Password: formData.Password,
         confirmPassword: formData.confirmPassword,
+        captchaToken,
       };
 
       const response = await fetch("http://localhost:8000/registro/", {
@@ -87,6 +98,7 @@ const Register = () => {
         Password: "",
         confirmPassword: "",
       });
+      setCaptchaToken(null);
       window.location.href = "/login/";
     } catch (error) {
       alert("Ocurrió un error al registrarse");
@@ -100,7 +112,7 @@ const Register = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "100vh",
+        minHeight: "100vh",
         bgcolor: "#f5f5f5",
         p: 2,
       }}
@@ -112,27 +124,28 @@ const Register = () => {
           bgcolor: "background.paper",
           borderRadius: 2,
           boxShadow: 3,
+          maxWidth: "400px",
+          textAlign: "center",
         }}
       >
-        <Typography variant="h5" textAlign="center" mb={2}>
+        <Typography variant="h5" mb={2}>
           Registro
         </Typography>
 
-        {/* ✅ Imagen después del título */}
-        <Box textAlign="center" mb={2}>
+        
+        <Box mb={2}>
           <img
-            src={logo}  // ← Si usas import
+            src={logo}
             alt="Logo Registro"
-            style={{ width: "100%", maxWidth: "250px", height: "auto" }}
+            style={{ width: "100%", maxHeight: "100px", objectFit: "contain" }}
             onError={(e) => {
-              console.error("Error al cargar imagen:", e.target.src);
-              e.target.style.display = "none";  // ← Oculta si hay error
+              e.target.style.display = "none";
             }}
           />
         </Box>
 
         <form onSubmit={handleSubmit}>
-          <Stack spacing={2}>
+          <Stack spacing={2} mb={2}> 
             <TextField
               label="Nombre completo"
               name="Nombre"
@@ -213,14 +226,34 @@ const Register = () => {
               }}
             />
 
-            <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
-              Registrarse
-            </Button>
+            <ReCAPTCHA
+              sitekey={SITE_KEY}
+              onChange={onCaptchaChange}
+              hl="es"
+              theme="light"
+              size="normal"
+              position="center" 
+            />
+            {errors.captcha && (
+              <Typography color="error" variant="body2" mt={1}>
+                {errors.captcha}
+              </Typography>
+            )}
           </Stack>
+
+          <Button
+            variant="contained"
+            color="primary"
+            type="submit"
+            fullWidth
+            sx={{ py: 1.5 }} 
+          >
+            Registrarse
+          </Button>
         </form>
 
-        <Box mt={2} textAlign="center">
-          <Typography>
+        <Box mt={2}>
+          <Typography variant="body2">
             ¿Ya tienes cuenta?{" "}
             <Link to="/login" style={{ textDecoration: "none", color: "primary.main" }}>
               Inicia sesión

@@ -6,6 +6,7 @@ from bson import json_util, ObjectId
 from bson.json_util import dumps
 import datetime
 from dateutil import parser
+import requests
 import json
 import logging
 from pymongo import MongoClient
@@ -125,8 +126,8 @@ class BaseViewSet(ViewSet):
             return Response({"error": f"Error al eliminar recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# === Tus ViewSets ===
-
+# === Mis ViewSets ===
+RECAPTCHA_SECRET_KEY = '6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9'
 class RegistroView(APIView):
     model_class = Usuario
     serializer_class = RegistroSerializer
@@ -136,25 +137,42 @@ class RegistroView(APIView):
             data = dict(request.data)
             print("Datos recibidos:", data)  # ✅ Imprime todo el payload para validar
 
+            # Validar reCAPTCHA
+            captcha_token = data.get('captchaToken')
+            if not captcha_token:
+                return Response({'error': 'El CAPTCHA es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Verificar con Google
+            verify_url = 'https://www.google.com/recaptcha/api/siteverify' 
+            response = requests.post(verify_url, data={
+                'secret': RECAPTCHA_SECRET_KEY,
+                'response': captcha_token
+            })
+            result = response.json()
+
+            if not result.get('success'):
+                return Response({'error': 'Fallo en la verificación del CAPTCHA'}, status=status.HTTP_400_BAD_REQUEST)
+
             # Validación del serializador
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
                 print("Errores del serializador:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # ✅ Elimina confirmPassword antes de guardar
+            # Eliminar campos innecesarios
             data.pop("confirmPassword", None)
+            data.pop("captchaToken", None)
 
-            # Encripta la contraseña
+            # Encriptar contraseña
             data["Password"] = bcrypt.hashpw(
                 data["Password"].encode("utf-8"),
                 bcrypt.gensalt()
             ).decode("utf-8")
 
-            # Guarda en MongoDB
+            # Guardar en MongoDB
             collection = get_collection(self.model_class)
-            result = collection.insert_one(data)
-            inserted = collection.find_one({"_id": result.inserted_id})
+            result_db = collection.insert_one(data)
+            inserted = collection.find_one({"_id": result_db.inserted_id})
 
             return Response(json.loads(json_util.dumps(inserted)), status=status.HTTP_201_CREATED)
 

@@ -57,7 +57,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Puerto del frontend
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
+CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
+CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
+RECAPTCHA_SECRET_KEY = "6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9"  # Reemplaza con tu clave de Google reCAPTCHA
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
