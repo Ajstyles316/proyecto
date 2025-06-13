@@ -13,15 +13,9 @@ const Register = lazy(() => import('../views/autenticacion/Registro.js'));
 const Login = lazy(() => import('../views/autenticacion/Login.js'));
 
 const BasicTable = lazy(() => import("../views/tables/BasicTable"));
-const ExAutoComplete = lazy(() =>
-  import("../views/form-elements/ExAutoComplete")
-);
+
 const ExButton = lazy(() => import("../views/form-elements/ExButton"));
-const ExCheckbox = lazy(() => import("../views/form-elements/ExCheckbox"));
-const ExRadio = lazy(() => import("../views/form-elements/ExRadio"));
-const ExSlider = lazy(() => import("../views/form-elements/ExSlider"));
-const ExSwitch = lazy(() => import("../views/form-elements/ExSwitch"));
-const FormLayouts = lazy(() => import("../views/form-layouts/FormLayouts"));
+
 
 const Router = [
   {
@@ -34,13 +28,7 @@ const Router = [
         element: <PrivateRoute><Dashboard /></PrivateRoute>,
       },
       { path: "/maquinaria", element: <PrivateRoute><BasicTable /></PrivateRoute> },
-      { path: "/control", element: <PrivateRoute><ExAutoComplete /></PrivateRoute> },
       { path: "/mantenimiento", element: <PrivateRoute><ExButton /></PrivateRoute> },
-      { path: "/asignacion", element: <PrivateRoute><ExCheckbox /></PrivateRoute> },
-      { path: "/seguros", element: <PrivateRoute><ExRadio /></PrivateRoute> },
-      { path: "/itv", element: <PrivateRoute><ExSlider /></PrivateRoute> },
-      { path: "/impuesto", element: <PrivateRoute><ExSwitch /></PrivateRoute> },
-      { path: "/form-layouts", element: <PrivateRoute><FormLayouts /></PrivateRoute> },
       { path: "/sample-page", element: <PrivateRoute><SamplePage /></PrivateRoute> },
       { path: "*", element: <Navigate to="/auth/404" /> },
     ],

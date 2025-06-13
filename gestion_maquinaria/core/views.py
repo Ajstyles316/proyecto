@@ -1,132 +1,152 @@
+from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.viewsets import ViewSet
 from rest_framework.views import APIView
-from bson import json_util, ObjectId
-from bson.json_util import dumps
-import datetime
-from dateutil import parser
-import requests
-import json
-import logging
-from pymongo import MongoClient
-logger = logging.getLogger(__name__)
+from django.core.exceptions import ObjectDoesNotExist
+from bson import ObjectId, json_util
+import json, requests
 
+import logging
+from django.views.decorators.csrf import csrf_exempt
+from .models import Maquinaria
 from .serializers import (
     MaquinariaSerializer,
-    ControlSerializer,
-    MantenimientoSerializer,
-    AsignacionSerializer,
-    SeguroSerializer,
-    ImpuestoSerializer,
-    ITVSerializer,
     RegistroSerializer,
     LoginSerializer,
-    MantenimientoActSerializer,
 )
-from .mongo_connection import get_collection
-from .models import Maquinaria, Control, Mantenimiento, Asignacion, Seguro, Impuesto, ITV, Usuario, MantenimientoAct
-import bcrypt
+from .models import Usuario
+from django.conf import settings
+from datetime import datetime
 
-class BaseViewSet(ViewSet):
-    model_class = None
-    serializer_class = None
+logger = logging.getLogger(__name__)
 
-    def get_collection(self):
-        return get_collection(self.model_class)
+def format_date(date_str):
+    """Formatea una fecha a ISO o retorna None si es inválida"""
+    if not date_str:
+        return None
+    try:
+        if isinstance(date_str, datetime):
+            return date_str.isoformat()
+        return datetime.fromisoformat(date_str.replace('Z', '+00:00')).isoformat()
+    except (ValueError, TypeError):
+        return None
 
-    def list(self, request):
+def clean_machine_data(machine):
+    """Limpia y formatea los datos de una máquina"""
+    if not isinstance(machine, dict):
+        return {}
+        
+    # Convertir ObjectId a string
+    if '_id' in machine:
+        machine['_id'] = str(machine['_id'])
+    
+    # Formatear fechas
+    date_fields = ['fechaRegistro', 'fechaAsignacion', 'fechaLiberacion', 'fechaIngreso']
+    for field in date_fields:
+        if field in machine:
+            machine[field] = format_date(machine[field])
+    
+    # Limpiar campos anidados
+    if 'historial' in machine and isinstance(machine['historial'], list):
+        for h in machine['historial']:
+            if isinstance(h, dict) and 'fechaIngreso' in h:
+                h['fechaIngreso'] = format_date(h['fechaIngreso'])
+    
+    return machine
+
+@csrf_exempt
+def maquinaria_list(request):
+    if request.method == "GET":
         try:
-            collection = self.get_collection()
-            items = list(collection.find())
-            return Response(json.loads(json_util.dumps(items)))
+            # Obtener todas las máquinas
+            maquinarias = list(settings.MAQUINARIA_COLLECTION.find())
+            
+            # Limpiar y formatear cada máquina
+            cleaned_data = [clean_machine_data(m) for m in maquinarias]
+            
+            return JsonResponse(cleaned_data, safe=False)
         except Exception as e:
-            logger.error(f"Error al listar: {str(e)}")
-            return Response({"error": f"Error al obtener datos: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error al obtener maquinarias: {str(e)}")
+            return JsonResponse({"error": f"Error al obtener datos: {str(e)}"}, status=500)
 
-    def create(self, request):
+    elif request.method == "POST":
         try:
-            # Convertir request.data a dict seguro
-            data = dict(request.data)  # ← Aquí el cambio importante
-            print("Datos recibidos:", data)
-            # Validación del serializador
-            serializer = self.serializer_class(data=data)
-            if serializer.is_valid():
-                collection = self.get_collection()
-                result = collection.insert_one(serializer.validated_data)
-                inserted = collection.find_one({"_id": result.inserted_id})
-                return Response(json.loads(json_util.dumps(inserted)), status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+            data = json.loads(request.body)
+            
+            # Validar campos requeridos
+            required_fields = ['placa', 'gestion', 'detalle', 'unidad', 'tipo', 'marca', 'modelo']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            if missing_fields:
+                return JsonResponse({
+                    "error": f"Campos requeridos faltantes: {', '.join(missing_fields)}"
+                }, status=400)
+            
+            # Verificar si la placa ya existe
+            if settings.MAQUINARIA_COLLECTION.find_one({"placa": data['placa']}):
+                return JsonResponse({"error": "Ya existe una máquina con esta placa"}, status=400)
+            
+            # Limpiar y formatear datos antes de insertar
+            cleaned_data = clean_machine_data(data)
+            
+            # Insertar la máquina
+            result = settings.MAQUINARIA_COLLECTION.insert_one(cleaned_data)
+            cleaned_data['_id'] = str(result.inserted_id)
+            
+            return JsonResponse(cleaned_data, status=201)
+            
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "JSON inválido"}, status=400)
         except Exception as e:
-            logger.error(f"Error al crear recurso: {str(e)}", exc_info=True)
-            return Response(
-                {"error": f"Error al crear recurso: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error al crear maquinaria: {str(e)}")
+            return JsonResponse({"error": f"Error al crear registro: {str(e)}"}, status=500)
 
-    def retrieve(self, request, pk=None):
-        try:
+@csrf_exempt
+def maquinaria_detail(request, id):
+    if not ObjectId.is_valid(id):
+        return JsonResponse({"error": "ID inválido"}, status=400)
+
+    try:
+        maquinaria = settings.MAQUINARIA_COLLECTION.find_one({"_id": ObjectId(id)})
+        if not maquinaria:
+            return JsonResponse({"error": "Máquina no encontrada"}, status=404)
+            
+        # Limpiar y formatear datos
+        maquinaria = clean_machine_data(maquinaria)
+
+        if request.method == "GET":
+            return JsonResponse(maquinaria)
+
+        elif request.method == "PUT":
             try:
-                obj_id = ObjectId(pk)
-            except Exception:
-                return Response({"error": "ID inválido"}, status=status.HTTP_400_BAD_REQUEST)
-
-            collection = self.get_collection()
-            item = collection.find_one({"_id": obj_id})
-
-            if not item:
-                return Response({"error": "No encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
-            return Response(json.loads(json_util.dumps(item)))
-
-        except Exception as e:
-            logger.error(f"Error al obtener recurso: {str(e)}", exc_info=True)
-            return Response({"error": f"Error al obtener recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def update(self, request, pk=None):
-        try:
-            data = dict(request.data)  # ← Aquí también usamos dict() para evitar problemas
-            print("Datos actualizados:", data)
-
-            serializer = self.serializer_class(data=data, partial=True)
-            if serializer.is_valid():
-                collection = self.get_collection()
-                result = collection.update_one(
-                    {"_id": ObjectId(pk)},
-                    {"$set": serializer.validated_data}
+                data = json.loads(request.body)
+                # Limpiar y formatear datos antes de actualizar
+                cleaned_data = clean_machine_data(data)
+                
+                # Actualizar la máquina
+                settings.MAQUINARIA_COLLECTION.update_one(
+                    {"_id": ObjectId(id)},
+                    {"$set": cleaned_data}
                 )
-                if result.matched_count == 0:
-                    return Response({"error": "No encontrado"}, status=404)
-                updated = collection.find_one({"_id": ObjectId(pk)})
-                return Response(json.loads(json_util.dumps(updated)))
-            return Response(serializer.errors, status=400)
+                return JsonResponse({**maquinaria, **cleaned_data})
+                
+            except json.JSONDecodeError:
+                return JsonResponse({"error": "JSON inválido"}, status=400)
+            except Exception as e:
+                logger.error(f"Error al actualizar maquinaria: {str(e)}")
+                return JsonResponse({"error": str(e)}, status=500)
 
-        except Exception as e:
-            logger.error(f"Error al actualizar recurso: {str(e)}", exc_info=True)
-            return Response({"error": f"Error al actualizar recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def destroy(self, request, pk=None):
-        try:
+        elif request.method == "DELETE":
             try:
-                obj_id = ObjectId(pk)
-            except Exception:
-                return Response({"error": "ID inválido"}, status=status.HTTP_400_BAD_REQUEST)
+                settings.MAQUINARIA_COLLECTION.delete_one({"_id": ObjectId(id)})
+                return JsonResponse({"status": "Eliminado"})
+            except Exception as e:
+                logger.error(f"Error al eliminar maquinaria: {str(e)}")
+                return JsonResponse({"error": str(e)}, status=500)
 
-            collection = self.get_collection()
-            result = collection.delete_one({"_id": obj_id})
+    except Exception as e:
+        logger.error(f"Error en maquinaria_detail: {str(e)}")
+        return JsonResponse({"error": str(e)}, status=500)
 
-            if result.deleted_count == 0:
-                return Response({"error": "No encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        except Exception as e:
-            logger.error(f"Error al eliminar recurso: {str(e)}", exc_info=True)
-            return Response({"error": f"Error al eliminar recurso: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# === Mis ViewSets ===
 RECAPTCHA_SECRET_KEY = '6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9'
 class RegistroView(APIView):
     model_class = Usuario
@@ -213,53 +233,9 @@ class LoginView(APIView):
                 {"error": f"Error al iniciar sesión: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-class MaquinariaViewSet(BaseViewSet):
-    model_class = Maquinaria
-    serializer_class = MaquinariaSerializer
-
-
-class ControlViewSet(BaseViewSet):
-    model_class = Control
-    serializer_class = ControlSerializer
-
-
-class MantenimientoViewSet(BaseViewSet):
-    model_class = Mantenimiento
-    serializer_class = MantenimientoSerializer
-
-class MantenimientoActViewSet(BaseViewSet):
-    model_class = MantenimientoAct
-    serializer_class = MantenimientoActSerializer
-    
-class AsignacionViewSet(BaseViewSet):
-    model_class = Asignacion
-    serializer_class = AsignacionSerializer
-
-    def list(self, request):
-        try:
-            return super().list(request)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class ImpuestoViewSet(BaseViewSet):
-    model_class = Impuesto
-    serializer_class = ImpuestoSerializer
-
-
-class ITVViewSet(BaseViewSet):
-    model_class = ITV
-    serializer_class = ITVSerializer
-
-
-class SeguroViewSet(BaseViewSet):
-    model_class = Seguro
-    serializer_class = SeguroSerializer
-
-
-# === Vista para Dashboard ===
-
+            
+from .mongo_connection import get_collection
+import bcrypt
 class DashboardStatsView(APIView):
     def get(self, request):
         seguro_col = get_collection(Seguro)
@@ -278,3 +254,62 @@ class DashboardStatsView(APIView):
             {"title": "Horas Totales Operativas", "value": f"{horas_totales_operativas:,}", "icon": "mdi:clock-time-eight", "color": "info.main"},
         ]
         return Response(data)
+
+@csrf_exempt
+def maquinaria_options(request):
+    if request.method == "GET":
+        try:
+            # Obtener todas las máquinas
+            maquinarias = list(settings.MAQUINARIA_COLLECTION.find())
+            
+            # Inicializar diccionario de opciones
+            options = {
+                'unidades': set(),
+                'tipos': set(),
+                'marcas': set(),
+                'modelos': set(),
+                'colores': set(),
+                'adquisiciones': set(),
+                'gestiones': set(),
+                'ubicaciones': set(),
+                'gerentes': set(),
+                'encargados': set(),
+                'lugares_mantenimiento': set()
+            }
+            
+            # Extraer valores únicos
+            for m in maquinarias:
+                # Campos básicos
+                if isinstance(m, dict):
+                    if m.get('unidad'): options['unidades'].add(str(m['unidad']))
+                    if m.get('tipo'): options['tipos'].add(str(m['tipo']))
+                    if m.get('marca'): options['marcas'].add(str(m['marca']))
+                    if m.get('modelo'): options['modelos'].add(str(m['modelo']))
+                    if m.get('color'): options['colores'].add(str(m['color']))
+                    if m.get('adqui'): options['adquisiciones'].add(str(m['adqui']))
+                    if m.get('gestion'): options['gestiones'].add(str(m['gestion']))
+                    
+                    # Historial
+                    if isinstance(m.get('historial'), list):
+                        for h in m['historial']:
+                            if isinstance(h, dict):
+                                if h.get('ubicacion'): options['ubicaciones'].add(str(h['ubicacion']))
+                                if h.get('gerente'): options['gerentes'].add(str(h['gerente']))
+                                if h.get('encargado'): options['encargados'].add(str(h['encargado']))
+                    
+                    # Mantenimiento
+                    if isinstance(m.get('mantenimiento'), dict):
+                        if m['mantenimiento'].get('lugar'):
+                            options['lugares_mantenimiento'].add(str(m['mantenimiento']['lugar']))
+            
+            # Convertir sets a listas ordenadas y filtrar valores vacíos
+            for key in options:
+                options[key] = sorted([v for v in options[key] if v and v.strip()])
+            
+            return JsonResponse(options)
+            
+        except Exception as e:
+            logger.error(f"Error al obtener opciones: {str(e)}")
+            return JsonResponse({"error": f"Error al obtener opciones: {str(e)}"}, status=500)
+    
+    return JsonResponse({"error": "Método no permitido"}, status=405)
