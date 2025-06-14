@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import "./styles.css"
+import React, { useEffect, useState } from "react";
+import "../styles.css";
 import {
   Table,
   TableBody,
@@ -12,16 +12,28 @@ import {
   Button,
   Modal,
   TextField,
+  Avatar,
   Pagination,
   CircularProgress,
   Snackbar,
   Alert,
   Grid,
-  Paper,
-  Avatar
+  Paper
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
+// Importamos el componente ControlList
+import ControlList from "../Control/ControlList"; // Asegúrate de que la ruta sea correcta
+const SECTIONS = [
+  'Maquinaria',
+  'Control',
+  'Asignación',
+  'Mantenimiento',
+  'Seguros',
+  'ITV',
+  'Impuestos',
+  'SOAT',
+];
 const fieldLabels = {
   Maquinaria: [
     { name: 'gestion', label: 'Gestión' },
@@ -34,9 +46,9 @@ const fieldLabels = {
     { name: 'marca', label: 'Marca' },
     { name: 'modelo', label: 'Modelo' },
     { name: 'color', label: 'Color' },
-    { name: 'nroMotor', label: 'Nro Motor' },
-    { name: 'nroChasis', label: 'Nro. Chasis' },
-    { name: 'fechaRegistro', label: 'Fecha Registro', type: 'date' },
+    { name: 'nro_motor', label: 'Nro Motor' },
+    { name: 'nro_chasis', label: 'Nro. Chasis' },
+    { name: 'fecha_registro', label: 'Fecha Registro', type: 'date' },
   ],
   Control: [
     { name: 'ubicacion', label: 'Ubicación' },
@@ -80,17 +92,6 @@ const fieldLabels = {
   ]
 };
 
-const SECTIONS = [
-  'Maquinaria',
-  'Control',
-  'Asignación',
-  'Mantenimiento',
-  'Seguros',
-  'ITV',
-  'Impuestos',
-  'SOAT',
-];
-
 const maquinariaImage = 'https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=400&q=80';
 
 const Maquinaria = () => {
@@ -115,7 +116,7 @@ const Maquinaria = () => {
     const initialForm = {};
     fieldLabels.Maquinaria.forEach(field => {
       initialForm[field.name] = field.type === 'number' ? 0 : '';
-      if (field.name === 'fechaRegistro') {
+      if (field.name === 'fecha_registro') {
         initialForm[field.name] = new Date().toISOString().split('T')[0];
       }
     });
@@ -177,6 +178,16 @@ const Maquinaria = () => {
   const renderSectionForm = () => {
     const fields = fieldLabels[activeSection];
     const values = sectionForm[activeSection] || {};
+    
+    if (activeSection === 'Control') {
+      return (
+        <ControlList
+          maquinariaId={sectionForm.Maquinaria._id?.$oid || sectionForm.Maquinaria._id}
+          maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+        />
+      );
+    }
+
     return (
       <Grid container spacing={2}>
         {fields.map((field) => (
@@ -230,7 +241,6 @@ const Maquinaria = () => {
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>
           <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
           <Button variant="contained" onClick={() => {
-            // Validación simple
             const errors = {};
             (fieldLabels[activeSection] || []).forEach(field => {
               if (!modalForm[field.name] || !modalForm[field.name].toString().trim()) {
@@ -253,7 +263,7 @@ const Maquinaria = () => {
   const handleNewMaquinariaSubmit = async () => {
     const errors = {};
     fieldLabels.Maquinaria.forEach(field => {
-      if (field.name !== 'adqui' && field.name !== 'codigo' && field.name !== 'tipo' && field.name !== 'marca' && field.name !== 'modelo' && field.name !== 'color' && field.name !== 'nroMotor' && field.name !== 'nroChasis') { // Marcar los campos no obligatorios aquí
+      if (field.name !== 'adqui' && field.name !== 'codigo' && field.name !== 'tipo' && field.name !== 'marca' && field.name !== 'modelo' && field.name !== 'color' && field.name !== 'nro_motor' && field.name !== 'nro_chasis') {
         if (!newMaquinariaForm[field.name] || !newMaquinariaForm[field.name].toString().trim()) {
           errors[field.name] = 'Este campo es obligatorio';
         }
@@ -261,13 +271,11 @@ const Maquinaria = () => {
     });
     setNewMaquinariaErrors(errors);
     if (Object.keys(errors).length > 0) return;
-
     try {
       const formattedData = {
         ...newMaquinariaForm,
-        fechaRegistro: newMaquinariaForm.fechaRegistro ? new Date(newMaquinariaForm.fechaRegistro).toISOString().split('T')[0] : '',
+        fecha_registro: newMaquinariaForm.fecha_registro ? new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0] : '',
       };
-
       const cleanData = (obj) => {
         Object.keys(obj).forEach(key => {
           if (obj[key] === undefined || obj[key] === null || obj[key] === '') {
@@ -281,9 +289,7 @@ const Maquinaria = () => {
         });
         return obj;
       };
-
       const cleanedData = cleanData(formattedData);
-
       const response = await fetch("http://localhost:8000/api/maquinaria/", {
         method: 'POST',
         headers: {
@@ -292,9 +298,8 @@ const Maquinaria = () => {
         },
         body: JSON.stringify(cleanedData)
       });
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json();
         throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
       setNewMaquinariaModalOpen(false);
@@ -302,7 +307,7 @@ const Maquinaria = () => {
         const initialForm = {};
         fieldLabels.Maquinaria.forEach(field => {
           initialForm[field.name] = field.type === 'number' ? 0 : '';
-          if (field.name === 'fechaRegistro') {
+          if (field.name === 'fecha_registro') {
             initialForm[field.name] = new Date().toISOString().split('T')[0];
           }
         });
@@ -368,7 +373,6 @@ const Maquinaria = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
       {detailView ? (
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
           {/* Panel principal: formulario */}
@@ -376,9 +380,9 @@ const Maquinaria = () => {
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h5" sx={{ mb: 3 }}>Historial de {activeSection}</Typography>
               {renderSectionForm()}
-              {['Control', 'Asignación', 'Mantenimiento', 'Seguros', 'ITV', 'Impuestos', 'SOAT'].includes(activeSection) && (
+              {['Asignación', 'Mantenimiento', 'Seguros', 'ITV', 'Impuestos', 'SOAT'].includes(activeSection) && (
                 <Button variant="outlined" color="primary" sx={{ mt: 3 }} onClick={() => setModalOpen(true)}>
-                  Nuevo
+                  Nuevo {activeSection}
                 </Button>
               )}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>
@@ -387,13 +391,11 @@ const Maquinaria = () => {
                   try {
                     const cleanId = sectionForm.Maquinaria._id.$oid || sectionForm.Maquinaria._id || sectionForm.Maquinaria.id;
                     const url = `http://localhost:8000/api/maquinaria/${cleanId}/`;
-
                     const formatDate = (dateStr) => {
                       if (!dateStr) return '';
                       if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
                       return new Date(dateStr).toISOString().split('T')[0];
                     };
-
                     const maquinariaPayload = {
                       gestion: sectionForm.Maquinaria?.gestion || '',
                       detalle: sectionForm.Maquinaria?.detalle || '',
@@ -405,9 +407,9 @@ const Maquinaria = () => {
                       marca: sectionForm.Maquinaria?.marca || '',
                       modelo: sectionForm.Maquinaria?.modelo || '',
                       color: sectionForm.Maquinaria?.color || '',
-                      nroMotor: sectionForm.Maquinaria?.nroMotor || '',
-                      nroChasis: sectionForm.Maquinaria?.nroChasis || '',
-                      fechaRegistro: formatDate(sectionForm.Maquinaria?.fechaRegistro),
+                      nro_motor: sectionForm.Maquinaria?.nro_motor || '',
+                      nro_chasis: sectionForm.Maquinaria?.nro_chasis || '',
+                      fecha_registro: formatDate(sectionForm.Maquinaria?.fecha_registro),
                       historial: {
                         control: {
                           ubicacion: sectionForm.Control?.ubicacion || '',
@@ -451,7 +453,6 @@ const Maquinaria = () => {
                         importe2024: Number(sectionForm.Impuestos?.importe2024) || 0
                       }
                     };
-
                     const cleanData = (obj) => {
                       Object.keys(obj).forEach(key => {
                         if (obj[key] === undefined || obj[key] === null || obj[key] === '') {
@@ -465,9 +466,7 @@ const Maquinaria = () => {
                       });
                       return obj;
                     };
-
                     const cleanedData = cleanData({ ...maquinariaPayload });
-                    
                     const response = await fetch(url, {
                       method: 'PUT',
                       headers: {
@@ -476,7 +475,6 @@ const Maquinaria = () => {
                       },
                       body: JSON.stringify(cleanedData),
                     });
-
                     if (!response.ok) {
                       const errorData = await response.json().catch(() => ({}));
                       throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${response.statusText}`);
@@ -584,10 +582,10 @@ const Maquinaria = () => {
                         <TableCell>{m.marca || ''}</TableCell>
                         <TableCell>{m.modelo || ''}</TableCell>
                         <TableCell>{m.color || ''}</TableCell>
-                        <TableCell>{m.nroMotor || ''}</TableCell>
-                        <TableCell>{m.nroChasis || ''}</TableCell>
+                        <TableCell>{m.nro_motor || ''}</TableCell>
+                        <TableCell>{m.nro_chasis || ''}</TableCell>
                         <TableCell>
-                          {m.fechaRegistro ? new Date(m.fechaRegistro).toLocaleDateString() : ''}
+                          {m.fecha_registro ? new Date(m.fecha_registro).toLocaleDateString() : ''}
                         </TableCell>
                         <TableCell align="right">
                           <Button 

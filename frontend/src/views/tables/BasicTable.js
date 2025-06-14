@@ -1,16 +1,16 @@
-import React from "react";
-
-import { Card, CardContent, Box, Typography } from "@mui/material";
-
-import ProductPerformance from "../dashboard/components/ProductPerformance";
+import { Box, Typography, Card, CardContent } from "@mui/material";
+import MaquinariaList from "../dashboard/components/Maquinaria/MaquinariaMain";
 
 const BasicTable = () => {
   return (
     <Box>
-
-      <ProductPerformance />
+      <Card>
+        <CardContent>
+          
+          <MaquinariaList />
+        </CardContent>
+      </Card>
     </Box>
-
   );
 };
 
