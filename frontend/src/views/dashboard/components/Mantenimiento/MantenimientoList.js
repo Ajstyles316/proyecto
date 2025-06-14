@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Typography,
@@ -7,39 +8,38 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  CircularProgress,
-  Snackbar,
-  Alert,
+  TextField,
   Button,
   Modal,
   Paper,
-  TextField,
-  Grid
+  Snackbar,
+  Alert,
+  Grid,
+  IconButton,
+  CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
+const MantenimientoList = ({ maquinariaId, maquinariaPlaca }) => {
   const [mantenimientos, setMantenimientos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [modalOpen, setModalOpen] = useState(false);
-  const [currentMantenimiento, setCurrentMantenimiento] = useState(null); // Para editar o crear
+  const [currentMantenimiento, setCurrentMantenimiento] = useState(null);
   const [modalForm, setModalForm] = useState({});
   const [modalErrors, setModalErrors] = useState({});
-
+  // Campos del formulario con validación
   const fieldLabels = [
-    { name: 'tipo', label: 'Tipo' },
-    { name: 'gestion', label: 'Gestión' },
-    { name: 'lugar', label: 'Lugar de Mantenimiento' },
+    { name: 'tipo', label: 'Tipo', required: true },
+    { name: 'cantidad', label: 'Cantidad', type: 'number', required: true },
+    { name: 'gestion', label: 'Gestión', required: true },
+    { name: 'ubicacion', label: 'Ubicación', required: true },
   ];
 
-  useEffect(() => {
-    if (maquinariaId) {
-      fetchMantenimientos();
-    }
-  }, [maquinariaId]);
-
-  const fetchMantenimientos = async () => {
+  const fetchMantenimientos = useCallback(async () => {
+    if (!maquinariaId) return;
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/`);
@@ -52,7 +52,11 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [maquinariaId]);
+
+  useEffect(() => {
+    fetchMantenimientos();
+  }, [fetchMantenimientos]);
 
   const handleOpenModal = (mantenimiento = null) => {
     setCurrentMantenimiento(mantenimiento);
@@ -65,11 +69,16 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     setModalOpen(false);
     setCurrentMantenimiento(null);
     setModalForm({});
+    setModalErrors({});
   };
 
   const validateForm = () => {
     const errors = {};
-    // Add validation logic here if needed
+    fieldLabels.forEach(field => {
+      if (field.required && !modalForm[field.name]) {
+        errors[field.name] = `${field.label} es obligatorio`;
+      }
+    });
     setModalErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -85,20 +94,19 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     const payload = {
       ...modalForm,
       maquinaria: maquinariaId,
+      cantidad: Number(modalForm.cantidad) || 0,
     };
 
     try {
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || 'Error en la operación');
+        throw new Error(errorData.error || 'Error en la operación');
       }
 
       setSnackbar({ open: true, message: `Mantenimiento ${currentMantenimiento ? 'actualizado' : 'creado'} exitosamente!`, severity: 'success' });
@@ -110,7 +118,7 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
+    if (!window.confirm('¿Eliminar este mantenimiento?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${id}/`, {
         method: 'DELETE',
@@ -125,19 +133,12 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
 
   return (
     <Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Mantenimientos para Maquinaria: {maquinariaPlaca}</Typography>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Mantenimientos - {maquinariaPlaca}</Typography>
         <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
           Nuevo Mantenimiento
         </Button>
@@ -146,28 +147,32 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
       ) : mantenimientos.length === 0 ? (
-        <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
-          No hay registros de mantenimiento para esta maquinaria.
-        </Typography>
+        <Typography align="center" sx={{ py: 5 }}>No hay registros de mantenimiento</Typography>
       ) : (
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Tipo</TableCell>
+              <TableCell>Cantidad</TableCell>
               <TableCell>Gestión</TableCell>
-              <TableCell>Lugar de Mantenimiento</TableCell>
+              <TableCell>Ubicación</TableCell>
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {mantenimientos.map((mantenimiento) => (
-              <TableRow key={mantenimiento._id}>
-                <TableCell>{mantenimiento.tipo || ''}</TableCell>
-                <TableCell>{mantenimiento.gestion || ''}</TableCell>
-                <TableCell>{mantenimiento.lugar || ''}</TableCell>
+            {mantenimientos.map((m) => (
+              <TableRow key={m._id}>
+                <TableCell>{m.tipo}</TableCell>
+                <TableCell>{m.cantidad}</TableCell>
+                <TableCell>{m.gestion}</TableCell>
+                <TableCell>{m.ubicacion}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" variant="outlined" onClick={() => handleOpenModal(mantenimiento)}>Editar</Button>
-                  <Button size="small" variant="outlined" color="error" sx={{ ml: 1 }} onClick={() => handleDelete(mantenimiento._id)}>Eliminar</Button>
+                  <IconButton size="small" onClick={() => handleOpenModal(m)} color="primary">
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => handleDelete(m._id)} color="error">
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -175,9 +180,18 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
         </Table>
       )}
 
+      {/* Modal */}
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 4, width: '90%', maxWidth: 600 }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentMantenimiento ? 'Editar Mantenimiento' : 'Nuevo Mantenimiento'}</Typography>
+        <Paper sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          p: 4,
+          width: '90%',
+          maxWidth: 600,
+        }}>
+          <Typography variant="h6" sx={{ mb: 3 }}>{currentMantenimiento ? 'Editar' : 'Nuevo'} Mantenimiento</Typography>
           <Grid container spacing={2}>
             {fieldLabels.map((field) => (
               <Grid item xs={12} key={field.name}>
@@ -188,14 +202,14 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
                   type={field.type || 'text'}
                   value={modalForm[field.name] || ''}
                   onChange={(e) => setModalForm({ ...modalForm, [field.name]: e.target.value })}
-                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
                   error={!!modalErrors[field.name]}
                   helperText={modalErrors[field.name]}
+                  required={field.required}
                 />
               </Grid>
             ))}
           </Grid>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
             <Button onClick={handleCloseModal}>Cancelar</Button>
             <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
           </Box>
@@ -205,4 +219,9 @@ const MantenimientoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
   );
 };
 
-export default MantenimientoList; 
+MantenimientoList.propTypes = {
+  maquinariaId: PropTypes.string.isRequired,
+  maquinariaPlaca: PropTypes.string.isRequired,
+};
+
+export default MantenimientoList;

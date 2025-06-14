@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles.css";
 import {
   Table,
@@ -21,9 +21,16 @@ import {
   Paper
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+// Importar componentes de secciones
+import ControlList from "../Control/ControlList";
+import AsignacionList from "../Asignacion/AsignacionList";
+import MantenimientoList from "../Mantenimiento/MantenimientoList";
+import SeguroList from "../Seguros/SeguroList";
+import ITVList from "../ITV/ITVList";
+import SOATList from "../SOAT/SOATList";
+import ImpuestoList from "../Impuestos/ImpuestoList";
 
-// Importamos el componente ControlList
-import ControlList from "../Control/ControlList"; // Asegúrate de que la ruta sea correcta
+// Definición de secciones y formularios
 const SECTIONS = [
   'Maquinaria',
   'Control',
@@ -49,6 +56,7 @@ const fieldLabels = {
     { name: 'nro_motor', label: 'Nro Motor' },
     { name: 'nro_chasis', label: 'Nro. Chasis' },
     { name: 'fecha_registro', label: 'Fecha Registro', type: 'date' },
+    { name: 'imagen', label: 'Imagen', type: 'file' },
   ],
   Control: [
     { name: 'ubicacion', label: 'Ubicación' },
@@ -91,38 +99,24 @@ const fieldLabels = {
     { name: 'importe2025', label: 'Importe 2025', type: 'number' },
   ]
 };
-
 const maquinariaImage = 'https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=400&q=80';
 
 const Maquinaria = () => {
   const [maquinarias, setMaquinarias] = useState([]);
   const [pageSize, setPageSize] = useState(10);
-  const pageSizeOptions = [5, 10, 20, 50, "Todos"];
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
-
-  // Detalle y edición
   const [detailView, setDetailView] = useState(false);
   const [activeSection, setActiveSection] = useState('Maquinaria');
   const [sectionForm, setSectionForm] = useState({});
   const [modalOpen, setModalOpen] = useState(false);
   const [modalForm, setModalForm] = useState({});
   const [modalErrors, setModalErrors] = useState({});
-
-  // Estados para crear nueva maquinaria desde la vista de lista
   const [newMaquinariaModalOpen, setNewMaquinariaModalOpen] = useState(false);
-  const [newMaquinariaForm, setNewMaquinariaForm] = useState(() => {
-    const initialForm = {};
-    fieldLabels.Maquinaria.forEach(field => {
-      initialForm[field.name] = field.type === 'number' ? 0 : '';
-      if (field.name === 'fecha_registro') {
-        initialForm[field.name] = new Date().toISOString().split('T')[0];
-      }
-    });
-    return initialForm;
-  });
+  const [newMaquinariaForm, setNewMaquinariaForm] = useState({});
   const [newMaquinariaErrors, setNewMaquinariaErrors] = useState({});
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Cargar maquinarias
   useEffect(() => {
@@ -132,13 +126,7 @@ const Maquinaria = () => {
   const fetchMaquinarias = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/maquinaria/", {
-        method: 'GET',
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json"
-        }
-      });
+      const response = await fetch("http://localhost:8000/api/maquinaria/");
       if (!response.ok) throw new Error('Error al cargar datos');
       const data = await response.json();
       setMaquinarias(Array.isArray(data) ? data : []);
@@ -158,7 +146,7 @@ const Maquinaria = () => {
       if (!response.ok) throw new Error('Error al cargar detalles');
       const data = await response.json();
       setSectionForm({
-        Maquinaria: { ...data },
+        Maquinaria: { ...data, imagen: data.imagen || '' },
         Control: { ...data.historial?.control },
         'Asignación': { ...data.actaAsignacion },
         Mantenimiento: { ...data.mantenimiento },
@@ -174,51 +162,152 @@ const Maquinaria = () => {
     }
   };
 
-  // Renderiza el formulario de la sección activa
+  // Manejo de archivo y previsualización
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNewMaquinariaForm({
+          ...newMaquinariaForm,
+          imagen: reader.result  // Guarda como base64
+        });
+        setSelectedImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Función para eliminar maquinaria
+  const handleDeleteMaquinaria = async () => {
+    const id = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
+    if (!id) {
+      setSnackbar({ open: true, message: 'ID de maquinaria no encontrado', severity: 'error' });
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${id}/`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Error al eliminar la maquinaria');
+      }
+      setSnackbar({ open: true, message: 'Maquinaria eliminada exitosamente', severity: 'success' });
+      setDetailView(false);
+      fetchMaquinarias(); // Refrescar lista
+    } catch (error) {
+      setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    }
+  };
+
+  // Renderizar el formulario de la sección activa
   const renderSectionForm = () => {
     const fields = fieldLabels[activeSection];
     const values = sectionForm[activeSection] || {};
-    
-    if (activeSection === 'Control') {
-      return (
-        <ControlList
-          maquinariaId={sectionForm.Maquinaria._id?.$oid || sectionForm.Maquinaria._id}
-          maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-        />
-      );
-    }
-
-    return (
-      <Grid container spacing={2}>
-        {fields.map((field) => (
-          <Grid item xs={12} md={6} key={field.name}>
-            <TextField
-              fullWidth
-              label={field.label}
-              name={field.name}
-              type={field.type || 'text'}
-              value={values[field.name] || ''}
-              onChange={e => setSectionForm((prev) => ({
-                ...prev,
-                [activeSection]: {
-                  ...prev[activeSection],
-                  [field.name]: e.target.value,
-                },
-              }))}
-              size="small"
-              InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-              disabled={field.name === 'placa' && activeSection !== 'Maquinaria'}
-            />
+    switch (activeSection) {
+      case 'Control':
+        return (
+          <ControlList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      case 'Asignación':
+        return (
+          <AsignacionList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      case 'Mantenimiento':
+        return (
+          <MantenimientoList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      case 'Seguros':
+        return (
+          <SeguroList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      case 'ITV':
+        return (
+          <ITVList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      case 'SOAT':
+        return (
+          <SOATList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      case 'Impuestos':
+        return (
+          <ImpuestoList
+            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
+            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
+          />
+        );
+      default:
+        return (
+          <Grid container spacing={2}>
+            {fields.map((field) => (
+              <Grid item xs={12} md={6} key={field.name}>
+                {field.name === 'imagen' ? (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    style={{ marginTop: '8px' }}
+                  />
+                ) : (
+                  <TextField
+                    fullWidth
+                    label={field.label}
+                    name={field.name}
+                    type={field.type || 'text'}
+                    value={values[field.name] || ''}
+                    onChange={e => setSectionForm((prev) => ({
+                      ...prev,
+                      [activeSection]: {
+                        ...prev[activeSection],
+                        [field.name]: e.target.value,
+                      },
+                    }))}
+                    size="small"
+                    error={!!newMaquinariaErrors[field.name]}
+                    helperText={newMaquinariaErrors[field.name] || ''}
+                    InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
+                    disabled={field.name === 'placa' && activeSection !== 'Maquinaria'}
+                  />
+                )}
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
-    );
+        );
+    }
   };
 
-  // Modal para Nuevo registro
+  // Renderizar el modal de nuevo registro
   const renderModal = () => (
     <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-      <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 3, minWidth: 320 }}>
+      <Paper sx={{ 
+        position: 'absolute', 
+        top: '50%', 
+        left: '50%', 
+        transform: 'translate(-50%, -50%)', 
+        p: 3, 
+        minWidth: 320,
+        width: { xs: '90%', sm: 500 },
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
         <Typography variant="h6" sx={{ mb: 2 }}>Crear nuevo registro en {activeSection}</Typography>
         <Grid container spacing={2}>
           {(fieldLabels[activeSection] || []).map((field) => (
@@ -263,7 +352,7 @@ const Maquinaria = () => {
   const handleNewMaquinariaSubmit = async () => {
     const errors = {};
     fieldLabels.Maquinaria.forEach(field => {
-      if (field.name !== 'adqui' && field.name !== 'codigo' && field.name !== 'tipo' && field.name !== 'marca' && field.name !== 'modelo' && field.name !== 'color' && field.name !== 'nro_motor' && field.name !== 'nro_chasis') {
+      if (!['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis'].includes(field.name)) {
         if (!newMaquinariaForm[field.name] || !newMaquinariaForm[field.name].toString().trim()) {
           errors[field.name] = 'Este campo es obligatorio';
         }
@@ -276,6 +365,9 @@ const Maquinaria = () => {
         ...newMaquinariaForm,
         fecha_registro: newMaquinariaForm.fecha_registro ? new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0] : '',
       };
+      if (newMaquinariaForm.imagen) {
+        formattedData.imagen = newMaquinariaForm.imagen;
+      }
       const cleanData = (obj) => {
         Object.keys(obj).forEach(key => {
           if (obj[key] === undefined || obj[key] === null || obj[key] === '') {
@@ -321,26 +413,44 @@ const Maquinaria = () => {
     }
   };
 
-  // Renderiza el modal para crear nueva maquinaria
   const renderNewMaquinariaModal = () => (
     <Modal open={newMaquinariaModalOpen} onClose={() => setNewMaquinariaModalOpen(false)}>
-      <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 3, width: '90%', maxWidth: 600 }}>
+      <Paper sx={{ 
+        position: 'absolute', 
+        top: '50%', 
+        left: '50%', 
+        transform: 'translate(-50%, -50%)', 
+        p: 3, 
+        width: { xs: '90%', sm: '95%' },
+        maxWidth: 800,
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
         <Typography variant="h6" sx={{ mb: 2 }}>Crear Nueva Maquinaria</Typography>
         <Grid container spacing={2}>
           {fieldLabels.Maquinaria.map((field) => (
-            <Grid item xs={12} md={6} key={field.name}>
-              <TextField
-                fullWidth
-                label={field.label}
-                name={field.name}
-                type={field.type || 'text'}
-                value={newMaquinariaForm[field.name] || ''}
-                onChange={e => setNewMaquinariaForm({ ...newMaquinariaForm, [field.name]: e.target.value })}
-                size="small"
-                error={!!newMaquinariaErrors[field.name]}
-                helperText={newMaquinariaErrors[field.name] || ''}
-                InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-              />
+            <Grid item xs={12} sm={6} key={field.name}>
+              {field.name === 'imagen' ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ marginTop: '8px' }}
+                />
+              ) : (
+                <TextField
+                  fullWidth
+                  label={field.label}
+                  name={field.name}
+                  type={field.type || 'text'}
+                  value={newMaquinariaForm[field.name] || ''}
+                  onChange={e => setNewMaquinariaForm({ ...newMaquinariaForm, [field.name]: e.target.value })}
+                  size="small"
+                  error={!!newMaquinariaErrors[field.name]}
+                  helperText={newMaquinariaErrors[field.name] || ''}
+                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
+                />
+              )}
             </Grid>
           ))}
         </Grid>
@@ -352,6 +462,7 @@ const Maquinaria = () => {
     </Modal>
   );
 
+  // Paginación y datos mostrados
   const totalPages = pageSize === "Todos" ? 1 : Math.ceil(maquinarias.length / parseInt(pageSize, 10));
   const getDisplayedData = () => {
     if (!Array.isArray(maquinarias)) return [];
@@ -362,7 +473,7 @@ const Maquinaria = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
@@ -374,132 +485,92 @@ const Maquinaria = () => {
         </Alert>
       </Snackbar>
       {detailView ? (
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' }, 
+          gap: { xs: 2, md: 4 },
+          mb: 4
+        }}>
           {/* Panel principal: formulario */}
           <Box sx={{ flex: 1 }}>
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h5" sx={{ mb: 3 }}>Historial de {activeSection}</Typography>
               {renderSectionForm()}
-              {['Asignación', 'Mantenimiento', 'Seguros', 'ITV', 'Impuestos', 'SOAT'].includes(activeSection) && (
-                <Button variant="outlined" color="primary" sx={{ mt: 3 }} onClick={() => setModalOpen(true)}>
-                  Nuevo {activeSection}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: 1, 
+                mt: 3,
+                flexWrap: 'wrap'
+              }}>
+                <Button 
+                  variant="contained" 
+                  sx={{ 
+                    bgcolor: 'yellow', 
+                    color: 'black',
+                    minWidth: 120 
+                  }}
+                  onClick={() => setDetailView(false)}
+                >
+                  Cancelar
                 </Button>
-              )}
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>
-                <Button variant="outlined" color="error" onClick={() => setDetailView(false)}>Cancelar</Button>
-                <Button variant="contained" color="info" onClick={async () => {
-                  try {
-                    const cleanId = sectionForm.Maquinaria._id.$oid || sectionForm.Maquinaria._id || sectionForm.Maquinaria.id;
-                    const url = `http://localhost:8000/api/maquinaria/${cleanId}/`;
-                    const formatDate = (dateStr) => {
-                      if (!dateStr) return '';
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-                      return new Date(dateStr).toISOString().split('T')[0];
-                    };
-                    const maquinariaPayload = {
-                      gestion: sectionForm.Maquinaria?.gestion || '',
-                      detalle: sectionForm.Maquinaria?.detalle || '',
-                      placa: sectionForm.Maquinaria?.placa || '',
-                      unidad: sectionForm.Maquinaria?.unidad || '',
-                      adqui: sectionForm.Maquinaria?.adqui || '',
-                      codigo: sectionForm.Maquinaria?.codigo || '',
-                      tipo: sectionForm.Maquinaria?.tipo || '',
-                      marca: sectionForm.Maquinaria?.marca || '',
-                      modelo: sectionForm.Maquinaria?.modelo || '',
-                      color: sectionForm.Maquinaria?.color || '',
-                      nro_motor: sectionForm.Maquinaria?.nro_motor || '',
-                      nro_chasis: sectionForm.Maquinaria?.nro_chasis || '',
-                      fecha_registro: formatDate(sectionForm.Maquinaria?.fecha_registro),
-                      historial: {
-                        control: {
-                          ubicacion: sectionForm.Control?.ubicacion || '',
-                          gerente: sectionForm.Control?.gerente || '',
-                          encargado: sectionForm.Control?.encargado || '',
-                          hojaTramite: sectionForm.Control?.hojaTramite || '',
-                          fechaIngreso: formatDate(sectionForm.Control?.fechaIngreso),
-                          observacion: sectionForm.Control?.observacion || ''
-                        }
-                      },
-                      actaAsignacion: {
-                        fechaAsignacion: formatDate(sectionForm['Asignación']?.fechaAsignacion),
-                        fechaLiberacion: formatDate(sectionForm['Asignación']?.fechaLiberacion),
-                        recorridoKm: Number(sectionForm['Asignación']?.recorridoKm) || 0,
-                        recorridoEntregado: Number(sectionForm['Asignación']?.recorridoEntregado) || 0
-                      },
-                      mantenimiento: {
-                        tipo: sectionForm.Mantenimiento?.tipo || '',
-                        gestion: sectionForm.Mantenimiento?.gestion || '',
-                        lugarMantenimiento: sectionForm.Mantenimiento?.lugarMantenimiento || ''
-                      },
-                      seguros: {
-                        placa: sectionForm.Seguros?.placa || '',
-                        numero2024: sectionForm.Seguros?.numero2024 || '',
-                        importeAsegurado2024: Number(sectionForm.Seguros?.importeAsegurado2024) || 0,
-                        detalle: sectionForm.Seguros?.detalle || ''
-                      },
-                      itv: {
-                        placa: sectionForm.ITV?.placa || '',
-                        detalle2024: sectionForm.ITV?.detalle2024 || '',
-                        importe2024: Number(sectionForm.ITV?.importe2024) || 0
-                      },
-                      soat: {
-                        placa: sectionForm.SOAT?.placa || '',
-                        importe2024: Number(sectionForm.SOAT?.importe2024) || 0,
-                        importe2025: Number(sectionForm.SOAT?.importe2025) || 0
-                      },
-                      impuestos: {
-                        placa: sectionForm.Impuestos?.placa || '',
-                        importe2023: Number(sectionForm.Impuestos?.importe2023) || 0,
-                        importe2024: Number(sectionForm.Impuestos?.importe2024) || 0
-                      }
-                    };
-                    const cleanData = (obj) => {
-                      Object.keys(obj).forEach(key => {
-                        if (obj[key] === undefined || obj[key] === null || obj[key] === '') {
-                          delete obj[key];
-                        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-                          cleanData(obj[key]);
-                          if (Object.keys(obj[key]).length === 0) {
-                            delete obj[key];
-                          }
-                        }
-                      });
-                      return obj;
-                    };
-                    const cleanedData = cleanData({ ...maquinariaPayload });
-                    const response = await fetch(url, {
-                      method: 'PUT',
-                      headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                      },
-                      body: JSON.stringify(cleanedData),
-                    });
-                    if (!response.ok) {
-                      const errorData = await response.json().catch(() => ({}));
-                      throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${response.statusText}`);
-                    }
-                    fetchMaquinarias();
-                    setSnackbar({ open: true, message: 'Información actualizada', severity: 'success' });
-                  } catch (error) {
-                    setSnackbar({ open: true, message: `Error al guardar: ${error.message}`, severity: 'error' });
-                  }
-                }}>Guardar</Button>
+                <Button 
+                  variant="contained" 
+                  sx={{ 
+                    bgcolor: 'red', 
+                    color: 'white',
+                    minWidth: 120 
+                  }}
+                  onClick={handleDeleteMaquinaria}
+                >
+                  Eliminar
+                </Button>
+                <Button 
+                  variant="contained" 
+                  color="info"
+                  sx={{ minWidth: 120 }}
+                >
+                  Guardar
+                </Button>
               </Box>
             </Paper>
             {renderModal()}
           </Box>
           {/* Panel derecho: imagen y navegación */}
-          <Box sx={{ width: { xs: '100%', md: 260 }, minWidth: { xs: 'auto', md: 200 }, display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 4 }}>
-            <Avatar src={maquinariaImage} sx={{ width: 120, height: 120, mb: 3, boxShadow: 2 }} />
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+          <Box sx={{ 
+            width: { xs: '100%', md: 200 },
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            pt: 4
+          }}>
+            <Avatar 
+              src={selectedImage || sectionForm.Maquinaria?.imagen || maquinariaImage} 
+              sx={{ 
+                width: 100, 
+                height: 100, 
+                mb: 3, 
+                boxShadow: 2,
+                borderRadius: 2
+              }} 
+            />
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1, 
+              width: '100%',
+              px: 1
+            }}>
               {SECTIONS.map(sec => (
                 <Button
                   key={sec}
                   variant={activeSection === sec ? 'contained' : 'outlined'}
                   onClick={() => setActiveSection(sec)}
-                  sx={{ minWidth: 120 }}
-                  fullWidth
+                  sx={{ 
+                    minWidth: 120,
+                    justifyContent: 'flex-start',
+                    py: 1
+                  }}
                 >
                   {sec}
                 </Button>
@@ -509,9 +580,20 @@ const Maquinaria = () => {
         </Box>
       ) : (
         <>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+          <Box sx={{ 
+            display: "flex", 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: "space-between",
+            alignItems: { sm: 'center' },
+            mb: 2,
+            gap: 2
+          }}>
             <Typography variant="h5">Maquinaria</Typography>
-            <Box sx={{ display: "flex", gap: 2 }}>
+            <Box sx={{ 
+              display: "flex", 
+              gap: 2,
+              flexWrap: 'wrap'
+            }}>
               <TextField
                 select
                 label="Mostrar"
@@ -521,15 +603,24 @@ const Maquinaria = () => {
                   setCurrentPage(1);
                 }}
                 size="small"
-                sx={{ width: 120 }}
+                sx={{ width: { xs: '100%', sm: 120 } }}
               >
-                {pageSizeOptions.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option === "Todos" ? "Todos" : `${option} registros`}
-                  </MenuItem>
-                ))}
+                <MenuItem key="Todos" value="Todos">Todos</MenuItem>
+                <MenuItem key="5" value={5}>5 registros</MenuItem>
+                <MenuItem key="10" value={10}>10 registros</MenuItem>
+                <MenuItem key="20" value={20}>20 registros</MenuItem>
+                <MenuItem key="50" value={50}>50 registros</MenuItem>
               </TextField>
-              <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => setNewMaquinariaModalOpen(true)}>
+              <Button 
+                variant="contained" 
+                color="success" 
+                startIcon={<AddIcon />} 
+                onClick={() => setNewMaquinariaModalOpen(true)}
+                sx={{ 
+                  width: { xs: '100%', sm: 'auto' },
+                  whiteSpace: 'nowrap'
+                }}
+              >
                 Nuevo
               </Button>
             </Box>
@@ -546,7 +637,7 @@ const Maquinaria = () => {
             </Box>
           ) : (
             <>
-              <Table sx={{ minWidth: 650 }}>
+              <Table sx={{ minWidth: 650 }} size="medium">
                 <TableHead>
                   <TableRow>
                     <TableCell>Gestión</TableCell>
@@ -562,7 +653,7 @@ const Maquinaria = () => {
                     <TableCell>Nro. Motor</TableCell>
                     <TableCell>Nro. Chasis</TableCell>
                     <TableCell>Fecha Registro</TableCell>
-                    <TableCell align="right">Acciones</TableCell>
+                    <TableCell align="left">Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -593,6 +684,7 @@ const Maquinaria = () => {
                             size="small" 
                             variant="outlined" 
                             color="primary"
+                            sx={{p:0.05}}
                           >
                             Historial
                           </Button>
@@ -603,7 +695,11 @@ const Maquinaria = () => {
                 </TableBody>
               </Table>
               {maquinarias.length > 0 && (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-end', 
+                  mt: 3
+                }}>
                   <Pagination
                     count={totalPages}
                     page={currentPage}

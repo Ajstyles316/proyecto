@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Typography,
@@ -14,33 +15,31 @@ import {
   Modal,
   Paper,
   TextField,
-  Grid
+  Grid,
+  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
-const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
+const AsignacionList = ({ maquinariaId, maquinariaPlaca }) => {
   const [asignaciones, setAsignaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [modalOpen, setModalOpen] = useState(false);
-  const [currentAsignacion, setCurrentAsignacion] = useState(null); // Para editar o crear
+  const [currentAsignacion, setCurrentAsignacion] = useState(null);
   const [modalForm, setModalForm] = useState({});
   const [modalErrors, setModalErrors] = useState({});
 
+  // Campos del formulario con validación
   const fieldLabels = [
-    { name: 'fecha_asignacion', label: 'Fecha Asignación', type: 'date' },
+    { name: 'fecha_asignacion', label: 'Fecha Asignación', type: 'date', required: true },
     { name: 'fecha_liberacion', label: 'Fecha Liberación', type: 'date' },
-    { name: 'recorrido_km', label: 'Recorrido Asignado (Km)', type: 'number' },
+    { name: 'recorrido_km', label: 'Recorrido Asignado (Km)', type: 'number', required: true },
     { name: 'recorrido_entregado', label: 'Recorrido Entregado (Km)', type: 'number' },
   ];
 
-  useEffect(() => {
-    if (maquinariaId) {
-      fetchAsignaciones();
-    }
-  }, [maquinariaId]);
-
-  const fetchAsignaciones = async () => {
+  const fetchAsignaciones = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/`);
@@ -53,7 +52,13 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [maquinariaId]);
+
+  useEffect(() => {
+    if (maquinariaId) {
+      fetchAsignaciones();
+    }
+  }, [maquinariaId, fetchAsignaciones]);
 
   const handleOpenModal = (asignacion = null) => {
     setCurrentAsignacion(asignacion);
@@ -66,11 +71,16 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     setModalOpen(false);
     setCurrentAsignacion(null);
     setModalForm({});
+    setModalErrors({});
   };
 
   const validateForm = () => {
     const errors = {};
-    // Add validation logic here if needed
+    fieldLabels.forEach(field => {
+      if (field.required && !modalForm[field.name]) {
+        errors[field.name] = `${field.label} es obligatorio`;
+      }
+    });
     setModalErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -128,6 +138,12 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES');
+  };
+
   return (
     <Box>
       <Snackbar
@@ -142,14 +158,21 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
       </Snackbar>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Asignaciones para Maquinaria: {maquinariaPlaca}</Typography>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
+        <Typography variant="h6">Asignaciones - {maquinariaPlaca}</Typography>
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenModal()}
+        >
           Nueva Asignación
         </Button>
       </Box>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+          <CircularProgress />
+        </Box>
       ) : asignaciones.length === 0 ? (
         <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
           No hay registros de asignación para esta maquinaria.
@@ -168,13 +191,17 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
           <TableBody>
             {asignaciones.map((asignacion) => (
               <TableRow key={asignacion._id}>
-                <TableCell>{asignacion.fecha_asignacion || ''}</TableCell>
-                <TableCell>{asignacion.fecha_liberacion || ''}</TableCell>
+                <TableCell>{formatDate(asignacion.fecha_asignacion)}</TableCell>
+                <TableCell>{formatDate(asignacion.fecha_liberacion)}</TableCell>
                 <TableCell>{asignacion.recorrido_km || ''}</TableCell>
                 <TableCell>{asignacion.recorrido_entregado || ''}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" variant="outlined" onClick={() => handleOpenModal(asignacion)}>Editar</Button>
-                  <Button size="small" variant="outlined" color="error" sx={{ ml: 1 }} onClick={() => handleDelete(asignacion._id)}>Eliminar</Button>
+                  <IconButton size="small" color="primary" onClick={() => handleOpenModal(asignacion)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="small" color="error" onClick={() => handleDelete(asignacion._id)}>
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -182,9 +209,20 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
         </Table>
       )}
 
+      {/* Modal de formulario */}
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 4, width: '90%', maxWidth: 600 }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentAsignacion ? 'Editar Asignación' : 'Nueva Asignación'}</Typography>
+        <Paper sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          p: 4,
+          width: '90%',
+          maxWidth: 600
+        }}>
+          <Typography variant="h6" sx={{ mb: 3 }}>
+            {currentAsignacion ? 'Editar Asignación' : 'Nueva Asignación'}
+          </Typography>
           <Grid container spacing={2}>
             {fieldLabels.map((field) => (
               <Grid item xs={12} key={field.name}>
@@ -198,6 +236,7 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
                   InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
                   error={!!modalErrors[field.name]}
                   helperText={modalErrors[field.name]}
+                  required={field.required}
                 />
               </Grid>
             ))}
@@ -211,5 +250,8 @@ const AsignacionList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     </Box>
   );
 };
-
-export default AsignacionList; 
+AsignacionList.propTypes = {
+  maquinariaId: PropTypes.string.isRequired,
+  maquinariaPlaca: PropTypes.string.isRequired,
+};
+export default AsignacionList;

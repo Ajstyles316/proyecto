@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Typography,
@@ -7,40 +8,38 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  CircularProgress,
-  Snackbar,
-  Alert,
+  TextField,
   Button,
   Modal,
   Paper,
-  TextField,
-  Grid
+  Snackbar,
+  CircularProgress,
+  Alert,
+  Grid,
+  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
+const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
   const [seguros, setSeguros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [modalOpen, setModalOpen] = useState(false);
-  const [currentSeguro, setCurrentSeguro] = useState(null); // Para editar o crear
+  const [currentSeguro, setCurrentSeguro] = useState(null);
   const [modalForm, setModalForm] = useState({});
   const [modalErrors, setModalErrors] = useState({});
 
+  // Campos del formulario con validación
   const fieldLabels = [
-    { name: 'placa', label: 'Placa' },
-    { name: 'numero_poliza', label: 'Número Póliza' },
-    { name: 'importe', label: 'Importe Asegurado', type: 'number' },
-    { name: 'detalle', label: 'Detalle' },
+    { name: 'numero_2024', label: 'N° 2024', required: true },
+    { name: 'importe', label: 'Importe', type: 'number', required: true },
+    { name: 'detalle', label: 'Detalle', required: false },
   ];
 
-  useEffect(() => {
-    if (maquinariaId) {
-      fetchSeguros();
-    }
-  }, [maquinariaId]);
-
-  const fetchSeguros = async () => {
+  const fetchSeguros = useCallback(async () => {
+    if (!maquinariaId) return;
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`);
@@ -53,7 +52,11 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [maquinariaId]);
+
+  useEffect(() => {
+    fetchSeguros();
+  }, [fetchSeguros]);
 
   const handleOpenModal = (seguro = null) => {
     setCurrentSeguro(seguro);
@@ -66,11 +69,16 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     setModalOpen(false);
     setCurrentSeguro(null);
     setModalForm({});
+    setModalErrors({});
   };
 
   const validateForm = () => {
     const errors = {};
-    // Add validation logic here if needed
+    fieldLabels.forEach(field => {
+      if (field.required && !modalForm[field.name]) {
+        errors[field.name] = `${field.label} es obligatorio`;
+      }
+    });
     setModalErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -92,15 +100,13 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     try {
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || 'Error en la operación');
+        throw new Error(errorData.error || 'Error en la operación');
       }
 
       setSnackbar({ open: true, message: `Seguro ${currentSeguro ? 'actualizado' : 'creado'} exitosamente!`, severity: 'success' });
@@ -112,7 +118,7 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
+    if (!window.confirm('¿Eliminar este seguro?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${id}/`, {
         method: 'DELETE',
@@ -127,19 +133,12 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
 
   return (
     <Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Seguros para Maquinaria: {maquinariaPlaca}</Typography>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Seguros - {maquinariaPlaca}</Typography>
         <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
           Nuevo Seguro
         </Button>
@@ -148,30 +147,30 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
       ) : seguros.length === 0 ? (
-        <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
-          No hay registros de seguro para esta maquinaria.
-        </Typography>
+        <Typography align="center" sx={{ py: 5 }}>No hay registros de seguro</Typography>
       ) : (
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Placa</TableCell>
-              <TableCell>Número Póliza</TableCell>
-              <TableCell>Importe Asegurado</TableCell>
+              <TableCell>N° 2024</TableCell>
+              <TableCell>Importe</TableCell>
               <TableCell>Detalle</TableCell>
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {seguros.map((seguro) => (
-              <TableRow key={seguro._id}>
-                <TableCell>{seguro.placa || ''}</TableCell>
-                <TableCell>{seguro.numero_poliza || ''}</TableCell>
-                <TableCell>{seguro.importe || ''}</TableCell>
-                <TableCell>{seguro.detalle || ''}</TableCell>
+            {seguros.map((s) => (
+              <TableRow key={s._id}>
+                <TableCell>{s.numero_2024}</TableCell>
+                <TableCell>{s.importe}</TableCell>
+                <TableCell>{s.detalle}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" variant="outlined" onClick={() => handleOpenModal(seguro)}>Editar</Button>
-                  <Button size="small" variant="outlined" color="error" sx={{ ml: 1 }} onClick={() => handleDelete(seguro._id)}>Eliminar</Button>
+                  <IconButton size="small" color="primary" onClick={() => handleOpenModal(s)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="small" color="error" onClick={() => handleDelete(s._id)}>
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -179,12 +178,21 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
         </Table>
       )}
 
+      {/* Modal */}
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 4, width: '90%', maxWidth: 600 }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentSeguro ? 'Editar Seguro' : 'Nuevo Seguro'}</Typography>
+        <Paper sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          p: 4,
+          width: '90%',
+          maxWidth: 600,
+        }}>
+          <Typography variant="h6" sx={{ mb: 3 }}>{currentSeguro ? 'Editar' : 'Nuevo'} Seguro</Typography>
           <Grid container spacing={2}>
             {fieldLabels.map((field) => (
-              <Grid item xs={12} key={field.name}>
+              <Grid item xs={12} sm={6} key={field.name}>
                 <TextField
                   fullWidth
                   label={field.label}
@@ -192,15 +200,14 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
                   type={field.type || 'text'}
                   value={modalForm[field.name] || ''}
                   onChange={(e) => setModalForm({ ...modalForm, [field.name]: e.target.value })}
-                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-                  disabled={field.name === 'placa'}
                   error={!!modalErrors[field.name]}
-                  helperText={modalErrors[field.name]}
+                  helperText={modalErrors[field.name] || ''}
+                  required={field.required}
                 />
               </Grid>
             ))}
           </Grid>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
             <Button onClick={handleCloseModal}>Cancelar</Button>
             <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
           </Box>
@@ -210,4 +217,9 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
   );
 };
 
-export default SeguroList; 
+SeguroList.propTypes = {
+  maquinariaId: PropTypes.string.isRequired,
+  maquinariaPlaca: PropTypes.string.isRequired,
+};
+
+export default SeguroList;

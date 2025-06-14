@@ -94,7 +94,8 @@ class MaquinariaListView(APIView):
                 # Convert date to datetime for MongoDB
                 if 'fecha_registro' in validated_data:
                     validated_data['fecha_registro'] = datetime.combine(validated_data['fecha_registro'], datetime.min.time())
-                
+                if 'imagen' in data:
+                    validated_data['imagen'] = data['imagen']
                 result = maquinaria_collection.insert_one(validated_data)
                 new_maquinaria = maquinaria_collection.find_one({"_id": result.inserted_id})
                 return Response(serialize_doc(new_maquinaria), status=status.HTTP_201_CREATED)
@@ -176,6 +177,7 @@ class MaquinariaDetailView(APIView):
             # Convertir fechas a datetime
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Datos convertidos: {validated_data}")
+            
 
             # Actualizar en MongoDB
             maquinaria_collection.update_one(
@@ -263,12 +265,10 @@ class MaquinariaOptionsView(APIView):
             logger.error(f"Error al obtener opciones: {str(e)}")
             return Response({"error": f"Error al obtener opciones: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-# --- Vistas para Sub-Secciones (CRUD completo) ---
 
-# Base APIView para operaciones de lista/creación de sub-secciones
 class BaseSectionAPIView(APIView):
-    collection_class = None # Debe ser una clase como HistorialControl
-    serializer_class = None # Debe ser un serializador como HistorialControlSerializer
+    collection_class = None 
+    serializer_class = None 
     
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -495,49 +495,572 @@ class ActaAsignacionListView(BaseSectionAPIView):
     collection_class = ActaAsignacion
     serializer_class = ActaAsignacionSerializer
 
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('acta_asignacion')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"Datos convertidos: {validated_data}")
+
+            collection = get_collection('acta_asignacion')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear asignación: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class ActaAsignacionDetailView(BaseSectionDetailAPIView):
     collection_class = ActaAsignacion
     serializer_class = ActaAsignacionSerializer
+
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('acta_asignacion')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('acta_asignacion')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        serializer = self.serializer_class(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            validated_data = self.convert_date_to_datetime(validated_data)
+
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('acta_asignacion')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class MantenimientoListView(BaseSectionAPIView):
     collection_class = Mantenimiento
     serializer_class = MantenimientoSerializer
 
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('mantenimiento')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection = get_collection('mantenimiento')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear mantenimiento: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class MantenimientoDetailView(BaseSectionDetailAPIView):
     collection_class = Mantenimiento
     serializer_class = MantenimientoSerializer
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('mantenimiento')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Mantenimiento no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('mantenimiento')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Mantenimiento no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        serializer = self.serializer_class(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('mantenimiento')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "Mantenimiento no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SeguroListView(BaseSectionAPIView):
     collection_class = Seguro
     serializer_class = SeguroSerializer
 
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('seguro')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection = get_collection('seguro')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear seguro: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class SeguroDetailView(BaseSectionDetailAPIView):
     collection_class = Seguro
     serializer_class = SeguroSerializer
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('seguro')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('seguro')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        serializer = self.serializer_class(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('seguro')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ITVListView(BaseSectionAPIView):
     collection_class = ITV
     serializer_class = ITVSerializer
 
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('itv')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection = get_collection('itv')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear ITV: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class ITVDetailView(BaseSectionDetailAPIView):
     collection_class = ITV
     serializer_class = ITVSerializer
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('itv')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('itv')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        serializer = self.serializer_class(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('itv')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SOATListView(BaseSectionAPIView):
     collection_class = SOAT
     serializer_class = SOATSerializer
 
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('soat')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection = get_collection('soat')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear SOAT: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class SOATDetailView(BaseSectionDetailAPIView):
     collection_class = SOAT
     serializer_class = SOATSerializer
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('soat')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "SOAT no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('soat')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "SOAT no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        serializer = self.serializer_class(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('soat')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "SOAT no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ImpuestoListView(BaseSectionAPIView):
     collection_class = Impuesto
     serializer_class = ImpuestoSerializer
 
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('impuesto')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection = get_collection('impuesto')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear impuesto: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class ImpuestoDetailView(BaseSectionDetailAPIView):
     collection_class = Impuesto
     serializer_class = ImpuestoSerializer
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('impuesto')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('impuesto')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        serializer = self.serializer_class(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('impuesto')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # --- Views de Autenticación y Dashboard (ya son APIView) ---
 

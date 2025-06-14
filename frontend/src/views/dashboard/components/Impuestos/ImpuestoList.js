@@ -1,45 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Typography,
+  CircularProgress,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  CircularProgress,
-  Snackbar,
-  Alert,
+  TextField,
   Button,
   Modal,
   Paper,
-  TextField,
-  Grid
+  Snackbar,
+  Alert,
+  Grid,
+  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
+const ImpuestoList = ({ maquinariaId, maquinariaPlaca }) => {
   const [impuestos, setImpuestos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [modalOpen, setModalOpen] = useState(false);
-  const [currentImpuesto, setCurrentImpuesto] = useState(null); // For edit or create
+  const [currentImpuesto, setCurrentImpuesto] = useState(null);
   const [modalForm, setModalForm] = useState({});
   const [modalErrors, setModalErrors] = useState({});
 
   const fieldLabels = [
-    { name: 'placa', label: 'Placa' },
-    { name: 'importe_2023', label: 'Importe 2023', type: 'number' },
-    { name: 'importe_2024', label: 'Importe 2024', type: 'number' },
+    { name: 'importe_2023', label: 'Importe 2023', type: 'number', required: true },
+    { name: 'importe_2024', label: 'Importe 2024', type: 'number', required: true },
   ];
 
-  useEffect(() => {
-    if (maquinariaId) {
-      fetchImpuestos();
-    }
-  }, [maquinariaId]);
-
-  const fetchImpuestos = async () => {
+  const fetchImpuestos = useCallback(async () => {
+    if (!maquinariaId) return;
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`);
@@ -52,7 +50,11 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [maquinariaId]);
+
+  useEffect(() => {
+    fetchImpuestos();
+  }, [fetchImpuestos]);
 
   const handleOpenModal = (impuesto = null) => {
     setCurrentImpuesto(impuesto);
@@ -65,11 +67,16 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     setModalOpen(false);
     setCurrentImpuesto(null);
     setModalForm({});
+    setModalErrors({});
   };
 
   const validateForm = () => {
     const errors = {};
-    // Add validation logic here if needed
+    fieldLabels.forEach(field => {
+      if (field.required && !modalForm[field.name]) {
+        errors[field.name] = `${field.label} es obligatorio`;
+      }
+    });
     setModalErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -92,15 +99,13 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
     try {
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || 'Error en la operación');
+        throw new Error(errorData.error || 'Error en la operación');
       }
 
       setSnackbar({ open: true, message: `Impuesto ${currentImpuesto ? 'actualizado' : 'creado'} exitosamente!`, severity: 'success' });
@@ -112,7 +117,7 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
+    if (!window.confirm('¿Eliminar este impuesto?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${id}/`, {
         method: 'DELETE',
@@ -127,19 +132,12 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
 
   return (
     <Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Impuestos para Maquinaria: {maquinariaPlaca}</Typography>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Impuestos - {maquinariaPlaca}</Typography>
         <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
           Nuevo Impuesto
         </Button>
@@ -148,28 +146,28 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
       ) : impuestos.length === 0 ? (
-        <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
-          No hay registros de impuestos para esta maquinaria.
-        </Typography>
+        <Typography align="center" sx={{ py: 5 }}>No hay registros de impuestos</Typography>
       ) : (
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Placa</TableCell>
               <TableCell>Importe 2023</TableCell>
               <TableCell>Importe 2024</TableCell>
               <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {impuestos.map((impuesto) => (
-              <TableRow key={impuesto._id}>
-                <TableCell>{impuesto.placa || ''}</TableCell>
-                <TableCell>{impuesto.importe_2023 || ''}</TableCell>
-                <TableCell>{impuesto.importe_2024 || ''}</TableCell>
+            {impuestos.map((i) => (
+              <TableRow key={i._id}>
+                <TableCell>{i.importe_2023}</TableCell>
+                <TableCell>{i.importe_2024}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" variant="outlined" onClick={() => handleOpenModal(impuesto)}>Editar</Button>
-                  <Button size="small" variant="outlined" color="error" sx={{ ml: 1 }} onClick={() => handleDelete(impuesto._id)}>Eliminar</Button>
+                  <IconButton size="small" color="primary" onClick={() => handleOpenModal(i)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="small" color="error" onClick={() => handleDelete(i._id)}>
+                    <DeleteIcon />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}
@@ -177,12 +175,21 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
         </Table>
       )}
 
+      {/* Modal */}
       <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', p: 4, width: '90%', maxWidth: 600 }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentImpuesto ? 'Editar Impuesto' : 'Nuevo Impuesto'}</Typography>
+        <Paper sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          p: 4,
+          width: '90%',
+          maxWidth: 600,
+        }}>
+          <Typography variant="h6" sx={{ mb: 3 }}>{currentImpuesto ? 'Editar' : 'Nuevo'} Impuesto</Typography>
           <Grid container spacing={2}>
             {fieldLabels.map((field) => (
-              <Grid item xs={12} key={field.name}>
+              <Grid item xs={12} sm={6} key={field.name}>
                 <TextField
                   fullWidth
                   label={field.label}
@@ -190,15 +197,14 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
                   type={field.type || 'text'}
                   value={modalForm[field.name] || ''}
                   onChange={(e) => setModalForm({ ...modalForm, [field.name]: e.target.value })}
-                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-                  disabled={field.name === 'placa'}
                   error={!!modalErrors[field.name]}
-                  helperText={modalErrors[field.name]}
+                  helperText={modalErrors[field.name] || ''}
+                  required={field.required}
                 />
               </Grid>
             ))}
           </Grid>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
             <Button onClick={handleCloseModal}>Cancelar</Button>
             <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
           </Box>
@@ -208,4 +214,9 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca, onNewRecord }) => {
   );
 };
 
-export default ImpuestoList; 
+ImpuestoList.propTypes = {
+  maquinariaId: PropTypes.string.isRequired,
+  maquinariaPlaca: PropTypes.string.isRequired,
+};
+
+export default ImpuestoList;
