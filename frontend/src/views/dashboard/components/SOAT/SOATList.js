@@ -160,7 +160,7 @@ const SOATList = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">SOAT - {maquinariaPlaca}</Typography>
+        <Typography variant="h6">SOAT</Typography>
         <Button 
           variant="contained" 
           color={showForm ? "error" : "success"}

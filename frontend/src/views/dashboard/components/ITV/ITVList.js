@@ -148,7 +148,7 @@ const ITVList = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">ITV - {maquinariaPlaca}</Typography>
+        <Typography variant="h6">ITV </Typography>
         <Button 
           variant="contained" 
           color={showForm ? "error" : "success"}

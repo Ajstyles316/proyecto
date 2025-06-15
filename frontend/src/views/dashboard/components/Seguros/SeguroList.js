@@ -158,7 +158,7 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">Seguros - {maquinariaPlaca}</Typography>
+        <Typography variant="h6">Seguros</Typography>
         <Button 
           variant="contained" 
           color={showForm ? "error" : "success"}

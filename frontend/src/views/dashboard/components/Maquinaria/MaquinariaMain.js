@@ -23,13 +23,13 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 // Importar componentes de secciones
-import ControlList from "../Control/ControlList";
-import AsignacionList from "../Asignacion/AsignacionList";
-import MantenimientoList from "../Mantenimiento/MantenimientoList";
-import SeguroList from "../Seguros/SeguroList";
-import ITVList from "../ITV/ITVList";
-import SOATList from "../SOAT/SOATList";
-import ImpuestoList from "../Impuestos/ImpuestoList";
+import ControlMain from "../Control/ControlMain";
+import AsignacionMain from "../Asignacion/AsignacionMain";
+import MantenimientoMain from "../Mantenimiento/MantenimientoMain";
+import SeguroMain from "../Seguros/SeguroMain";
+import ITVMain from "../ITV/ITVMain";
+import SOATMain from "../SOAT/SOATMain";
+import ImpuestoMain from "../Impuestos/ImpuestoMain";
 
 // Definición de secciones y formularios
 const SECTIONS = [
@@ -209,7 +209,7 @@ const Maquinaria = () => {
   const handleUpdateMaquinaria = async () => {
     const errors = {};
     fieldLabels.Maquinaria.forEach(field => {
-      if (!['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis', 'imagen'].includes(field.name)) {
+      if (!['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis'].includes(field.name)) {
         if (!sectionForm.Maquinaria[field.name] || !sectionForm.Maquinaria[field.name].toString().trim()) {
           errors[field.name] = 'Este campo es obligatorio';
         }
@@ -263,63 +263,28 @@ const Maquinaria = () => {
 
   // Renderizar el formulario de la sección activa
   const renderSectionForm = () => {
-    const fields = fieldLabels[activeSection];
-    const values = sectionForm[activeSection] || {};
-    
+    const maquinariaId = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
+    const maquinariaPlaca = sectionForm.Maquinaria?.placa;
+
     switch (activeSection) {
       case 'Control':
-        return (
-          <ControlList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
+        return <ControlMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Asignación':
-        return (
-          <AsignacionList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
+        return <AsignacionMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Mantenimiento':
-        return (
-          <MantenimientoList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
+        return <MantenimientoMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Seguros':
-        return (
-          <SeguroList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
+        return <SeguroMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'ITV':
-        return (
-          <ITVList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
-      case 'SOAT':
-        return (
-          <SOATList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
+        return <ITVMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Impuestos':
-        return (
-          <ImpuestoList
-            maquinariaId={sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id}
-            maquinariaPlaca={sectionForm.Maquinaria?.placa || ''}
-          />
-        );
+        return <ImpuestoMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
+      case 'SOAT':
+        return <SOATMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       default:
         return (
           <Grid container spacing={2}>
-            {fields.map((field) => (
+            {fieldLabels.Maquinaria.map((field) => (
               <Grid item xs={12} md={6} key={field.name}>
                 {field.name === 'imagen' ? (
                   <>
@@ -336,7 +301,7 @@ const Maquinaria = () => {
                     label={field.label}
                     name={field.name}
                     type={field.type || 'text'}
-                    value={values[field.name] || ''}
+                    value={sectionForm.Maquinaria[field.name] || ''}
                     onChange={e => {
                       setSectionForm((prev) => ({
                         ...prev,
@@ -604,7 +569,7 @@ const Maquinaria = () => {
                     }}
                     onClick={() => setDetailView(false)}
                   >
-                    Cancelar
+                    Volver
                   </Button>
                   <Button 
                     variant="contained" 

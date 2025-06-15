@@ -154,7 +154,7 @@ const ImpuestoList = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">Impuestos - {maquinariaPlaca}</Typography>
+        <Typography variant="h6">Impuestos</Typography>
         <Button 
           variant="contained" 
           color={showForm ? "error" : "success"} 
