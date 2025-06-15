@@ -9,16 +9,14 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Button,
-  Modal,
-  Paper,
-  Snackbar,
   CircularProgress,
+  Button,
+  Snackbar,
   Alert,
   Grid,
-  IconButton
+  IconButton,
+  Paper
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -26,12 +24,11 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
   const [seguros, setSeguros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [modalOpen, setModalOpen] = useState(false);
-  const [currentSeguro, setCurrentSeguro] = useState(null);
-  const [modalForm, setModalForm] = useState({});
-  const [modalErrors, setModalErrors] = useState({});
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
+  const [editingSeguro, setEditingSeguro] = useState(null);
 
-  // Campos del formulario con validación
   const fieldLabels = [
     { name: 'numero_2024', label: 'N° 2024', required: true },
     { name: 'importe', label: 'Importe', type: 'number', required: true },
@@ -58,43 +55,48 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
     fetchSeguros();
   }, [fetchSeguros]);
 
-  const handleOpenModal = (seguro = null) => {
-    setCurrentSeguro(seguro);
-    setModalForm(seguro ? { ...seguro } : {});
-    setModalErrors({});
-    setModalOpen(true);
+  const handleResetForm = () => {
+    setForm({});
+    setErrors({});
+    setShowForm(false);
+    setEditingSeguro(null);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setCurrentSeguro(null);
-    setModalForm({});
-    setModalErrors({});
+  const handleOpenEditForm = (seguro = null) => {
+    if (seguro) {
+      setForm({ ...seguro });
+      setEditingSeguro(seguro);
+    } else {
+      setForm({});
+      setEditingSeguro(null);
+    }
+    setErrors({});
+    setShowForm(true);
   };
 
   const validateForm = () => {
-    const errors = {};
+    const newErrors = {};
     fieldLabels.forEach(field => {
-      if (field.required && !modalForm[field.name]) {
-        errors[field.name] = `${field.label} es obligatorio`;
+      if (field.required && !form[field.name]) {
+        newErrors[field.name] = `${field.label} es obligatorio`;
       }
     });
-    setModalErrors(errors);
-    return Object.keys(errors).length === 0;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    const method = currentSeguro ? 'PUT' : 'POST';
-    const url = currentSeguro
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${currentSeguro._id}/`
+    const method = editingSeguro ? 'PUT' : 'POST';
+    const url = editingSeguro
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${editingSeguro._id}/`
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`;
 
     const payload = {
-      ...modalForm,
+      ...form,
       maquinaria: maquinariaId,
-      importe: Number(modalForm.importe) || 0,
+      importe: Number(form.importe) || 0,
     };
 
     try {
@@ -109,11 +111,20 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
         throw new Error(errorData.error || 'Error en la operación');
       }
 
-      setSnackbar({ open: true, message: `Seguro ${currentSeguro ? 'actualizado' : 'creado'} exitosamente!`, severity: 'success' });
-      handleCloseModal();
+      setSnackbar({ 
+        open: true, 
+        message: `Seguro ${editingSeguro ? 'actualizado' : 'creado'} exitosamente!`, 
+        severity: 'success' 
+      });
+      
+      handleResetForm();
       fetchSeguros();
     } catch (error) {
-      setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+      setSnackbar({ 
+        open: true, 
+        message: `Error: ${error.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
@@ -133,17 +144,75 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
 
   return (
     <Box>
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
-
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2,
+        flexWrap: 'wrap'
+      }}>
         <Typography variant="h6">Seguros - {maquinariaPlaca}</Typography>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
-          Nuevo Seguro
+        <Button 
+          variant="contained" 
+          color={showForm ? "error" : "success"}
+          onClick={() => {
+            handleOpenEditForm(null);
+            setShowForm(!showForm);
+          }}
+        >
+          {showForm ? 'Cancelar' : 'Nuevo Seguro'}
         </Button>
       </Box>
 
+      {/* Formulario arriba de la tabla */}
+      {showForm && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>
+            {editingSeguro ? 'Editar Seguro' : 'Nuevo Registro'}
+          </Typography>
+          <Grid container spacing={2}>
+            {fieldLabels.map((field) => (
+              <Grid item xs={12} sm={6} key={field.name}>
+                <TextField
+                  fullWidth
+                  label={field.label}
+                  name={field.name}
+                  type={field.type || 'text'}
+                  value={form[field.name] || ''}
+                  onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                  error={!!errors[field.name]}
+                  helperText={errors[field.name]}
+                  required={field.required}
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: 2, 
+            mt: 3,
+            flexWrap: 'wrap'
+          }}>
+            <Button 
+              variant="contained" 
+              color="success"
+              onClick={handleSubmit}
+            >
+              {editingSeguro ? 'Actualizar' : 'Guardar'}
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Tabla */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
       ) : seguros.length === 0 ? (
@@ -152,6 +221,7 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Placa</TableCell>
               <TableCell>N° 2024</TableCell>
               <TableCell>Importe</TableCell>
               <TableCell>Detalle</TableCell>
@@ -161,14 +231,23 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
           <TableBody>
             {seguros.map((s) => (
               <TableRow key={s._id}>
+                <TableCell>{maquinariaPlaca}</TableCell>
                 <TableCell>{s.numero_2024}</TableCell>
                 <TableCell>{s.importe}</TableCell>
                 <TableCell>{s.detalle}</TableCell>
                 <TableCell align="right">
-                  <IconButton size="small" color="primary" onClick={() => handleOpenModal(s)}>
+                  <IconButton 
+                    size="small" 
+                    color="primary" 
+                    onClick={() => handleOpenEditForm(s)}
+                  >
                     <EditIcon />
                   </IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDelete(s._id)}>
+                  <IconButton 
+                    size="small" 
+                    color="error" 
+                    onClick={() => handleDelete(s._id)}
+                  >
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -177,42 +256,6 @@ const SeguroList = ({ maquinariaId, maquinariaPlaca }) => {
           </TableBody>
         </Table>
       )}
-
-      {/* Modal */}
-      <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          p: 4,
-          width: '90%',
-          maxWidth: 600,
-        }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentSeguro ? 'Editar' : 'Nuevo'} Seguro</Typography>
-          <Grid container spacing={2}>
-            {fieldLabels.map((field) => (
-              <Grid item xs={12} sm={6} key={field.name}>
-                <TextField
-                  fullWidth
-                  label={field.label}
-                  name={field.name}
-                  type={field.type || 'text'}
-                  value={modalForm[field.name] || ''}
-                  onChange={(e) => setModalForm({ ...modalForm, [field.name]: e.target.value })}
-                  error={!!modalErrors[field.name]}
-                  helperText={modalErrors[field.name] || ''}
-                  required={field.required}
-                />
-              </Grid>
-            ))}
-          </Grid>
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button onClick={handleCloseModal}>Cancelar</Button>
-            <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
-          </Box>
-        </Paper>
-      </Modal>
     </Box>
   );
 };

@@ -18,7 +18,8 @@ import {
   Snackbar,
   Alert,
   Grid,
-  Paper
+  Paper,
+  TableContainer
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 // Importar componentes de secciones
@@ -145,6 +146,7 @@ const Maquinaria = () => {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${cleanId}/`);
       if (!response.ok) throw new Error('Error al cargar detalles');
       const data = await response.json();
+      
       setSectionForm({
         Maquinaria: { ...data, imagen: data.imagen || '' },
         Control: { ...data.historial?.control },
@@ -185,13 +187,16 @@ const Maquinaria = () => {
       setSnackbar({ open: true, message: 'ID de maquinaria no encontrado', severity: 'error' });
       return;
     }
+    
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${id}/`, {
         method: 'DELETE',
       });
+      
       if (!response.ok) {
         throw new Error('Error al eliminar la maquinaria');
       }
+      
       setSnackbar({ open: true, message: 'Maquinaria eliminada exitosamente', severity: 'success' });
       setDetailView(false);
       fetchMaquinarias(); // Refrescar lista
@@ -200,10 +205,67 @@ const Maquinaria = () => {
     }
   };
 
+  // Actualizar maquinaria
+  const handleUpdateMaquinaria = async () => {
+    const errors = {};
+    fieldLabels.Maquinaria.forEach(field => {
+      if (!['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis', 'imagen'].includes(field.name)) {
+        if (!sectionForm.Maquinaria[field.name] || !sectionForm.Maquinaria[field.name].toString().trim()) {
+          errors[field.name] = 'Este campo es obligatorio';
+        }
+      }
+    });
+    
+    if (Object.keys(errors).length > 0) {
+      setNewMaquinariaErrors(errors);
+      return;
+    }
+
+    try {
+      const formattedData = {
+        ...sectionForm.Maquinaria,
+        fecha_registro: sectionForm.Maquinaria.fecha_registro ? 
+          new Date(sectionForm.Maquinaria.fecha_registro).toISOString().split('T')[0] : '',
+      };
+
+      const cleanData = (obj) => {
+        const newObj = {};
+        Object.keys(obj).forEach(key => {
+          if (obj[key] !== undefined && obj[key] !== null && obj[key] !== '') {
+            newObj[key] = obj[key];
+          }
+        });
+        return newObj;
+      };
+
+      const cleanedData = cleanData(formattedData);
+      
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${sectionForm.Maquinaria._id?.$oid || sectionForm.Maquinaria._id}/`, {
+        method: 'PUT',
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(cleanedData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      setSnackbar({ open: true, message: 'Maquinaria actualizada exitosamente', severity: 'success' });
+      fetchMaquinarias();
+    } catch (error) {
+      setSnackbar({ open: true, message: `Error al actualizar maquinaria: ${error.message}`, severity: 'error' });
+    }
+  };
+
   // Renderizar el formulario de la sección activa
   const renderSectionForm = () => {
     const fields = fieldLabels[activeSection];
     const values = sectionForm[activeSection] || {};
+    
     switch (activeSection) {
       case 'Control':
         return (
@@ -260,12 +322,14 @@ const Maquinaria = () => {
             {fields.map((field) => (
               <Grid item xs={12} md={6} key={field.name}>
                 {field.name === 'imagen' ? (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    style={{ marginTop: '8px' }}
-                  />
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      style={{ marginTop: '8px' }}
+                    />
+                  </>
                 ) : (
                   <TextField
                     fullWidth
@@ -273,13 +337,27 @@ const Maquinaria = () => {
                     name={field.name}
                     type={field.type || 'text'}
                     value={values[field.name] || ''}
-                    onChange={e => setSectionForm((prev) => ({
-                      ...prev,
-                      [activeSection]: {
-                        ...prev[activeSection],
-                        [field.name]: e.target.value,
-                      },
-                    }))}
+                    onChange={e => {
+                      setSectionForm((prev) => ({
+                        ...prev,
+                        [activeSection]: {
+                          ...prev[activeSection],
+                          [field.name]: e.target.value,
+                        },
+                      }));
+                      
+                      // Validación en tiempo real
+                      if (!e.target.value && !['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis', 'imagen'].includes(field.name)) {
+                        setNewMaquinariaErrors({
+                          ...newMaquinariaErrors,
+                          [field.name]: 'Este campo es obligatorio'
+                        });
+                      } else {
+                        const newErrors = { ...newMaquinariaErrors };
+                        delete newErrors[field.name];
+                        setNewMaquinariaErrors(newErrors);
+                      }
+                    }}
                     size="small"
                     error={!!newMaquinariaErrors[field.name]}
                     helperText={newMaquinariaErrors[field.name] || ''}
@@ -358,17 +436,23 @@ const Maquinaria = () => {
         }
       }
     });
+    
     setNewMaquinariaErrors(errors);
     if (Object.keys(errors).length > 0) return;
+    
     try {
       const formattedData = {
         ...newMaquinariaForm,
-        fecha_registro: newMaquinariaForm.fecha_registro ? new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0] : '',
+        fecha_registro: newMaquinariaForm.fecha_registro ? 
+          new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0] : '',
       };
+      
       if (newMaquinariaForm.imagen) {
         formattedData.imagen = newMaquinariaForm.imagen;
       }
+      
       const cleanData = (obj) => {
+
         Object.keys(obj).forEach(key => {
           if (obj[key] === undefined || obj[key] === null || obj[key] === '') {
             delete obj[key];
@@ -381,7 +465,9 @@ const Maquinaria = () => {
         });
         return obj;
       };
+      
       const cleanedData = cleanData(formattedData);
+      
       const response = await fetch("http://localhost:8000/api/maquinaria/", {
         method: 'POST',
         headers: {
@@ -390,10 +476,12 @@ const Maquinaria = () => {
         },
         body: JSON.stringify(cleanedData)
       });
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
+      
       setNewMaquinariaModalOpen(false);
       setNewMaquinariaForm(() => {
         const initialForm = {};
@@ -464,6 +552,7 @@ const Maquinaria = () => {
 
   // Paginación y datos mostrados
   const totalPages = pageSize === "Todos" ? 1 : Math.ceil(maquinarias.length / parseInt(pageSize, 10));
+  
   const getDisplayedData = () => {
     if (!Array.isArray(maquinarias)) return [];
     if (pageSize === "Todos") return maquinarias;
@@ -484,6 +573,7 @@ const Maquinaria = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
       {detailView ? (
         <Box sx={{ 
           display: 'flex', 
@@ -494,48 +584,53 @@ const Maquinaria = () => {
           {/* Panel principal: formulario */}
           <Box sx={{ flex: 1 }}>
             <Paper sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h5" sx={{ mb: 3 }}>Historial de {activeSection}</Typography>
               {renderSectionForm()}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'flex-end', 
-                gap: 1, 
-                mt: 3,
-                flexWrap: 'wrap'
-              }}>
-                <Button 
-                  variant="contained" 
-                  sx={{ 
-                    bgcolor: 'yellow', 
-                    color: 'black',
-                    minWidth: 120 
-                  }}
-                  onClick={() => setDetailView(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  variant="contained" 
-                  sx={{ 
-                    bgcolor: 'red', 
-                    color: 'white',
-                    minWidth: 120 
-                  }}
-                  onClick={handleDeleteMaquinaria}
-                >
-                  Eliminar
-                </Button>
-                <Button 
-                  variant="contained" 
-                  color="info"
-                  sx={{ minWidth: 120 }}
-                >
-                  Guardar
-                </Button>
-              </Box>
+              
+              {/* Mostrar botones solo en la sección Maquinaria */}
+              {activeSection === 'Maquinaria' && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-end', 
+                  gap: 1, 
+                  mt: 3,
+                  flexWrap: 'wrap'
+                }}>
+                  <Button 
+                    variant="contained" 
+                    sx={{ 
+                      bgcolor: 'yellow', 
+                      color: 'black',
+                      minWidth: 120 
+                    }}
+                    onClick={() => setDetailView(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    variant="contained" 
+                    sx={{ 
+                      bgcolor: 'red', 
+                      color: 'white',
+                      minWidth: 120 
+                    }}
+                    onClick={handleDeleteMaquinaria}
+                  >
+                    Eliminar
+                  </Button>
+                  <Button 
+                    variant="contained" 
+                    color="info"
+                    sx={{ minWidth: 120 }}
+                    onClick={handleUpdateMaquinaria}
+                  >
+                    Guardar
+                  </Button>
+                </Box>
+              )}
             </Paper>
             {renderModal()}
           </Box>
+          
           {/* Panel derecho: imagen y navegación */}
           <Box sx={{ 
             width: { xs: '100%', md: 200 },
@@ -610,6 +705,7 @@ const Maquinaria = () => {
                 <MenuItem key="10" value={10}>10 registros</MenuItem>
                 <MenuItem key="20" value={20}>20 registros</MenuItem>
                 <MenuItem key="50" value={50}>50 registros</MenuItem>
+                <MenuItem key="100" value={100}>100 registros</MenuItem>
               </TextField>
               <Button 
                 variant="contained" 
@@ -625,6 +721,7 @@ const Maquinaria = () => {
               </Button>
             </Box>
           </Box>
+
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
               <CircularProgress />
@@ -637,63 +734,66 @@ const Maquinaria = () => {
             </Box>
           ) : (
             <>
-              <Table sx={{ minWidth: 650 }} size="medium">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Gestión</TableCell>
-                    <TableCell>Placa</TableCell>
-                    <TableCell>Detalle</TableCell>
-                    <TableCell>Unidad</TableCell>
-                    <TableCell>Adqui.</TableCell>
-                    <TableCell>Código</TableCell>
-                    <TableCell>Tipo</TableCell>
-                    <TableCell>Marca</TableCell>
-                    <TableCell>Modelo</TableCell>
-                    <TableCell>Color</TableCell>
-                    <TableCell>Nro. Motor</TableCell>
-                    <TableCell>Nro. Chasis</TableCell>
-                    <TableCell>Fecha Registro</TableCell>
-                    <TableCell align="left">Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {getDisplayedData().map((m) => {
-                    const id = m._id?.$oid || m._id || m.id;
-                    if (!id) return null;
-                    const cleanId = id.toString().replace(/[^a-zA-Z0-9]/g, '');
-                    return (
-                      <TableRow key={cleanId}>
-                        <TableCell>{m.gestion || ''}</TableCell>
-                        <TableCell>{m.placa || ''}</TableCell>
-                        <TableCell>{m.detalle || ''}</TableCell>
-                        <TableCell>{m.unidad || ''}</TableCell>
-                        <TableCell>{m.adqui || ''}</TableCell>
-                        <TableCell>{m.codigo || ''}</TableCell>
-                        <TableCell>{m.tipo || ''}</TableCell>
-                        <TableCell>{m.marca || ''}</TableCell>
-                        <TableCell>{m.modelo || ''}</TableCell>
-                        <TableCell>{m.color || ''}</TableCell>
-                        <TableCell>{m.nro_motor || ''}</TableCell>
-                        <TableCell>{m.nro_chasis || ''}</TableCell>
-                        <TableCell>
-                          {m.fecha_registro ? new Date(m.fecha_registro).toLocaleDateString() : ''}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Button 
-                            onClick={() => handleDetailsClick(cleanId)}
-                            size="small" 
-                            variant="outlined" 
-                            color="primary"
-                            sx={{p:0.05}}
-                          >
-                            Historial
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <TableContainer sx={{ width: '100%', overflowX: 'auto' }}>
+                <Table stickyHeader sx={{ minWidth: 800 }} size="medium">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Gestión</TableCell>
+                      <TableCell>Placa</TableCell>
+                      <TableCell>Detalle</TableCell>
+                      <TableCell>Unidad</TableCell>
+                      <TableCell>Adqui.</TableCell>
+                      <TableCell>Código</TableCell>
+                      <TableCell>Tipo</TableCell>
+                      <TableCell>Marca</TableCell>
+                      <TableCell>Modelo</TableCell>
+                      <TableCell>Color</TableCell>
+                      <TableCell>Nro. Motor</TableCell>
+                      <TableCell>Nro. Chasis</TableCell>
+                      <TableCell>Fecha Registro</TableCell>
+                      <TableCell align="left">Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {getDisplayedData().map((m) => {
+                      const id = m._id?.$oid || m._id || m.id;
+                      if (!id) return null;
+                      const cleanId = id.toString().replace(/[^a-zA-Z0-9]/g, '');
+                      return (
+                        <TableRow key={cleanId}>
+                          <TableCell>{m.gestion || ''}</TableCell>
+                          <TableCell>{m.placa || ''}</TableCell>
+                          <TableCell>{m.detalle || ''}</TableCell>
+                          <TableCell>{m.unidad || ''}</TableCell>
+                          <TableCell>{m.adqui || ''}</TableCell>
+                          <TableCell>{m.codigo || ''}</TableCell>
+                          <TableCell>{m.tipo || ''}</TableCell>
+                          <TableCell>{m.marca || ''}</TableCell>
+                          <TableCell>{m.modelo || ''}</TableCell>
+                          <TableCell>{m.color || ''}</TableCell>
+                          <TableCell>{m.nro_motor || ''}</TableCell>
+                          <TableCell>{m.nro_chasis || ''}</TableCell>
+                          <TableCell>
+                            {m.fecha_registro ? new Date(m.fecha_registro).toLocaleDateString() : ''}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Button 
+                              onClick={() => handleDetailsClick(cleanId)}
+                              size="small" 
+                              variant="outlined" 
+                              color="primary"
+                              sx={{p:0.05}}
+                            >
+                              Historial
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
               {maquinarias.length > 0 && (
                 <Box sx={{ 
                   display: 'flex', 

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
-  CircularProgress,
   Typography,
   Table,
   TableBody,
@@ -11,27 +10,25 @@ import {
   TableRow,
   TextField,
   Button,
-  Modal,
   Paper,
   Snackbar,
   Alert,
   Grid,
-  IconButton
+  IconButton,
+  CircularProgress
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
 const ITVList = ({ maquinariaId, maquinariaPlaca }) => {
   const [itvs, setItvs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [modalOpen, setModalOpen] = useState(false);
-  const [currentItv, setCurrentItv] = useState(null);
-  const [modalForm, setModalForm] = useState({});
-  const [modalErrors, setModalErrors] = useState({});
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
+  const [editingItv, setEditingItv] = useState(null);
 
-  // Campos del formulario con validación
   const fieldLabels = [
     { name: 'detalle', label: 'Detalle', required: true },
     { name: 'importe', label: 'Importe', type: 'number', required: true },
@@ -57,62 +54,71 @@ const ITVList = ({ maquinariaId, maquinariaPlaca }) => {
     fetchItvs();
   }, [fetchItvs]);
 
-  const handleOpenModal = (itv = null) => {
-    setCurrentItv(itv);
-    setModalForm(itv ? { ...itv } : {});
-    setModalErrors({});
-    setModalOpen(true);
+  const handleResetForm = () => {
+    setForm({});
+    setErrors({});
+    setShowForm(false);
+    setEditingItv(null);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setCurrentItv(null);
-    setModalForm({});
-    setModalErrors({});
+  const handleOpenEditForm = (itv) => {
+    setEditingItv(itv);
+    setForm({ ...itv });
+    setErrors({});
+    setShowForm(true);
   };
 
   const validateForm = () => {
-    const errors = {};
+    const newErrors = {};
     fieldLabels.forEach(field => {
-      if (field.required && !modalForm[field.name]) {
-        errors[field.name] = `${field.label} es obligatorio`;
+      if (field.required && !form[field.name]) {
+        newErrors[field.name] = `${field.label} es obligatorio`;
       }
     });
-    setModalErrors(errors);
-    return Object.keys(errors).length === 0;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
-    const method = currentItv ? 'PUT' : 'POST';
-    const url = currentItv
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${currentItv._id}/`
+    
+    const url = editingItv 
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${editingItv._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/`;
-
+    const method = editingItv ? 'PUT' : 'POST';
+    
     const payload = {
-      ...modalForm,
+      ...form,
       maquinaria: maquinariaId,
-      importe: Number(modalForm.importe) || 0,
+      importe: Number(form.importe) || 0,
     };
-
+    
     try {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Error en la operación');
       }
-
-      setSnackbar({ open: true, message: `ITV ${currentItv ? 'actualizado' : 'creado'} exitosamente!`, severity: 'success' });
-      handleCloseModal();
+      
+      setSnackbar({ 
+        open: true, 
+        message: `ITV ${editingItv ? 'actualizado' : 'creado'} exitosamente!`, 
+        severity: 'success' 
+      });
+      
+      handleResetForm();
       fetchItvs();
     } catch (error) {
-      setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+      setSnackbar({ 
+        open: true, 
+        message: `Error: ${error.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
@@ -135,58 +141,35 @@ const ITVList = ({ maquinariaId, maquinariaPlaca }) => {
       <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
-
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2,
+        flexWrap: 'wrap'
+      }}>
         <Typography variant="h6">ITV - {maquinariaPlaca}</Typography>
-        <Button variant="contained" color="success" startIcon={<AddIcon />} onClick={() => handleOpenModal()}>
-          Nuevo ITV
+        <Button 
+          variant="contained" 
+          color={showForm ? "error" : "success"}
+          onClick={() => {
+            if (showForm) {
+              handleResetForm();
+            } else {
+              setShowForm(true);
+            }
+          }}
+        >
+          {showForm ? 'Cancelar' : 'Nuevo ITV'}
         </Button>
       </Box>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>
-      ) : itvs.length === 0 ? (
-        <Typography align="center" sx={{ py: 5 }}>No hay registros de ITV</Typography>
-      ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Detalle</TableCell>
-              <TableCell>Importe</TableCell>
-              <TableCell align="right">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {itvs.map((i) => (
-              <TableRow key={i._id}>
-                <TableCell>{i.detalle}</TableCell>
-                <TableCell>{i.importe}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" color="primary" onClick={() => handleOpenModal(i)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDelete(i._id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-
-      {/* Modal */}
-      <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          p: 4,
-          width: '90%',
-          maxWidth: 600,
-        }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentItv ? 'Editar' : 'Nuevo'} ITV</Typography>
+      {/* Formulario arriba de la tabla */}
+      {showForm && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>
+            {editingItv ? 'Editar ITV' : 'Nuevo Registro'}
+          </Typography>
           <Grid container spacing={2}>
             {fieldLabels.map((field) => (
               <Grid item xs={12} sm={6} key={field.name}>
@@ -195,21 +178,77 @@ const ITVList = ({ maquinariaId, maquinariaPlaca }) => {
                   label={field.label}
                   name={field.name}
                   type={field.type || 'text'}
-                  value={modalForm[field.name] || ''}
-                  onChange={(e) => setModalForm({ ...modalForm, [field.name]: e.target.value })}
-                  error={!!modalErrors[field.name]}
-                  helperText={modalErrors[field.name] || ''}
+                  value={form[field.name] || ''}
+                  onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                  error={!!errors[field.name]}
+                  helperText={errors[field.name]}
                   required={field.required}
                 />
               </Grid>
             ))}
           </Grid>
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button onClick={handleCloseModal}>Cancelar</Button>
-            <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: 2, 
+            mt: 3,
+            flexWrap: 'wrap'
+          }}>
+            <Button 
+              variant="contained" 
+              color="success"
+              onClick={handleSubmit}
+            >
+              {editingItv ? 'Actualizar' : 'Guardar'}
+            </Button>
           </Box>
         </Paper>
-      </Modal>
+      )}
+
+      {/* Tabla */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : itvs.length === 0 ? (
+        <Typography align="center" sx={{ py: 5 }}>No hay registros de ITV</Typography>
+      ) : (
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Placa</TableCell>
+              <TableCell>Detalle</TableCell>
+              <TableCell>Importe</TableCell>
+              <TableCell align="right">Acciones</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {itvs.map((i) => (
+              <TableRow key={i._id}>
+                <TableCell>{maquinariaPlaca}</TableCell>
+                <TableCell>{i.detalle || ''}</TableCell>
+                <TableCell>{i.importe || ''}</TableCell>
+                <TableCell align="right">
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => handleOpenEditForm(i)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => handleDelete(i._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </Box>
   );
 };

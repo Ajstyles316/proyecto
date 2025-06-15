@@ -12,13 +12,11 @@ import {
   Snackbar,
   Alert,
   Button,
-  Modal,
   Paper,
   TextField,
   Grid,
   IconButton
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -26,10 +24,10 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
   const [controls, setControls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [modalOpen, setModalOpen] = useState(false);
-  const [currentControl, setCurrentControl] = useState(null);
-  const [modalForm, setModalForm] = useState({});
-  const [modalErrors, setModalErrors] = useState({});
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({});
+  const [errors, setErrors] = useState({});
+  const [editingControl, setEditingControl] = useState(null);
 
   const fieldLabels = [
     { name: 'ubicacion', label: 'Ubicación', required: true },
@@ -59,42 +57,44 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
     if (maquinariaId) fetchControls();
   }, [maquinariaId, fetchControls]);
 
-  const handleOpenModal = (control = null) => {
-    setCurrentControl(control);
-    setModalForm(control ? { ...control } : {});
-    setModalErrors({});
-    setModalOpen(true);
+  const handleResetForm = () => {
+    setForm({});
+    setErrors({});
+    setShowForm(false);
+    setEditingControl(null);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setCurrentControl(null);
-    setModalForm({});
+  const handleOpenEditForm = (control) => {
+    setEditingControl(control);
+    setForm({ ...control });
+    setErrors({});
+    setShowForm(true);
   };
 
   const validateForm = () => {
-    const errors = {};
+    const newErrors = {};
     fieldLabels.forEach(field => {
-      if (field.required && !modalForm[field.name]) {
-        errors[field.name] = `${field.label} es obligatorio`;
+      if (field.required && !form[field.name]) {
+        newErrors[field.name] = `${field.label} es obligatorio`;
       }
     });
-    setModalErrors(errors);
-    return Object.keys(errors).length === 0;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    const method = currentControl ? 'PUT' : 'POST';
-    const url = currentControl
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${currentControl._id}/`
+    const url = editingControl 
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${editingControl._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/control/`;
 
+    const method = editingControl ? 'PUT' : 'POST';
+
     const payload = {
-      ...modalForm,
+      ...form,
       maquinaria: maquinariaId,
-      fecha_ingreso: modalForm.fecha_ingreso ? new Date(modalForm.fecha_ingreso).toISOString().split('T')[0] : null,
+      fecha_ingreso: form.fecha_ingreso ? new Date(form.fecha_ingreso).toISOString().split('T')[0] : null,
     };
 
     try {
@@ -111,11 +111,20 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
         throw new Error(errorData.error || errorData.message || 'Error en la operación');
       }
 
-      setSnackbar({ open: true, message: `Control ${currentControl ? 'actualizado' : 'creado'} exitosamente!`, severity: 'success' });
-      handleCloseModal();
+      setSnackbar({ 
+        open: true, 
+        message: `Control ${editingControl ? 'actualizado' : 'creado'} exitosamente!`, 
+        severity: 'success' 
+      });
+      
+      handleResetForm();
       fetchControls();
     } catch (error) {
-      setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+      setSnackbar({ 
+        open: true, 
+        message: `Error: ${error.message}`, 
+        severity: 'error' 
+      });
     }
   };
 
@@ -146,19 +155,72 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
         </Alert>
       </Snackbar>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h6">Historial de Control - {maquinariaPlaca}</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexWrap: 'wrap'
+      }}>
+        <Typography variant="h6">Historial de Control</Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 1, 
+          mt: { xs: 2, sm: 0 }
+        }}>
           <Button 
             variant="contained" 
-            color="success" 
-            startIcon={<AddIcon />} 
-            onClick={() => handleOpenModal()}
+            color={showForm ? "error" : "success"}
+            onClick={() => {
+              setEditingControl(null);
+              setShowForm(!showForm);
+            }}
           >
-            Nuevo Control
+            {showForm ? 'Cancelar' : 'Nuevo Control'}
           </Button>
         </Box>
       </Box>
+
+      {showForm && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="subtitle1" sx={{ mb: 2 }}>
+            {editingControl ? 'Editar Control' : 'Nuevo Registro'}
+          </Typography>
+          <Grid container spacing={2}>
+            {fieldLabels.map((field) => (
+              <Grid item xs={12} sm={6} key={field.name}>
+                <TextField
+                  fullWidth
+                  label={field.label}
+                  name={field.name}
+                  type={field.type || 'text'}
+                  value={form[field.name] || ''}
+                  onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
+                  error={!!errors[field.name]}
+                  helperText={errors[field.name]}
+                  required={field.required}
+                />
+              </Grid>
+            ))}
+          </Grid>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: 2, 
+            mt: 3,
+            flexWrap: 'wrap'
+          }}>
+            <Button 
+              variant="contained" 
+              color="success"
+              onClick={handleSubmit}
+            >
+              {editingControl ? 'Actualizar' : 'Guardar'}
+            </Button>
+          </Box>
+        </Paper>
+      )}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -172,6 +234,7 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Placa</TableCell>
               <TableCell>Ubicación</TableCell>
               <TableCell>Gerente</TableCell>
               <TableCell>Encargado</TableCell>
@@ -184,6 +247,7 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
           <TableBody>
             {controls.map((control) => (
               <TableRow key={control._id}>
+                <TableCell>{maquinariaPlaca}</TableCell>
                 <TableCell>{control.ubicacion || ''}</TableCell>
                 <TableCell>{control.gerente || ''}</TableCell>
                 <TableCell>{control.encargado || ''}</TableCell>
@@ -194,7 +258,7 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
                   <IconButton 
                     size="small" 
                     color="primary"
-                    onClick={() => handleOpenModal(control)}
+                    onClick={() => handleOpenEditForm(control)}
                   >
                     <EditIcon />
                   </IconButton>
@@ -211,42 +275,6 @@ const ControlList = ({ maquinariaId, maquinariaPlaca }) => {
           </TableBody>
         </Table>
       )}
-
-      <Modal open={modalOpen} onClose={handleCloseModal}>
-        <Paper sx={{ 
-          position: 'absolute', 
-          top: '50%', 
-          left: '50%', 
-          transform: 'translate(-50%, -50%)', 
-          p: 4, 
-          width: '90%', 
-          maxWidth: 600 
-        }}>
-          <Typography variant="h6" sx={{ mb: 3 }}>{currentControl ? 'Editar Control' : 'Nuevo Control'}</Typography>
-          <Grid container spacing={2}>
-            {fieldLabels.map((field) => (
-              <Grid item xs={12} key={field.name}>
-                <TextField
-                  fullWidth
-                  label={field.label}
-                  name={field.name}
-                  type={field.type || 'text'}
-                  value={modalForm[field.name] || ''}
-                  onChange={(e) => setModalForm({ ...modalForm, [field.name]: e.target.value })}
-                  InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-                  error={!!modalErrors[field.name]}
-                  helperText={modalErrors[field.name]}
-                  required={field.required}
-                />
-              </Grid>
-            ))}
-          </Grid>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-            <Button onClick={handleCloseModal}>Cancelar</Button>
-            <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
-          </Box>
-        </Paper>
-      </Modal>
     </Box>
   );
 };
