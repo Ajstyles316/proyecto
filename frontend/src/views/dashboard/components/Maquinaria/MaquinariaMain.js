@@ -14,6 +14,7 @@ const Maquinaria = () => {
     pageSize,
     setPageSize,
     currentPage,
+    unidadesUnicas,
     setCurrentPage,
     loading,
     newMaquinariaModalOpen,
@@ -85,17 +86,29 @@ const Maquinaria = () => {
 
             <Box sx={{ display: "flex", flexWrap: 'wrap', gap: 2 }}>
               <TextField
-                label="Buscar por detalle"
+                label="Buscar"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 size="small"
+                sx={{ minWidth: 150 }}
+                color="black"
               />
               <TextField
-                label="Filtrar por unidad"
-                value={unidadFilter}
-                onChange={(e) => setUnidadFilter(e.target.value)}
-                size="small"
-              />
+  select
+  label="Filtrar por unidad"
+  value={unidadFilter}
+  onChange={(e) => setUnidadFilter(e.target.value)}
+  size="small"
+  color="black"
+  sx={{ minWidth: 180 }}
+>
+  <MenuItem value="">Todas</MenuItem>
+  {unidadesUnicas.map((unidad) => (
+    <MenuItem key={unidad} value={unidad}>
+      {unidad}
+    </MenuItem>
+  ))}
+</TextField>
               <TextField
                 select
                 label="Mostrar"
@@ -106,6 +119,7 @@ const Maquinaria = () => {
                 }}
                 size="small"
                 sx={{ width: 120 }}
+                color="black"
               >
                 <MenuItem value="Todos">Todos</MenuItem>
                 <MenuItem value={5}>5 registros</MenuItem>

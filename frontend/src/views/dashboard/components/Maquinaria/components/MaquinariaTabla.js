@@ -52,9 +52,9 @@ const MaquinariaTabla = ({
                   <TableCell>Detalle</TableCell>
                   <TableCell>Unidad</TableCell>
                   <TableCell>Código</TableCell>
+                  <TableCell>Marca</TableCell>
                   <TableCell>Modelo</TableCell>
                   <TableCell>Color</TableCell>
-                  <TableCell>Fecha Registro</TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -69,9 +69,9 @@ const MaquinariaTabla = ({
                       <TableCell>{m.detalle}</TableCell>
                       <TableCell>{m.unidad}</TableCell>
                       <TableCell>{m.codigo}</TableCell>
+                      <TableCell>{m.marca}</TableCell>
                       <TableCell>{m.modelo}</TableCell>
                       <TableCell>{m.color}</TableCell>
-                      <TableCell>{m.fecha_registro ? new Date(m.fecha_registro).toLocaleDateString() : ''}</TableCell>
                       <TableCell>
                         <Button
                           variant="outlined"

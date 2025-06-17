@@ -43,7 +43,22 @@ const MaquinariaDetalle = ({
             {fieldLabels.Maquinaria.map((field) => (
               <Grid item xs={12} md={6} key={field.name}>
                 {field.name === 'imagen' ? (
-                  <input type="file" accept="image/*" onChange={handleFileChange} style={{ marginTop: '8px' }} />
+                  <Box>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                      {field.label}
+                    </Typography>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleFileChange} 
+                      style={{ marginTop: '8px' }}
+                    />
+                    {sectionForm.Maquinaria?.imagen && (
+                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
+                        Imagen actual guardada
+                      </Typography>
+                    )}
+                  </Box>
                 ) : (
                   <TextField
                     fullWidth

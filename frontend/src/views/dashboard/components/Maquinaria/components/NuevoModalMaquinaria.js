@@ -10,7 +10,6 @@ const NuevoModalMaquinaria = ({
   newMaquinariaForm,
   setNewMaquinariaForm,
   newMaquinariaErrors,
-  setNewMaquinariaErrors,
   handleNewMaquinariaSubmit,
   handleFileChange,
 }) => {
@@ -33,12 +32,22 @@ const NuevoModalMaquinaria = ({
           {fieldLabels.Maquinaria.map((field) => (
             <Grid item xs={12} sm={6} key={field.name}>
               {field.name === 'imagen' ? (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  style={{ marginTop: '8px' }}
-                />
+                <Box>
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+                    {field.label}
+                  </Typography>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    style={{ marginTop: '8px' }}
+                  />
+                  {newMaquinariaForm.imagen && (
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
+                      Imagen seleccionada
+                    </Typography>
+                  )}
+                </Box>
               ) : (
                 <TextField
                   fullWidth

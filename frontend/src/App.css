@@ -19,11 +19,31 @@
 }
 
 .MuiTableCell-root {
-    border-bottom: 1px solid #edf5fd !important;
+    border-bottom: 1px solid #154360 !important;
 }
 
 /* Force sidebar text to be white */
 .MuiMenuItem-root *,
 .MuiListSubheader-root * {
     color: white !important;
+}
+
+/* Force select and autocomplete text to be black */
+.MuiSelect-select,
+.MuiAutocomplete-input,
+.MuiTextField-root .MuiInputBase-input,
+.MuiSelect-root .MuiSelect-select {
+    color: #2A3547 !important;
+}
+
+/* Ensure select options are black */
+.MuiMenu-root .MuiMenuItem-root,
+.MuiAutocomplete-popper .MuiMenuItem-root {
+    color: #2A3547 !important;
+}
+
+/* Ensure select options text is black */
+.MuiMenu-root .MuiMenuItem-root .MuiTypography-root,
+.MuiAutocomplete-popper .MuiMenuItem-root .MuiTypography-root {
+    color: #2A3547 !important;
 }

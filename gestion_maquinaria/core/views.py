@@ -178,6 +178,10 @@ class MaquinariaDetailView(APIView):
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Datos convertidos: {validated_data}")
             
+            # Asegurar que el campo imagen se incluya si está presente en request.data
+            if 'imagen' in request.data:
+                validated_data['imagen'] = request.data['imagen']
+                logger.info(f"Imagen incluida en la actualización: {len(request.data['imagen'])} caracteres")
 
             # Actualizar en MongoDB
             maquinaria_collection.update_one(
