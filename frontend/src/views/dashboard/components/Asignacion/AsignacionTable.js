@@ -45,6 +45,7 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
           <TableCell>Fecha Liberación</TableCell>
           <TableCell>Recorrido Asignado (Km)</TableCell>
           <TableCell>Recorrido Entregado (Km)</TableCell>
+          <TableCell>Encargado</TableCell>
           <TableCell align="right">Acciones</TableCell>
         </TableRow>
       </TableHead>
@@ -56,6 +57,7 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
             <TableCell>{formatDate(asignacion.fecha_liberacion)}</TableCell>
             <TableCell>{asignacion.recorrido_km || ''}</TableCell>
             <TableCell>{asignacion.recorrido_entregado || ''}</TableCell>
+            <TableCell>{asignacion.encargado || ''}</TableCell>
             <TableCell align="right">
               <IconButton 
                 size="small" 

@@ -89,6 +89,26 @@ const baselightTheme = createTheme({
         },
       },
     },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          color: 'white',
+          '& .MuiTypography-root': {
+            color: 'white',
+          },
+        },
+      },
+    },
+    MuiListSubheader: {
+      styleOverrides: {
+        root: {
+          color: 'white',
+          '& .MuiTypography-root': {
+            color: 'white',
+          },
+        },
+      },
+    },
   }
 },
 

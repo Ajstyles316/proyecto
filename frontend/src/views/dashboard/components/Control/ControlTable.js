@@ -38,9 +38,9 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading }) 
           <TableCell>Ubicación</TableCell>
           <TableCell>Gerente</TableCell>
           <TableCell>Encargado</TableCell>
+          <TableCell>Estado</TableCell>
           <TableCell>Hoja de Trámite</TableCell>
           <TableCell>Fecha Ingreso</TableCell>
-          <TableCell>Observación</TableCell>
           <TableCell align="right">Acciones</TableCell>
         </TableRow>
       </TableHead>
@@ -51,19 +51,19 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading }) 
             <TableCell>{control.ubicacion}</TableCell>
             <TableCell>{control.gerente}</TableCell>
             <TableCell>{control.encargado}</TableCell>
+            <TableCell>{control.estado}</TableCell>
             <TableCell>{control.hoja_tramite}</TableCell>
             <TableCell>{control.fecha_ingreso}</TableCell>
-            <TableCell>{control.observacion}</TableCell>
             <TableCell align="right">
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 color="primary"
                 onClick={() => onEdit(control)}
               >
                 <EditIcon />
               </IconButton>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 color="error"
                 onClick={() => onDelete(control._id)}
               >
@@ -83,9 +83,10 @@ ControlTable.propTypes = {
     ubicacion: PropTypes.string.isRequired,
     gerente: PropTypes.string,
     encargado: PropTypes.string,
+    estado: PropTypes.string,
     hoja_tramite: PropTypes.string,
     fecha_ingreso: PropTypes.string.isRequired,
-    observacion: PropTypes.string,
+    observacion: PropTypes.string, // aún se valida, solo no se muestra
   })).isRequired,
   maquinariaPlaca: PropTypes.string.isRequired,
   onEdit: PropTypes.func.isRequired,
@@ -93,4 +94,4 @@ ControlTable.propTypes = {
   loading: PropTypes.bool.isRequired,
 };
 
-export default ControlTable; 
+export default ControlTable;

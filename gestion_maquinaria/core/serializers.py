@@ -11,6 +11,7 @@ class HistorialControlSerializer(serializers.Serializer):
     hoja_tramite = serializers.CharField(max_length=200, allow_blank=True, required=False)
     fecha_ingreso = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
     observacion = serializers.CharField(allow_blank=True, required=False)
+    estado = serializers.CharField(max_length=100, allow_blank=True, required=False)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
@@ -35,6 +36,7 @@ class ActaAsignacionSerializer(serializers.Serializer):
     fecha_liberacion = serializers.DateField(allow_null=True, required=False, input_formats=['%Y-%m-%d'])
     recorrido_km = serializers.FloatField(allow_null=True, required=False)
     recorrido_entregado = serializers.FloatField(allow_null=True, required=False)
+    encargado = serializers.CharField(max_length=100, allow_blank=True, required=False)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
@@ -133,6 +135,10 @@ class MaquinariaSerializer(serializers.Serializer):
     tipo = serializers.CharField(max_length=100, allow_blank=True, required=False)
     marca = serializers.CharField(max_length=100, allow_blank=True, required=False)
     modelo = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    metodo_depreciacion = serializers.CharField(max_length=50, allow_blank=True, required=False)
+    tipo_vehiculo = serializers.CharField(max_length=50, allow_blank=True, required=False)
+    subtipo_vehiculo = serializers.CharField(max_length=50, allow_blank=True, required=False)
+    crpva = serializers.CharField(max_length=50, allow_blank=True, required=False)
     color = serializers.CharField(max_length=50, allow_blank=True, required=False)
     nro_motor = serializers.CharField(max_length=50, allow_blank=True, required=False)
     nro_chasis = serializers.CharField(max_length=50, allow_blank=True, required=False)

@@ -21,3 +21,9 @@
 .MuiTableCell-root {
     border-bottom: 1px solid #edf5fd !important;
 }
+
+/* Force sidebar text to be white */
+.MuiMenuItem-root *,
+.MuiListSubheader-root * {
+    color: white !important;
+}
