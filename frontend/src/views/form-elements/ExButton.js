@@ -6,8 +6,6 @@ import {
   Tab,
 } from "@mui/material";
 
-import MantenimientoActual from "./MantenimientoActual";
-import MantenimientoIA from "./MantenimientoIA";
 
 const Mantenimiento = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -23,12 +21,9 @@ const Mantenimiento = () => {
       </Typography>
 
       <Tabs value={tabValue} onChange={handleChange}>
-        <Tab label="Mantenimiento Act." />
+        <Tab label="Mantenimiento Actual" />
         <Tab label="Mantenimiento IA" />
       </Tabs>
-
-      {tabValue === 0 && <MantenimientoActual />}
-      {tabValue === 1 && <MantenimientoIA />}
     </Box>
   );
 };

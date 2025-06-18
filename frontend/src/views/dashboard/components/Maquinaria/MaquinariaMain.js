@@ -90,25 +90,24 @@ const Maquinaria = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 size="small"
-                sx={{ minWidth: 150 }}
+                sx={{ minWidth: 250 }}
                 color="black"
               />
               <TextField
-  select
-  label="Filtrar por unidad"
-  value={unidadFilter}
-  onChange={(e) => setUnidadFilter(e.target.value)}
-  size="small"
-  color="black"
-  sx={{ minWidth: 180 }}
->
-  <MenuItem value="">Todas</MenuItem>
-  {unidadesUnicas.map((unidad) => (
-    <MenuItem key={unidad} value={unidad}>
-      {unidad}
-    </MenuItem>
-  ))}
-</TextField>
+                select
+                label="Filtrar por unidad"
+                value={unidadFilter}
+                onChange={(e) => setUnidadFilter(e.target.value)}
+                size="small"
+                sx={{ minWidth: 250 }}
+              >
+                <MenuItem value="">Todas</MenuItem>
+                 {unidadesUnicas.map((unidad) => (
+                  <MenuItem key={unidad} value={unidad}>
+                   {unidad}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 select
                 label="Mostrar"
@@ -118,7 +117,7 @@ const Maquinaria = () => {
                   setCurrentPage(1);
                 }}
                 size="small"
-                sx={{ width: 120 }}
+                sx={{ width: 180 }}
                 color="black"
               >
                 <MenuItem value="Todos">Todos</MenuItem>

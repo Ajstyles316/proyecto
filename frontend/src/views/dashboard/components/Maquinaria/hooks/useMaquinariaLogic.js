@@ -179,8 +179,8 @@ const useMaquinariaLogic = () => {
   };
 
   const filteredMaquinarias = maquinarias.filter((m) => {
-    const search = searchQuery.toLowerCase();
-  return (
+  const search = searchQuery.toLowerCase();
+  const matchesSearch =
     m.gestion?.toLowerCase().includes(search) ||
     m.detalle?.toLowerCase().includes(search) ||
     m.unidad?.toLowerCase().includes(search) ||
@@ -188,9 +188,13 @@ const useMaquinariaLogic = () => {
     m.codigo?.toLowerCase().includes(search) ||
     m.color?.toLowerCase().includes(search) ||
     m.placa?.toLowerCase().includes(search) ||
-    m.marca?.toLowerCase().includes(search)
-  );
- } );
+    m.marca?.toLowerCase().includes(search);
+
+  const matchesUnidad = !unidadFilter || m.unidad === unidadFilter;
+
+  return matchesSearch && matchesUnidad;
+});
+
 
   const handleDeleteMaquinaria = async () => {
   const id = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
@@ -228,7 +232,7 @@ const useMaquinariaLogic = () => {
     });
   }
 };
-
+  
   const unidadesUnicas = [...new Set(
   maquinarias
     .map(m => m.unidad?.trim())
