@@ -126,7 +126,7 @@ const useMaquinariaLogic = () => {
   const handleNewMaquinariaSubmit = async () => {
     const errors = {};
     fieldLabels.Maquinaria.forEach(field => {
-      if (!['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis'].includes(field.name)) {
+      if (field.name !== 'imagen') {
         if (!newMaquinariaForm[field.name]?.toString().trim()) {
           errors[field.name] = 'Este campo es obligatorio';
         }

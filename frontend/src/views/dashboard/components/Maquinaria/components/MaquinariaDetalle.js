@@ -141,7 +141,7 @@ const MaquinariaDetalle = ({
       <Box sx={{ width: { xs: '100%', md: 240 }, display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 4, px: 2 }}>
         <Avatar
           src={selectedImage || sectionForm.Maquinaria?.imagen || maquinariaImage}
-          sx={{ width: 170, height: 170, mb: 3, boxShadow: 2, borderRadius: 2 }}
+          sx={{ width: 200, height: 200, mb: 2, boxShadow: 1, borderRadius: 1 }}
         />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
           {SECTIONS.map(sec => (

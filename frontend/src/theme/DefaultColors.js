@@ -99,9 +99,9 @@ const baselightTheme = createTheme({
             },
           },
           '&.sidebar-menu-item': {
+          color: 'white',
+          '& .MuiTypography-root': {
             color: 'white',
-            '& .MuiTypography-root': {
-              color: 'white',
             },
           },
         },
@@ -117,9 +117,9 @@ const baselightTheme = createTheme({
             },
           },
           '&.sidebar-subheader': {
+          color: 'white',
+          '& .MuiTypography-root': {
             color: 'white',
-            '& .MuiTypography-root': {
-              color: 'white',
             },
           },
         },
