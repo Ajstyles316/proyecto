@@ -16,13 +16,16 @@ class Seguro:
     collection_name = "seguros"
 
 class ITV:
-    collection_name = "itv_records"
+    collection_name = "itv"
 
 class SOAT:
-    collection_name = "soat_records"
+    collection_name = "soat"
 
 class Impuesto:
-    collection_name = "impuesto_records"
+    collection_name = "impuesto"
         
 class Usuario:
     collection_name = "usuarios"
+
+class Depreciacion:
+    collection_name = "depreciaciones"

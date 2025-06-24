@@ -12,7 +12,9 @@ from core.views import (
     SeguroListView, SeguroDetailView,
     ITVListView, ITVDetailView,
     SOATListView, SOATDetailView,
-    ImpuestoListView, ImpuestoDetailView
+    ImpuestoListView, ImpuestoDetailView,
+    DepreciacionGeneralView,
+    DepreciacionListView, DepreciacionDetailView,
 )
 
 urlpatterns = [
@@ -47,4 +49,8 @@ urlpatterns = [
 
     path('api/maquinaria/<str:maquinaria_id>/impuestos/', ImpuestoListView.as_view(), name='impuesto-list'),
     path('api/maquinaria/<str:maquinaria_id>/impuestos/<str:record_id>/', ImpuestoDetailView.as_view(), name='impuesto-detail'),
+
+    path('api/depreciacion/', DepreciacionGeneralView.as_view(), name='depreciacion-general'),
+    path('api/depreciacion/<str:maquinaria_id>/', DepreciacionListView.as_view(), name='depreciacion-list'),
+    path('api/maquinaria/<str:maquinaria_id>/depreciacion/<str:record_id>/', DepreciacionDetailView.as_view(), name='depreciacion-detail'),
 ]

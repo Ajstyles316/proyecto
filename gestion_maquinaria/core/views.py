@@ -21,7 +21,8 @@ from .serializers import (
     SeguroSerializer,
     ITVSerializer,
     SOATSerializer,
-    ImpuestoSerializer
+    ImpuestoSerializer,
+    DepreciacionSerializer,
 )
 from django.conf import settings
 from .mongo_connection import get_collection # Asegúrate de que este archivo exista y contenga get_collection
@@ -54,6 +55,16 @@ def serialize_list(docs):
     except Exception as e:
         logger.error(f"Error en serialize_list: {str(e)}")
         raise
+
+def convert_dates_to_str(data):
+    for k, v in data.items():
+        if isinstance(v, date):
+            data[k] = v.strftime('%Y-%m-%d')
+        elif isinstance(v, dict):
+            data[k] = convert_dates_to_str(v)
+        elif isinstance(v, list):
+            data[k] = [convert_dates_to_str(i) if isinstance(i, dict) else i for i in v]
+    return data
 
 # --- Vistas para Maquinaria Principal ---
 
@@ -1064,6 +1075,283 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
         result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if result.deleted_count == 0:
             return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class DepreciacionGeneralView(APIView):
+    def determinar_bien_uso_y_vida_util(self, tipo_maquinaria, detalle_maquinaria):
+        try:
+            # Asegurar que ambos valores sean cadenas antes de usar .lower()
+            tipo_lower = str(tipo_maquinaria).lower() if tipo_maquinaria is not None else ""
+            detalle_lower = str(detalle_maquinaria).lower() if detalle_maquinaria is not None else ""
+
+            # Validaciones seguras con palabras clave
+            if any(p in tipo_lower or p in detalle_lower for p in ['camion', 'camión', 'auto', 'carro', 'vehiculo', 'vehículo', 'truck', 'car']):
+                return "Vehículos automotores", 5
+            if any(p in tipo_lower or p in detalle_lower for p in ['excavadora', 'bulldozer', 'retroexcavadora', 'cargador', 'loader', 'excavator']):
+                return "Maquinaria pesada", 8
+            if any(p in tipo_lower or p in detalle_lower for p in ['martillo', 'taladro', 'compresor', 'generador', 'soldadora', 'welder']):
+                return "Equipos de construcción", 6
+            if any(p in tipo_lower or p in detalle_lower for p in ['herramienta', 'tool', 'equipo menor', 'equipamiento']):
+                return "Herramientas menores", 4
+            if any(p in tipo_lower or p in detalle_lower for p in ['computadora', 'laptop', 'impresora', 'scanner', 'equipo oficina']):
+                return "Equipos de oficina", 5
+            if any(p in tipo_lower or p in detalle_lower for p in ['mueble', 'escritorio', 'silla', 'mesa', 'furniture']):
+                return "Muebles y enseres", 10
+            return "Otros bienes", 5
+        except Exception as e:
+            logger.warning(f"Error al determinar bien de uso: {e}")
+            return "Desconocido", 5  # Valores seguros en caso de fallo
+
+    # Diccionario reducido de bienes de uso relevantes para autos y maquinaria
+    BIENES_DE_USO_DS_24051 = {
+        'Vehículos automotores': {'vida_util': 5, 'coeficiente': 0.20},
+        'Maquinaria en general': {'vida_util': 8, 'coeficiente': 0.125},
+        'Maquinaria para la construcción': {'vida_util': 5, 'coeficiente': 0.20},
+        'Equipos e instalaciones': {'vida_util': 8, 'coeficiente': 0.125},
+        'Equipos de computación': {'vida_util': 4, 'coeficiente': 0.25},
+        'Muebles y enseres de oficina': {'vida_util': 10, 'coeficiente': 0.10},
+    }
+
+    def generar_detalle_depreciacion(self, metodo, costo_activo, vida_util, fecha_compra_str, valor_residual=0, bien_de_uso=None):
+        try:
+            # Si bien_de_uso está en la tabla, usar sus valores
+            coeficiente = None
+            if bien_de_uso and bien_de_uso in self.BIENES_DE_USO_DS_24051:
+                vida_util = self.BIENES_DE_USO_DS_24051[bien_de_uso]['vida_util']
+                coeficiente = self.BIENES_DE_USO_DS_24051[bien_de_uso]['coeficiente']
+
+            if not isinstance(costo_activo, (int, float)) or costo_activo <= 0:
+                costo_activo = 1
+            if not isinstance(vida_util, int) or vida_util <= 0:
+                vida_util = 5
+            if not isinstance(valor_residual, (int, float)) or valor_residual < 0:
+                valor_residual = 0
+
+            # Procesar fecha
+            try:
+                fecha_compra = datetime.strptime(fecha_compra_str.split('T')[0], "%Y-%m-%d")
+            except (ValueError, TypeError):
+                fecha_compra = datetime.now()
+                advertencia = "Fecha de compra inválida, usando fecha actual."
+            else:
+                advertencia = ""
+
+            detalle = []
+            base = costo_activo - valor_residual
+            if base < 0:
+                base = 0
+
+            if metodo in ["coeficiente", "ds_24051"] and coeficiente:
+                # Depreciación usando coeficiente de la tabla
+                for i in range(vida_util):
+                    dep_anual = base * coeficiente
+                    # Último año: ajustar para no pasar de base
+                    if i == vida_util - 1 or base - dep_anual < 0:
+                        dep_anual = base
+                    base -= dep_anual
+                    detalle.append({
+                        "anio": fecha_compra.year + i,
+                        "valor": round(dep_anual, 2)
+                    })
+            elif metodo == "linea_recta":
+                depreciacion_anual = base / vida_util
+                valor_en_libros = costo_activo
+                for i in range(vida_util):
+                    if i == vida_util - 1:
+                        dep_anual = valor_en_libros - valor_residual
+                    else:
+                        dep_anual = depreciacion_anual
+                    valor_en_libros -= dep_anual
+                    detalle.append({
+                        "anio": fecha_compra.year + i,
+                        "valor": round(dep_anual, 2)
+                    })
+            elif metodo == "saldo_decreciente":
+                valor_en_libros = costo_activo
+                tasa = (1 / vida_util) * 2
+                for i in range(vida_util):
+                    dep_anual = valor_en_libros * tasa
+                    if i == vida_util - 1 or valor_en_libros - dep_anual < valor_residual:
+                        dep_anual = valor_en_libros - valor_residual
+                    valor_en_libros -= dep_anual
+                    detalle.append({
+                        "anio": fecha_compra.year + i,
+                        "valor": round(dep_anual, 2)
+                    })
+            elif metodo == "suma_digitos":
+                suma_digitos = sum(range(1, vida_util + 1))
+                valor_en_libros = costo_activo
+                for i in range(vida_util):
+                    años_restantes = vida_util - i
+                    factor = años_restantes / suma_digitos
+                    dep_anual = base * factor
+                    valor_en_libros -= dep_anual
+                    detalle.append({
+                        "anio": fecha_compra.year + i,
+                        "valor": round(dep_anual, 2)
+                    })
+            else:
+                depreciacion_anual = base / vida_util
+                for i in range(vida_util):
+                    detalle.append({
+                        "anio": fecha_compra.year + i,
+                        "valor": round(depreciacion_anual, 2)
+                    })
+            return detalle, advertencia
+        except Exception as e:
+            logger.error(f"Error generando tabla de depreciación: {e}")
+            return [], "Error al generar tabla de depreciación"
+
+    def get(self, request):
+        try:
+            maquinaria_collection = get_collection("maquinaria")
+            depreciaciones_collection = get_collection("depreciaciones")
+            maquinarias = list(maquinaria_collection.find({}, {
+                "_id": 1, "placa": 1, "detalle": 1, "codigo": 1,
+                "metodo_depreciacion": 1, "adqui": 1, "fecha_registro": 1,
+                "tipo": 1
+            }))
+            resultado = []
+            for m in maquinarias:
+                try:
+                    # Extraer valores base
+                    tipo_maquinaria = m.get("tipo")
+                    detalle_maquinaria = m.get("detalle")
+                    adqui = m.get("adqui")  # Valor de adquisición (no es costo_activo)
+                    fecha_registro_raw = m.get("fecha_registro")
+
+                    # Buscar depreciación existente para obtener costo_activo real
+                    depreciacion_existente = depreciaciones_collection.find_one(
+                        {"maquinaria": m["_id"]},
+                        sort=[("fecha_creacion", -1)]  # Obtener el más reciente
+                    )
+
+                    # Procesar valor de adquisición (solo como referencia)
+                    try:
+                        adqui = float(adqui) if adqui else 0
+                    except (ValueError, TypeError):
+                        adqui = 0
+
+                    # Procesar fecha
+                    if isinstance(fecha_registro_raw, datetime):
+                        fecha_compra_str = fecha_registro_raw.strftime('%Y-%m-%d')
+                    elif isinstance(fecha_registro_raw, str):
+                        fecha_compra_str = fecha_registro_raw.split('T')[0]
+                    else:
+                        fecha_compra_str = datetime.now().strftime('%Y-%m-%d')
+
+                    # Determinar bien de uso y vida útil
+                    bien_de_uso, vida_util = self.determinar_bien_uso_y_vida_util(tipo_maquinaria, detalle_maquinaria)
+
+                    # Usar datos de depreciación existente si hay
+                    if depreciacion_existente:
+                        costo_activo = depreciacion_existente.get("costo_activo")
+                        metodo = depreciacion_existente.get("metodo", m.get("metodo_depreciacion", "linea_recta"))
+                        fecha_compra = depreciacion_existente.get("fecha_compra")
+                        if isinstance(fecha_compra, datetime):
+                            fecha_compra_str = fecha_compra.strftime('%Y-%m-%d')
+                        depreciacion_por_anio = depreciacion_existente.get("depreciacion_por_anio", [])
+                        advertencia = "Datos de depreciación guardados en el sistema."
+                    else:
+                        costo_activo = None
+                        metodo = m.get("metodo_depreciacion", "linea_recta")
+                        depreciacion_por_anio, advertencia = self.generar_detalle_depreciacion(
+                            metodo, adqui, vida_util, fecha_compra_str
+                        )
+
+                    # Agregar a resultado
+                    resultado.append({
+                        "maquinaria_id": str(m["_id"]),
+                        "placa": m.get("placa"),
+                        "detalle": m.get("detalle"),
+                        "codigo": m.get("codigo"),
+                        "metodo_depreciacion": metodo,
+                        "costo_activo": costo_activo,  # Ahora incluye el valor real si existe
+                        "adqui": adqui,  # Valor de adquisición como referencia
+                        "vida_util": vida_util,
+                        "depreciacion_por_anio": depreciacion_por_anio,
+                        "bien_de_uso": bien_de_uso,
+                        "fecha_compra": fecha_compra_str,
+                        "advertencia": advertencia,
+                    })
+                except Exception as inner_error:
+                    logger.warning(f"Error procesando máquina {m.get('_id')}: {inner_error}")
+                    continue  # Saltar máquinas con errores
+
+            return Response(resultado)
+        except Exception as e:
+            logger.error(f"Error en DepreciacionGeneralView: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": "Error interno del servidor"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DepreciacionListView(APIView):
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('depreciaciones')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        
+        # Log para depuración
+        logger.info(f"Datos recibidos en POST depreciación: {data}")
+        
+        serializer = DepreciacionSerializer(data=data)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+            
+            collection = get_collection('depreciaciones')
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+        
+        # Log de errores de validación
+        logger.error(f"Errores de validación en depreciación: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DepreciacionDetailView(APIView):
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('depreciaciones')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('depreciaciones')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data.copy()
+        data['maquinaria'] = str(maquinaria_id)
+        serializer = DepreciacionSerializer(existing_record, data=data, partial=True)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            validated_data['maquinaria'] = ObjectId(maquinaria_id)
+            validated_data['fecha_actualizacion'] = datetime.now()
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated_record))
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('depreciaciones')
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if result.deleted_count == 0:
+            return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 # --- Views de Autenticación y Dashboard (ya son APIView) ---

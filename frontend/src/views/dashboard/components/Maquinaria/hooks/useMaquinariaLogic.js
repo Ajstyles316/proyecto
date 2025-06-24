@@ -124,59 +124,67 @@ const useMaquinariaLogic = () => {
   };
 
   const handleNewMaquinariaSubmit = async () => {
-    const errors = {};
-    fieldLabels.Maquinaria.forEach(field => {
-      if (field.name !== 'imagen') {
-        if (!newMaquinariaForm[field.name]?.toString().trim()) {
-          errors[field.name] = 'Este campo es obligatorio';
+  const errors = {};
+  fieldLabels.Maquinaria.forEach(field => {
+    if (field.name !== 'imagen') {
+      const value = newMaquinariaForm[field.name];
+      if (!value || (typeof value === 'string' && !value.trim())) {
+        errors[field.name] = 'Este campo es obligatorio';
+      }
+    }
+  });
+
+  setNewMaquinariaErrors(errors);
+  if (Object.keys(errors).length > 0) return;
+
+  try {
+    const formattedData = {
+      ...newMaquinariaForm,
+      fecha_registro: newMaquinariaForm.fecha_registro
+        ? new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0]
+        : undefined, // Evita enviar "" si no hay fecha
+    };
+
+    // Limpia campos vacíos
+    const cleanData = (obj) => {
+      const result = {};
+      for (const key in obj) {
+        const value = obj[key];
+        if (value !== '' && value !== null && value !== undefined) {
+          result[key] = value;
         }
       }
+      return result;
+    };
+
+    const cleanedData = cleanData(formattedData);
+    console.log("Body a enviar:", cleanedData); // <- Agregado
+
+    const response = await fetch("http://localhost:8000/api/maquinaria/", {
+      method: 'POST',
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(cleanedData)
     });
 
-    setNewMaquinariaErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
-    try {
-      const formattedData = {
-        ...newMaquinariaForm,
-        fecha_registro: newMaquinariaForm.fecha_registro
-          ? new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0]
-          : '',
-      };
-
-      const cleanData = (obj) => {
-        const result = {};
-        for (const key in obj) {
-          if (obj[key] !== '' && obj[key] !== null && obj[key] !== undefined) {
-            result[key] = obj[key];
-          }
-        }
-        return result;
-      };
-
-      const cleanedData = cleanData(formattedData);
-
-      const response = await fetch("http://localhost:8000/api/maquinaria/", {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(cleanedData)
-      });
-
-      if (!response.ok) throw new Error('Error al guardar');
-
-      setSnackbar({ open: true, message: 'Maquinaria registrada exitosamente', severity: 'success' });
-      setNewMaquinariaModalOpen(false);
-      setNewMaquinariaForm({});
-      setNewMaquinariaErrors({});
-      setSelectedImage(null);
-      fetchMaquinarias();
-    } catch (error) {
-      setSnackbar({ open: true, message: `Error al guardar: ${error.message}`, severity: 'error' });
+    if (!response.ok) {
+      const errorText = await response.text(); // Agregado para ver el detalle del error
+      throw new Error(`Error al guardar: ${errorText}`);
     }
-  };
+
+    setSnackbar({ open: true, message: 'Maquinaria registrada exitosamente', severity: 'success' });
+    setNewMaquinariaModalOpen(false);
+    setNewMaquinariaForm({});
+    setNewMaquinariaErrors({});
+    setSelectedImage(null);
+    fetchMaquinarias();
+  } catch (error) {
+    setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+  }
+};
+
 
   const filteredMaquinarias = maquinarias.filter((m) => {
   const search = searchQuery.toLowerCase();

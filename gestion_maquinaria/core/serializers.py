@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from datetime import datetime
+from datetime import datetime, date
 from bson import ObjectId
 
 class HistorialControlSerializer(serializers.Serializer):
@@ -187,3 +187,44 @@ class LoginSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return validated_data
+
+class DepreciacionEntrySerializer(serializers.Serializer):
+    anio = serializers.IntegerField()
+    valor = serializers.FloatField()
+
+class DepreciacionSerializer(serializers.Serializer):
+    _id = serializers.CharField(read_only=True)
+    maquinaria = serializers.CharField(write_only=True, required=True)
+    costo_activo = serializers.FloatField(required=True)
+    fecha_compra = serializers.DateTimeField(required=True, input_formats=['%Y-%m-%d'])
+    metodo = serializers.CharField(max_length=100, required=True)
+    vida_util = serializers.IntegerField(required=True)
+    depreciacion_por_anio = serializers.ListField(
+        child=DepreciacionEntrySerializer(),
+        required=True
+    )
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
+
+    def validate_maquinaria(self, value):
+        try:
+            return ObjectId(value)
+        except Exception:
+            raise serializers.ValidationError("ID de maquinaria inválido")
+        
+    def validate_costo_activo(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El costo del activo debe ser mayor a 0.")
+        return value
+    
+    def validate_fecha_compra(self, value):
+        if isinstance(value, str):
+            try:
+                # Convertir a datetime en lugar de date
+                return datetime.strptime(value, '%Y-%m-%d')
+            except ValueError:
+                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        elif isinstance(value, date):
+            # Si es un objeto date, convertirlo a datetime
+            return datetime.combine(value, datetime.min.time())
+        return value

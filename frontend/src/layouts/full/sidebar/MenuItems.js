@@ -40,6 +40,12 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
+    title: 'Depreciación',
+    icon: IconTable,
+    href: '/depreciacion',
+  },
+  {
+    id: uniqueId(),
     title: 'Pronóstico',
     icon: IconAlignBoxLeftBottom,
     href: '/mantenimiento',
