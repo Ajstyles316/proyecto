@@ -9,6 +9,7 @@ import logging
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date
 import traceback
+from rest_framework import viewsets
 
 from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario # Importa los modelos como clases planas
 from .serializers import (
@@ -1453,3 +1454,22 @@ class DashboardStatsView(APIView):
         except Exception as e:
             logger.error(f"Error en DashboardStatsView: {str(e)}")
             return Response({"error": f"Error al obtener estadísticas: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class MaquinariaViewSet(viewsets.ViewSet):
+    """
+    ViewSet de solo lectura para la Browsable API de DRF.
+    """
+    def list(self, request):
+        maquinaria_collection = get_collection(Maquinaria)
+        maquinarias = list(maquinaria_collection.find())
+        return Response([serialize_doc(m) for m in maquinarias])
+
+    def retrieve(self, request, pk=None):
+        maquinaria_collection = get_collection(Maquinaria)
+        from bson import ObjectId
+        if not ObjectId.is_valid(pk):
+            return Response({"error": "ID inválido"}, status=400)
+        m = maquinaria_collection.find_one({"_id": ObjectId(pk)})
+        if not m:
+            return Response({"error": "No encontrado"}, status=404)
+        return Response(serialize_doc(m))

@@ -22,7 +22,7 @@ const Mantenimiento = () => {
 
       <Tabs value={tabValue} onChange={handleChange}>
         <Tab label="Mantenimiento Actual" />
-        <Tab label="Mantenimiento IA" />
+        <Tab label="Mantenimiento Inteligencia Artificial" />
       </Tabs>
     </Box>
   );

@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.renderers import JSONRenderer
+from rest_framework.routers import DefaultRouter
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 # Importar las nuevas vistas basadas en clases
 from core.views import (
@@ -15,7 +18,22 @@ from core.views import (
     ImpuestoListView, ImpuestoDetailView,
     DepreciacionGeneralView,
     DepreciacionListView, DepreciacionDetailView,
+    MaquinariaViewSet,
 )
+
+router = DefaultRouter()
+router.register(r'maquinaria', MaquinariaViewSet, basename='maquinaria')
+
+class CustomApiRoot(APIView):
+    """
+    API Root personalizada que lista todos los recursos principales.
+    """
+    def get(self, request, format=None):
+        base = request.build_absolute_uri('/api/maquinaria/')
+        return Response({
+            'maquinaria': request.build_absolute_uri('/api/maquinaria/'),
+            'depreciaciones': request.build_absolute_uri('/api/depreciacion/'),
+        })
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -53,4 +71,7 @@ urlpatterns = [
     path('api/depreciacion/', DepreciacionGeneralView.as_view(), name='depreciacion-general'),
     path('api/depreciacion/<str:maquinaria_id>/', DepreciacionListView.as_view(), name='depreciacion-list'),
     path('api/maquinaria/<str:maquinaria_id>/depreciacion/<str:record_id>/', DepreciacionDetailView.as_view(), name='depreciacion-detail'),
+
+    path('api/', CustomApiRoot.as_view(), name='api-root'),
+    path('api/', include(router.urls)),
 ]
