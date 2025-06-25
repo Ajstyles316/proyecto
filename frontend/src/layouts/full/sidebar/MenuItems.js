@@ -46,6 +46,12 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
+    title: 'Activos',
+    icon: IconTable,
+    href: '/activos',
+  },
+  {
+    id: uniqueId(),
     title: 'Pronóstico',
     icon: IconAlignBoxLeftBottom,
     href: '/mantenimiento',

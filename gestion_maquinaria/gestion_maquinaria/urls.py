@@ -19,6 +19,7 @@ from core.views import (
     DepreciacionGeneralView,
     DepreciacionListView, DepreciacionDetailView,
     MaquinariaViewSet,
+    activos_list, PronosticoAPIView
 )
 
 router = DefaultRouter()
@@ -33,14 +34,16 @@ class CustomApiRoot(APIView):
         return Response({
             'maquinaria': request.build_absolute_uri('/api/maquinaria/'),
             'depreciaciones': request.build_absolute_uri('/api/depreciacion/'),
+            'activos': request.build_absolute_uri('/api/activos/'),
         })
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('registro/', RegistroView.as_view(), name='registro'),
     path('login/', LoginView.as_view(), name='login'),
-    # No es necesario path('api/', include('core.urls')), si todas las urls se definen aquí
-
+    # API root navegable y rutas automáticas para maquinaria
+    path('api/', CustomApiRoot.as_view(), name='api-root'),
+    path('api/', include(router.urls)),
     # Rutas para Maquinaria Principal (JSON puro)
     path('api/maquinaria/', MaquinariaListView.as_view(renderer_classes=[JSONRenderer]), name='maquinaria-list'),
     path('api/maquinaria/<str:id>/', MaquinariaDetailView.as_view(renderer_classes=[JSONRenderer]), name='maquinaria-detail'),
@@ -71,7 +74,6 @@ urlpatterns = [
     path('api/depreciacion/', DepreciacionGeneralView.as_view(), name='depreciacion-general'),
     path('api/depreciacion/<str:maquinaria_id>/', DepreciacionListView.as_view(), name='depreciacion-list'),
     path('api/maquinaria/<str:maquinaria_id>/depreciacion/<str:record_id>/', DepreciacionDetailView.as_view(), name='depreciacion-detail'),
-
-    path('api/', CustomApiRoot.as_view(), name='api-root'),
-    path('api/', include(router.urls)),
+    path('api/activos/', activos_list, name='activos-list'),
+    path("api/pronostico/", PronosticoAPIView.as_view(), name="api_pronostico"),
 ]

@@ -228,3 +228,14 @@ class DepreciacionSerializer(serializers.Serializer):
             # Si es un objeto date, convertirlo a datetime
             return datetime.combine(value, datetime.min.time())
         return value
+
+class ActivoSerializer(serializers.Serializer):
+    bien_uso = serializers.CharField()
+    vida_util = serializers.IntegerField()
+    coeficiente = serializers.FloatField()
+    
+class PronosticoInputSerializer(serializers.Serializer):
+    placa = serializers.CharField(max_length=20)
+    fecha_asig = serializers.DateField()
+    horas_op = serializers.FloatField()
+    recorrido = serializers.FloatField()

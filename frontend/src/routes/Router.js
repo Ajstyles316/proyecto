@@ -17,6 +17,7 @@ const BasicTable = lazy(() => import("../views/tables/BasicTable"));
 const ExRadio = lazy(() => import("../views/form-elements/ExButton"));
 
 const DepreciacionMain = lazy(() => import("../views/dashboard/components/Depreciacion/DepreciacionMain"));
+const ActivosMain = lazy(() => import("../views/dashboard/components/Activos/ActivosMain"));
 
 const Router = [
   {
@@ -30,6 +31,7 @@ const Router = [
       },
       { path: "/maquinaria", element: <PrivateRoute><BasicTable /></PrivateRoute> },
       { path: "/depreciacion", element: <PrivateRoute><DepreciacionMain /></PrivateRoute>},
+      { path: "/activos", element: <PrivateRoute><ActivosMain /></PrivateRoute>},
       { path: "/mantenimiento", element: <PrivateRoute><ExRadio /></PrivateRoute> },
       { path: "/sample-page", element: <PrivateRoute><SamplePage /></PrivateRoute> },
       { path: "*", element: <Navigate to="/auth/404" /> },

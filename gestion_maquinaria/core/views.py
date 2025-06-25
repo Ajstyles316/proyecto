@@ -10,8 +10,10 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date
 import traceback
 from rest_framework import viewsets
-
-from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario # Importa los modelos como clases planas
+from rest_framework.decorators import api_view
+import nbformat
+from nbconvert.preprocessors import ExecutePreprocessor
+from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico
 from .serializers import (
     MaquinariaSerializer,
     RegistroSerializer,
@@ -24,6 +26,8 @@ from .serializers import (
     SOATSerializer,
     ImpuestoSerializer,
     DepreciacionSerializer,
+    ActivoSerializer,
+    PronosticoInputSerializer
 )
 from django.conf import settings
 from .mongo_connection import get_collection # Asegúrate de que este archivo exista y contenga get_collection
@@ -1473,3 +1477,60 @@ class MaquinariaViewSet(viewsets.ViewSet):
         if not m:
             return Response({"error": "No encontrado"}, status=404)
         return Response(serialize_doc(m))
+
+@api_view(['GET'])
+def activos_list(request):
+    try:
+        collection = get_collection('activos')
+        activos = list(collection.find({}, {'_id': 0, 'bien_uso': 1, 'vida_util': 1, 'coeficiente': 1}))
+        # Renombrar campos para frontend y mostrar coeficiente como porcentaje
+        resultado = [
+            {
+                'bien_uso': a.get('bien_uso', ''),
+                'vida_util': a.get('vida_util', ''),
+                'coeficiente': round(float(a.get('coeficiente', 0)) * 100, 2) if a.get('coeficiente') is not None else ''
+            }
+            for a in activos
+        ]
+        serializer = ActivoSerializer(resultado, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+def cargar_funcion_pronostico():
+    with open("gestion_maquinaria/pronostico_v1/pronostico_mantenimiento.ipynb") as f:
+        nb = nbformat.read(f, as_version=4)
+
+    ep = ExecutePreprocessor(timeout=60, kernel_name='python3')
+    ep.preprocess(nb)
+
+    # El contexto de ejecución tiene las variables definidas
+    namespace = {}
+    for cell in nb.cells:
+        if cell.cell_type == 'code':
+            exec(cell.source, namespace)
+
+    return namespace['predecir_mantenimiento']
+
+class PronosticoAPIView(APIView):
+    def post(self, request):
+        serializer = PronosticoInputSerializer(data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            dias = (datetime.today() - data["fecha_asig"]).days
+
+            predecir_mantenimiento = cargar_funcion_pronostico()
+            resultado = predecir_mantenimiento(dias, data["recorrido"], data["horas_op"])
+
+            pronostico_data = {
+                "placa": data["placa"],
+                "fecha_asig": data["fecha_asig"].isoformat(),
+                "horas_op": data["horas_op"],
+                "recorrido": data["recorrido"],
+                **resultado,
+                "creado_en": datetime.now().isoformat()
+            }
+
+            Pronostico().insert(pronostico_data)
+            return Response(pronostico_data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

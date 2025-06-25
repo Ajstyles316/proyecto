@@ -29,3 +29,9 @@ class Usuario:
 
 class Depreciacion:
     collection_name = "depreciaciones"
+
+class Activo:
+    collection_name = "activos"
+    
+class Pronostico:
+    collection_name = "pronostico"
