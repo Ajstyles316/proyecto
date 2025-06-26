@@ -141,3 +141,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configuración explícita para conexión MongoDB usada por los modelos
+MONGO_URI = "mongodb://localhost:27017/"
+MONGO_DB_NAME = "activos"

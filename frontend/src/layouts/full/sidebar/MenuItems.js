@@ -54,7 +54,7 @@ const Menuitems = [
     id: uniqueId(),
     title: 'Pronóstico',
     icon: IconAlignBoxLeftBottom,
-    href: '/mantenimiento',
+    href: '/pronostico',
   },
   {
     id: uniqueId(),

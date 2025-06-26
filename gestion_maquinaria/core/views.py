@@ -4,14 +4,11 @@ from rest_framework import status, serializers
 from rest_framework.views import APIView
 from django.core.exceptions import ObjectDoesNotExist
 from bson import ObjectId, json_util
-import json, requests
-import logging
+import json, requests, logging, nbformat, os, traceback
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date
-import traceback
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
-import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico
 from .serializers import (
@@ -30,7 +27,7 @@ from .serializers import (
     PronosticoInputSerializer
 )
 from django.conf import settings
-from .mongo_connection import get_collection # Asegúrate de que este archivo exista y contenga get_collection
+from .mongo_connection import get_collection, get_collection_from_activos_db # Asegúrate de importar la nueva función
 import bcrypt
 
 logger = logging.getLogger(__name__)
@@ -38,20 +35,23 @@ logger = logging.getLogger(__name__)
 # --- Funciones auxiliares para PyMongo y serialización ---
 
 def serialize_doc(doc):
-    """Convierte un documento de PyMongo a un formato JSON serializable."""
+    """Convierte un documento de PyMongo a un formato JSON serializable (recursivo)."""
     if not doc:
         return None
-    try:
-        doc['_id'] = str(doc['_id'])
-        for key, value in doc.items():
-            if isinstance(value, datetime):
-                doc[key] = value.isoformat().split('T')[0]
-            elif isinstance(value, ObjectId):
-                doc[key] = str(value)
-        return doc
-    except Exception as e:
-        logger.error(f"Error en serialize_doc: {str(e)}")
-        raise
+    from bson import ObjectId
+    from datetime import datetime, date
+    def convert(value):
+        if isinstance(value, ObjectId):
+            return str(value)
+        elif isinstance(value, (datetime, date)):
+            return value.isoformat()
+        elif isinstance(value, dict):
+            return {k: convert(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [convert(v) for v in value]
+        else:
+            return value
+    return convert(doc)
 
 def serialize_list(docs):
     """Serializa una lista de documentos de PyMongo."""
@@ -1481,9 +1481,10 @@ class MaquinariaViewSet(viewsets.ViewSet):
 @api_view(['GET'])
 def activos_list(request):
     try:
-        collection = get_collection('activos')
+        # Usar la base de datos 'activos' y la colección 'depreciacion'
+        collection = get_collection_from_activos_db('depreciacion')
+        # Ajusta los campos según la estructura real de tus documentos en 'depreciacion'
         activos = list(collection.find({}, {'_id': 0, 'bien_uso': 1, 'vida_util': 1, 'coeficiente': 1}))
-        # Renombrar campos para frontend y mostrar coeficiente como porcentaje
         resultado = [
             {
                 'bien_uso': a.get('bien_uso', ''),
@@ -1498,29 +1499,37 @@ def activos_list(request):
         return Response({'error': str(e)}, status=500)
 
 def cargar_funcion_pronostico():
-    with open("gestion_maquinaria/pronostico_v1/pronostico_mantenimiento.ipynb") as f:
-        nb = nbformat.read(f, as_version=4)
-
-    ep = ExecutePreprocessor(timeout=60, kernel_name='python3')
-    ep.preprocess(nb)
-
-    # El contexto de ejecución tiene las variables definidas
-    namespace = {}
-    for cell in nb.cells:
-        if cell.cell_type == 'code':
-            exec(cell.source, namespace)
-
-    return namespace['predecir_mantenimiento']
+    """
+    Carga la función de pronóstico desde el archivo optimizado
+    """
+    import sys
+    import os
+    
+    # Agregar el directorio del pronóstico al path
+    pronostico_dir = os.path.join(settings.BASE_DIR, "pronostico-v1")
+    if pronostico_dir not in sys.path:
+        sys.path.insert(0, pronostico_dir)
+    
+    try:
+        from pronostico_model import predecir_mantenimiento
+        return predecir_mantenimiento
+    except ImportError as e:
+        print(f"Error al importar pronostico_model: {e}")
+        raise
 
 class PronosticoAPIView(APIView):
     def post(self, request):
         serializer = PronosticoInputSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            dias = (datetime.today() - data["fecha_asig"]).days
+            dias = (datetime.today().date() - data["fecha_asig"]).days
 
             predecir_mantenimiento = cargar_funcion_pronostico()
-            resultado = predecir_mantenimiento(dias, data["recorrido"], data["horas_op"])
+            resultado = predecir_mantenimiento({
+                "dias": dias,
+                "recorrido": data["recorrido"],
+                "horas_op": data["horas_op"]
+            })
 
             pronostico_data = {
                 "placa": data["placa"],
@@ -1531,6 +1540,15 @@ class PronosticoAPIView(APIView):
                 "creado_en": datetime.now().isoformat()
             }
 
-            Pronostico().insert(pronostico_data)
-            return Response(pronostico_data, status=status.HTTP_201_CREATED)
+            # Insertar en MongoDB y obtener el documento insertado
+            inserted_id = Pronostico().insert(pronostico_data)
+            inserted_doc = Pronostico().find_one({"_id": inserted_id})
+            
+            # Serializar el documento para la respuesta
+            return Response(serialize_doc(inserted_doc), status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        registros = Pronostico().find_all()
+        registros_serializados = [serialize_doc(r) for r in registros]
+        return Response(registros_serializados, status=status.HTTP_200_OK)

@@ -1,31 +1,13 @@
 import { useState } from "react";
 import {
   Box,
-  Typography,
-  Tabs,
-  Tab,
 } from "@mui/material";
-
-
-const Mantenimiento = () => {
-  const [tabValue, setTabValue] = useState(0);
-
-  const handleChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
-
+import Pronostico from "../dashboard/components/Pronostico/Pronostico";
+const ExButton = () => {
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>
-        Mantenimiento
-      </Typography>
-
-      <Tabs value={tabValue} onChange={handleChange}>
-        <Tab label="Mantenimiento Actual" />
-        <Tab label="Mantenimiento Inteligencia Artificial" />
-      </Tabs>
+      <Pronostico/>
     </Box>
-  );
+  )
 };
-
-export default Mantenimiento;
+export default ExButton;

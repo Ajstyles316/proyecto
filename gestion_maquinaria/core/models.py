@@ -1,4 +1,9 @@
 from django.contrib.auth.models import User
+from pymongo import MongoClient
+from django.conf import settings
+import nbformat
+from nbconvert.preprocessors import ExecutePreprocessor
+import os
 
 class Maquinaria:
     collection_name = "maquinaria"
@@ -35,3 +40,19 @@ class Activo:
     
 class Pronostico:
     collection_name = "pronostico"
+    def __init__(self):
+        self.client = MongoClient(settings.MONGO_URI)
+        self.db = self.client[settings.MONGO_DB_NAME]
+        self.collection = self.db[self.collection_name]
+
+    def insert(self, data):
+        return self.collection.insert_one(data).inserted_id
+
+    def find_all(self):
+        return list(self.collection.find())  # sin ObjectId
+
+    def find_one(self, query):
+        return self.collection.find_one(query)
+
+    def find_by_placa(self, placa):
+        return self.collection.find_one({"placa": placa})

@@ -13,6 +13,8 @@ import {
   TextField,
   Button,
   Alert,
+  Select,
+  MenuItem
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
@@ -296,9 +298,28 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     </Grid>
 
     <Grid item xs={12} sm={6}>
+      <Typography variant="caption" color="text.secondary" display="block">
+        Método de depreciación
+      </Typography>
+      <Select
+        fullWidth
+        name="metodo"
+        value={editableData.metodo}
+        onChange={handleInputChange}
+        variant="outlined"
+      >
+        <MenuItem value="linea_recta">Línea recta</MenuItem>
+        <MenuItem value="saldo_decreciente">Saldo decreciente</MenuItem>
+        <MenuItem value="suma_digitos">Suma de dígitos</MenuItem>
+      </Select>
+    </Grid>
+
+    <Grid item xs={12} sm={6}>
+      <Typography variant="caption" color="text.secondary" display="block">
+        Vida Útil (años)
+      </Typography>
       <TextField
         fullWidth
-        label="Vida Útil (años)"
         name="vida_util"
         type="number"
         value={editableData.vida_util}
