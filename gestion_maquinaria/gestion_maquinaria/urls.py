@@ -18,12 +18,11 @@ from core.views import (
     ImpuestoListView, ImpuestoDetailView,
     DepreciacionGeneralView,
     DepreciacionListView, DepreciacionDetailView,
-    MaquinariaViewSet,
     activos_list, PronosticoAPIView
 )
 
 router = DefaultRouter()
-router.register(r'maquinaria', MaquinariaViewSet, basename='maquinaria')
+# router.register(r'maquinaria', MaquinariaViewSet, basename='maquinaria')  # Eliminado para evitar conflicto
 
 class CustomApiRoot(APIView):
     """
@@ -45,8 +44,8 @@ urlpatterns = [
     path('api/', CustomApiRoot.as_view(), name='api-root'),
     path('api/', include(router.urls)),
     # Rutas para Maquinaria Principal (JSON puro)
-    path('api/maquinaria/', MaquinariaListView.as_view(renderer_classes=[JSONRenderer]), name='maquinaria-list'),
-    path('api/maquinaria/<str:id>/', MaquinariaDetailView.as_view(renderer_classes=[JSONRenderer]), name='maquinaria-detail'),
+    path('api/maquinaria/', MaquinariaListView.as_view(), name='maquinaria-list'),
+    path('api/maquinaria/<str:id>/', MaquinariaDetailView.as_view(), name='maquinaria-detail'),
     path('api/maquinaria/options/', MaquinariaOptionsView.as_view(), name='maquinaria-options'),
 
     # Rutas para Sub-secciones (CRUD completo)

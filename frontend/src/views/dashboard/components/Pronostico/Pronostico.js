@@ -47,6 +47,34 @@ const Pronostico = () => {
   const [maqCurrentPage, setMaqCurrentPage] = useState(1);
   const [maqRowsPerPage, setMaqRowsPerPage] = useState(10);
 
+  // Utilidades para mostrar títulos amigables y recomendaciones
+  const FIELD_LABELS = {
+    placa: 'Placa',
+    fecha_asig: 'Fecha de Asignación',
+    horas_op: 'Horas de Operación',
+    recorrido: 'Recorrido (km)',
+    resultado: 'Tipo de Mantenimiento',
+    riesgo: 'Nivel de Riesgo',
+    probabilidad: 'Probabilidad (%)',
+    fecha_prediccion: 'Fecha de Pronóstico',
+    fecha_sugerida: 'Fecha Sugerida de Mantenimiento',
+  };
+  const getRecomendacion = (tipo) => {
+    if (tipo === 'Preventivo') return 'Programar revisión y cambio de insumos básicos.';
+    if (tipo === 'Correctivo') return 'Revisar urgentemente y reparar fallas detectadas.';
+    return 'Consultar con el área de mantenimiento.';
+  };
+  const getRiesgoColor = (riesgo) => {
+    if (riesgo === 'ALTO') return 'error.main';
+    if (riesgo === 'MEDIO') return 'warning.main';
+    if (riesgo === 'BAJO') return 'success.main';
+    return 'text.primary';
+  };
+
+  // ... existing code ...
+  const [showSave, setShowSave] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   // Cargar datos
   useEffect(() => {
     const fetchData = async () => {
@@ -99,6 +127,8 @@ const Pronostico = () => {
     e.preventDefault();
     setIaResult(null);
     setFormError("");
+    setShowSave(false);
+    setSaveSuccess(false);
     if (!form.fecha_asig || !form.horas_op || !form.recorrido) {
       setFormError("Completa todos los campos.");
       return;
@@ -124,6 +154,8 @@ const Pronostico = () => {
       }
       const result = await res.json();
       setIaResult(result);
+      setShowSave(true);
+      setSaveSuccess(false);
       // Refrescar historial
       const resPronostico = await fetch("http://localhost:8000/api/pronostico/");
       setPronosticos(await resPronostico.json());
@@ -133,6 +165,36 @@ const Pronostico = () => {
       setSubmitting(false);
     }
   };
+
+  const handleGuardar = async () => {
+    if (!iaResult) return;
+    setSubmitting(true);
+    setSaveSuccess(false);
+    try {
+      // Vuelve a enviar el mismo payload para guardar
+      const res = await fetch("http://localhost:8000/api/pronostico/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placa: iaResult.placa,
+          fecha_asig: iaResult.fecha_asig,
+          horas_op: iaResult.horas_op,
+          recorrido: iaResult.recorrido,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al guardar en la base de datos");
+      setSaveSuccess(true);
+      setShowSave(false);
+      // Refrescar historial
+      const resPronostico = await fetch("http://localhost:8000/api/pronostico/");
+      setPronosticos(await resPronostico.json());
+    } catch (e) {
+      setFormError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Filtrado y paginación para historial
   const filteredData = pronosticos.filter((item) =>
     getMaquinariaNombre(item.maquinaria_id)
@@ -304,11 +366,75 @@ const Pronostico = () => {
             </Button>
           </Box>
           {iaResult && (
-            <Box mt={3} p={2} border={1} borderColor="primary.main" borderRadius={2} bgcolor="#f5faff">
-              <Typography variant="subtitle1" color="primary">Resultado del Pronóstico</Typography>
-              {Object.entries(iaResult).map(([key, value]) => (
-                <Typography key={key}><b>{key}:</b> {String(value)}</Typography>
-              ))}
+            <Box mt={3}>
+              <Box p={2} border={1} borderColor="primary.main" borderRadius={2} bgcolor="#f5faff">
+                <Typography variant="subtitle1" color="primary" mb={1}>
+                  Resultado del Pronóstico
+                </Typography>
+                {/* Mostrar campos amigables, ocultar _id y creado_en */}
+                {Object.entries(iaResult)
+                  .filter(([key]) => !["_id", "creado_en"].includes(key))
+                  .map(([key, value]) => {
+                    // Si es riesgo, aplicar color
+                    if (key === "riesgo") {
+                      return (
+                        <Typography key={key} sx={{ color: getRiesgoColor(value), fontWeight: 600 }}>
+                          {FIELD_LABELS[key] || key}: {String(value)}
+                        </Typography>
+                      );
+                    }
+                    // Si es resultado, mostrar con recomendación
+                    if (key === "resultado") {
+                      return (
+                        <Typography key={key}>
+                          {FIELD_LABELS[key] || key}: <b>{String(value)}</b> <br />
+                          <span style={{ fontStyle: 'italic', color: '#1976d2' }}>{getRecomendacion(String(value))}</span>
+                        </Typography>
+                      );
+                    }
+                    // Si es fecha sugerida, mostrar destacada
+                    if (key === "fecha_sugerida") {
+                      return (
+                        <Typography key={key} sx={{ color: 'success.dark', fontWeight: 600 }}>
+                          {FIELD_LABELS[key] || key}: {String(value)}
+                        </Typography>
+                      );
+                    }
+                    // Otros campos
+                    return (
+                      <Typography key={key}>
+                        {FIELD_LABELS[key] || key}: {String(value)}
+                      </Typography>
+                    );
+                  })}
+                {/* Si no hay fecha sugerida, mostrar una estimada */}
+                {!iaResult.fecha_sugerida && (
+                  <Typography sx={{ color: 'success.dark', fontWeight: 600 }}>
+                    Fecha Sugerida de Mantenimiento: {(() => {
+                      // Ejemplo: sumar 180 días a la fecha de asignación
+                      try {
+                        const base = iaResult.fecha_asig || iaResult.fecha_prediccion;
+                        if (!base) return 'No disponible';
+                        const d = new Date(base);
+                        d.setDate(d.getDate() + 180);
+                        return d.toISOString().split('T')[0];
+                      } catch {
+                        return 'No disponible';
+                      }
+                    })()}
+                  </Typography>
+                )}
+                {saveSuccess && (
+                  <Alert severity="success" sx={{ mt: 2 }}>¡Información guardada exitosamente!</Alert>
+                )}
+              </Box>
+              {showSave && (
+                <Box mt={2} display="flex" justifyContent="flex-end">
+                  <Button variant="contained" color="success" onClick={handleGuardar} disabled={submitting}>
+                    Guardar Información
+                  </Button>
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
