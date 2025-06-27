@@ -3,6 +3,11 @@
 import os
 import sys
 
+# Workaround para evitar advertencias de asyncio/zmq en Windows
+if sys.platform.startswith('win'):
+    import asyncio
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 
 def main():
     """Run administrative tasks."""

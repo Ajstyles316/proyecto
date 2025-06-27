@@ -89,6 +89,73 @@ const baselightTheme = createTheme({
         },
       },
     },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          '&.MuiMenuItem-root': {
+            color: 'inherit',
+            '& .MuiTypography-root': {
+              color: 'inherit',
+            },
+          },
+          '&.sidebar-menu-item': {
+          color: 'white',
+          '& .MuiTypography-root': {
+            color: 'white',
+            },
+          },
+        },
+      },
+    },
+    MuiListSubheader: {
+      styleOverrides: {
+        root: {
+          '&.MuiListSubheader-root': {
+            color: 'inherit',
+            '& .MuiTypography-root': {
+              color: 'inherit',
+            },
+          },
+          '&.sidebar-subheader': {
+          color: 'white',
+          '& .MuiTypography-root': {
+            color: 'white',
+            },
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          color: '#2A3547',
+          '& .MuiSelect-select': {
+            color: '#2A3547',
+          },
+        },
+      },
+    },
+    MuiAutocomplete: {
+      styleOverrides: {
+        root: {
+          '& .MuiInputBase-input': {
+            color: '#2A3547',
+          },
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiInputBase-input': {
+            color: '#2A3547',
+          },
+          '& .MuiSelect-select': {
+            color: '#2A3547',
+          },
+        },
+      },
+    },
   }
 },
 

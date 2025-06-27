@@ -29,7 +29,9 @@ const Sidebar = (props) => {
             sx: {
               width: sidebarWidth,
               boxSizing: 'border-box',
-              top: '64px',
+              top: '0px',
+              backgroundColor: '#154360',
+              color: 'white'
             },
           }}
         >
@@ -56,8 +58,9 @@ const Sidebar = (props) => {
       variant="temporary"
       PaperProps={{
         sx: {
-
           boxShadow: (theme) => theme.shadows[8],
+          backgroundColor: '#5d6d7e',
+          color: 'white',
         },
       }}
     >
@@ -66,7 +69,9 @@ const Sidebar = (props) => {
         {/* ------------------------------------------- */}
         {/* Sidebar For Mobile */}
         {/* ------------------------------------------- */}
-        <SidebarItems />
+        <Box color="white">
+          <SidebarItems />
+        </Box>
       </Scrollbar>
     </Drawer>
   );

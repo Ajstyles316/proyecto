@@ -1,0 +1,63 @@
+export const fieldLabels = {
+  Maquinaria: [
+    { name: 'gestion', label: 'Gestión' },
+    { name: 'placa', label: 'Placa' },
+    { name: 'detalle', label: 'Detalle' },
+    { name: 'unidad', label: 'Unidad' },
+    { name: 'adqui', label: 'Adqui.' },
+    { name: 'codigo', label: 'Código' },
+    { name: 'tipo', label: 'Tipo' },
+    { name: 'marca', label: 'Marca' },
+    { name: 'modelo', label: 'Modelo' },
+    { name: 'color', label: 'Color' },
+    { name: 'metodo_depreciacion', label: 'Método de Depreciación' },
+    { name: 'tipo_vehiculo', label: 'Tipo de Vehículo' },
+    { name: 'subtipo_vehiculo', label: 'Subtipo de Vehículo' },
+    { name: 'crpva', label: 'CRPVA' },
+    { name: 'nro_motor', label: 'Nro Motor' },
+    { name: 'nro_chasis', label: 'Nro. Chasis' },
+    { name: 'fecha_registro', label: 'Fecha Registro', type: 'date' },
+    { name: 'imagen', label: 'Imagen', type: 'file' },
+  ],
+  Control: [
+    { name: 'ubicacion', label: 'Ubicación' },
+    { name: 'gerente', label: 'Gerente' },
+    { name: 'encargado', label: 'Encargado de Activos' },
+    { name: 'estado', label: 'Estado'},
+    { name: 'hojaTramite', label: 'Hoja de Trámite' },
+    { name: 'fechaIngreso', label: 'Fecha de Ingreso', type: 'date' },
+    { name: 'observacion', label: 'Observación' },
+  ],
+  'Asignación': [
+    { name: 'fechaAsignacion', label: 'Fecha Asignación', type: 'date' },
+    { name: 'fechaLiberacion', label: 'Fecha Liberación', type: 'date' },
+    { name: 'recorridoKm', label: 'Recorrido Asignado (Km)', type: 'number' },
+    { name: 'recorridoEntregado', label: 'Recorrido Entregado (Km)', type: 'number' },
+  ],
+  Mantenimiento: [
+    { name: 'tipo', label: 'Tipo' },
+    { name: 'gestion', label: 'Gestión' },
+    { name: 'lugarMantenimiento', label: 'Lugar de Mantenimiento' },
+  ],
+  Seguros: [
+    { name: 'placa', label: 'Placa' },
+    { name: 'numero2024', label: 'Número 2024' },
+    { name: 'importeAsegurado2024', label: 'Importe Asegurado 2024', type: 'number' },
+    { name: 'detalle', label: 'Detalle' },
+  ],
+  ITV: [
+    { name: 'placa', label: 'Placa' },
+    { name: 'detalle2024', label: 'Detalle 2024' },
+    { name: 'importe2024', label: 'Importe 2024', type: 'number' },
+  ],
+  Impuestos: [
+    { name: 'placa', label: 'Placa' },
+    { name: 'importe2023', label: 'Importe 2023', type: 'number' },
+    { name: 'importe2024', label: 'Importe 2024', type: 'number' },
+  ],
+  SOAT: [
+    { name: 'placa', label: 'Placa' },
+    { name: 'importe2024', label: 'Importe 2024', type: 'number' },
+    { name: 'importe2025', label: 'Importe 2025', type: 'number' },
+  ]
+};

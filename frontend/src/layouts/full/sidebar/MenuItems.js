@@ -2,17 +2,10 @@ import { uniqueId } from 'lodash';
 
 import {
   IconLayoutDashboard,
-  IconTypography,
-  IconUserCircle,
   IconLogin,
   IconAperture,
   IconAlignBoxLeftBottom,
-  IconCheckbox,
-  IconRadar,
-  IconSlideshow,
-  IconCaretUpDown,
   IconTable,
-  IconForms
 } from '@tabler/icons-react';
 
 // Función para cerrar sesión
@@ -47,49 +40,25 @@ const Menuitems = [
   },
   {
     id: uniqueId(),
-    title: 'Control',
-    icon: IconTypography,
-    href: '/control',
+    title: 'Depreciación',
+    icon: IconTable,
+    href: '/depreciacion',
   },
   {
     id: uniqueId(),
-    title: 'Mantenimiento',
+    title: 'Activos',
+    icon: IconTable,
+    href: '/activos',
+  },
+  {
+    id: uniqueId(),
+    title: 'Pronóstico',
     icon: IconAlignBoxLeftBottom,
-    href: '/mantenimiento',
+    href: '/pronostico',
   },
   {
     id: uniqueId(),
-    title: 'Asignación',
-    icon: IconCheckbox,
-    href: '/asignacion',
-  },
-  {
-    id: uniqueId(),
-    title: 'Seguros',
-    icon: IconRadar,
-    href: '/seguros',
-  },
-  {
-    id: uniqueId(),
-    title: 'ITV',
-    icon: IconSlideshow,
-    href: '/itv',
-  },
-  {
-    id: uniqueId(),
-    title: 'Impuesto',
-    icon: IconCaretUpDown,
-    href: '/impuesto',
-  },
-  {
-    id: uniqueId(),
-    title: 'Form Layouts',
-    icon: IconForms,
-    href: '/form-layouts',
-  },
-  {
-    id: uniqueId(),
-    title: 'Sample Page',
+    title: 'Reportes',
     icon: IconAperture,
     href: '/sample-page',
   },

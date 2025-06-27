@@ -10,8 +10,9 @@ import Topbar from "./header/Topbar";
 
 const MainWrapper = styled('div')(() => ({
   display: 'flex',
- // minHeight: '100vh',
   width: '100%',
+  backgroundColor: '#d7dbdd',
+  minHeight: '100vh',
 }));
 
 const PageWrapper = styled('div')(() => ({

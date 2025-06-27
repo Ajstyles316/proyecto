@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-
+import pymongo
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -60,7 +60,10 @@ ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
-RECAPTCHA_SECRET_KEY = "6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9"  # Reemplaza con tu clave de Google reCAPTCHA
+RECAPTCHA_SECRET_KEY = "6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9" 
+MONGO_CLIENT = pymongo.MongoClient("mongodb://localhost:27017/")
+MONGO_DB = MONGO_CLIENT["activos"]
+MAQUINARIA_COLLECTION = MONGO_DB["maquinaria"]# Reemplaza con tu clave de Google reCAPTCHA
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -81,6 +84,13 @@ WSGI_APPLICATION = 'gestion_maquinaria.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # settings.py
 
@@ -131,3 +141,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configuración explícita para conexión MongoDB usada por los modelos
+MONGO_URI = "mongodb://localhost:27017/"
+MONGO_DB_NAME = "activos"
