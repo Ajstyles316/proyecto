@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation, NavLink } from 'react-router';
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import {
   Logo,
   Sidebar as MUI_Sidebar,
@@ -19,7 +19,7 @@ const renderMenuItems = (items, pathDirect) => {
 
 
     const Icon = item.icon ? item.icon : IconPoint;
-    const itemIcon = <Icon stroke={1.5} size="1.3rem" />;
+    const itemIcon = <Icon stroke={1.5} size="1.3rem" color="white"/>;
 
     if (item.subheader) {
       // Display Subheader
@@ -27,7 +27,7 @@ const renderMenuItems = (items, pathDirect) => {
       return (
         <Box sx={{ margin: "0 -24px", textTransform: 'uppercase' }} key={item.subheader}>
           <Menu
-            subHeading={item.subheader}
+            subHeading={<Typography color="white">{item.subheader}</Typography>}
             key={item.subheader}
 
           />
@@ -40,8 +40,9 @@ const renderMenuItems = (items, pathDirect) => {
       return (
         <Submenu
           key={item.id}
-          title={item.title}
+          title={<Typography color="white">{item.title}</Typography>}
           icon={itemIcon}
+          sx={{ color: 'white' }}
         >
           {renderMenuItems(item.children, pathDirect)}
         </Submenu>
@@ -64,8 +65,9 @@ const renderMenuItems = (items, pathDirect) => {
         badgeTextColor="#1a97f5"
         disabled={item.disabled}
         borderRadius='9px'
+        sx={{ color: 'white' }}
       >
-        {item.title}
+        <Typography color="white">{item.title}</Typography>
       </MenuItem>
 
 
@@ -79,11 +81,13 @@ const SidebarItems = () => {
 
   return (
     <Box sx={{ px: "24px", overflowX: 'hidden' }}>
-      <MUI_Sidebar width={"100%"} showProfile={false} themeColor={"#1e4db7"} themeSecondaryColor={'#1a97f51a'}>
-        <Box sx={{ margin: "0 -24px" }}>
+      <MUI_Sidebar width={"100%"} showProfile={false} themeColor={"#1e4db7"} themeSecondaryColor={'#1a97f51a'} textColor="white">
+        <Box sx={{ margin: "0 -24px", color: 'white' }}>
           <Logo img={logoicn} component={NavLink} to="/" className="logo-img">Activos Fijos</Logo>
         </Box>
-        {renderMenuItems(Menuitems, pathDirect)}
+        <Box sx={{ color: 'inherit' }}>
+          {renderMenuItems(Menuitems, pathDirect)}
+        </Box>
       </MUI_Sidebar>
     </Box>
   );

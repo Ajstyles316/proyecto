@@ -1,0 +1,3 @@
+[submodule "gestion_maquinaria/pronostico-v1"]
+	path = gestion_maquinaria/pronostico-v1
+	url = https://github.com/Ajstyles316/pronostico-v1.git
