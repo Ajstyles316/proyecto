@@ -18,8 +18,19 @@ import {
   DialogActions,
   IconButton,
   Pagination,
+  Tabs,
+  Tab,
+  Popover,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ScatterChart, Scatter } from 'recharts';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/Info';
 
 const Pronostico = () => {
   const [pronosticos, setPronosticos] = useState([]);
@@ -53,27 +64,40 @@ const Pronostico = () => {
     fecha_asig: 'Fecha de Asignación',
     horas_op: 'Horas de Operación',
     recorrido: 'Recorrido (km)',
-    resultado: 'Tipo de Mantenimiento',
-    riesgo: 'Nivel de Riesgo',
-    probabilidad: 'Probabilidad (%)',
-    fecha_prediccion: 'Fecha de Pronóstico',
+    riesgo: 'Riesgo',
+    resultado: 'Resultado',
     fecha_sugerida: 'Fecha Sugerida de Mantenimiento',
   };
-  const getRecomendacion = (tipo) => {
-    if (tipo === 'Preventivo') return 'Programar revisión y cambio de insumos básicos.';
-    if (tipo === 'Correctivo') return 'Revisar urgentemente y reparar fallas detectadas.';
-    return 'Consultar con el área de mantenimiento.';
+  const getRecomendacion = (resultado) => {
+    if (resultado === 'Correctivo') return '¡Atención inmediata!';
+    if (resultado === 'Preventivo') return 'Programar mantenimiento.';
+    if (resultado === 'Predictivo') return 'Monitorear condición.';
+    return '';
   };
   const getRiesgoColor = (riesgo) => {
-    if (riesgo === 'ALTO') return 'error.main';
-    if (riesgo === 'MEDIO') return 'warning.main';
-    if (riesgo === 'BAJO') return 'success.main';
+    if (riesgo === 'Alto') return 'error.main';
+    if (riesgo === 'Medio') return 'warning.main';
+    if (riesgo === 'Bajo') return 'success.main';
     return 'text.primary';
   };
 
   // ... existing code ...
   const [showSave, setShowSave] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
+  const [lastForecastData, setLastForecastData] = useState(null);
+  const [forecastChartData, setForecastChartData] = useState([]);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [allForecasts, setAllForecasts] = useState([]);
+  const [mainTab, setMainTab] = useState(0);
+
+  // Estado para popover de recomendaciones en la tabla
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [popoverRecs, setPopoverRecs] = useState([]);
+
+  // Estados para paginación de la tabla de historial de pronósticos
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyRowsPerPage, setHistoryRowsPerPage] = useState(10);
 
   // Cargar datos
   useEffect(() => {
@@ -108,6 +132,20 @@ const Pronostico = () => {
     setFormError("");
     setIaResult(null);
     setModalOpen(true);
+    setTabIndex(0);
+    // Cargar todos los pronósticos
+    fetch('http://localhost:8000/api/pronostico/')
+      .then(res => res.json())
+      .then(data => {
+        setAllForecasts(data);
+        setForecastChartData(
+          data.map(item => ({
+            fecha: item.fecha_asig,
+            valor: item.riesgo || item.resultado || 0,
+            placa: item.placa
+          }))
+        );
+      });
   };
 
   const closeModal = () => {
@@ -154,6 +192,8 @@ const Pronostico = () => {
       }
       const result = await res.json();
       setIaResult(result);
+      setLastForecastData(result);
+      setForecastChartData([{ fecha: result.fecha_asig, valor: result.riesgo || result.resultado }]);
       setShowSave(true);
       setSaveSuccess(false);
       // Refrescar historial
@@ -168,19 +208,27 @@ const Pronostico = () => {
 
   const handleGuardar = async () => {
     if (!iaResult) return;
+    const payload = {
+      ...iaResult,
+      fecha_sugerida: iaResult.fecha_sugerida || (() => {
+        try {
+          const base = iaResult.fecha_asig;
+          if (!base) return '';
+          const d = new Date(base);
+          d.setDate(d.getDate() + 180);
+          return d.toISOString().split('T')[0];
+        } catch {
+          return '';
+        }
+      })(),
+    };
     setSubmitting(true);
     setSaveSuccess(false);
     try {
-      // Vuelve a enviar el mismo payload para guardar
       const res = await fetch("http://localhost:8000/api/pronostico/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          placa: iaResult.placa,
-          fecha_asig: iaResult.fecha_asig,
-          horas_op: iaResult.horas_op,
-          recorrido: iaResult.recorrido,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Error al guardar en la base de datos");
       setSaveSuccess(true);
@@ -234,6 +282,73 @@ const Pronostico = () => {
     setMaqCurrentPage(1);
   };
 
+  // Función para obtener acciones según tipo de mantenimiento (resultado)
+  function getAccionPorTipo(resultado) {
+    if (resultado === 'Correctivo') return '¡Atención inmediata! Revisar y reparar fallas.';
+    if (resultado === 'Preventivo') return 'Programar mantenimiento preventivo.';
+    if (resultado === 'Predictivo') return 'Monitorear condición y programar revisión.';
+    return 'Consultar con el área de mantenimiento.';
+  }
+
+  // Función para obtener recomendaciones según tipo de mantenimiento (resultado)
+  function getRecomendacionesPorTipo(resultado) {
+    if (resultado === 'Correctivo') return [
+      'Diagnóstico preciso: uso de herramientas de diagnóstico o software.',
+      'Inspección técnica detallada por un mecánico especializado.',
+      'Reemplazo de partes dañadas: motores, correas, rodamientos, etc.',
+      'Reparación estructural: soldaduras, enderezado de chasis, refuerzos.',
+      'Análisis de causa raíz: documentar para evitar que se repita.',
+      'Actualización del historial de la máquina.',
+      'Medidas de seguridad post-reparación: pruebas antes de volver a operar.'
+    ];
+    if (resultado === 'Preventivo') return [
+      'Revisión periódica del equipo.',
+      'Inspección visual de componentes.',
+      'Verificación de ruidos anómalos, vibraciones o fugas.',
+      'Lubricación regular de partes móviles.',
+      'Cambio de filtros y fluidos según cronograma.',
+      'Calibraciones y ajustes: sensores, frenos, presión hidráulica.',
+      'Monitoreo de horas de uso y recorrido.',
+      'Capacitación del operador y revisión diaria básica.',
+      'Checklist preventiva y documentación en cada revisión.'
+    ];
+    if (resultado === 'Predictivo') return [
+      'Monitoreo de condición con sensores o IoT.',
+      'Análisis de vibraciones, temperatura y ruidos.',
+      'Programar revisión cuando se detecten anomalías.',
+      'Actualizar historial de monitoreo y mantenimiento.'
+    ];
+    return ['Consultar con el área de mantenimiento.'];
+  }
+
+  // useEffect para recargar pronósticos cada vez que se selecciona la pestaña 'Ver Pronóstico'
+  useEffect(() => {
+    if (mainTab === 1) {
+      fetch('http://localhost:8000/api/pronostico/')
+        .then(res => res.json())
+        .then(data => setAllForecasts(data));
+    }
+  }, [mainTab]);
+
+  const handleOpenPopover = (event, recs) => {
+    setAnchorEl(event.currentTarget);
+    setPopoverRecs(recs);
+  };
+
+  const handleClosePopover = () => {
+    setAnchorEl(null);
+    setPopoverRecs([]);
+  };
+
+  const openPopover = Boolean(anchorEl);
+
+  // Filtrado y paginación para historial de pronósticos
+  const paginatedForecasts = allForecasts.slice(
+    (historyPage - 1) * historyRowsPerPage,
+    historyPage * historyRowsPerPage
+  );
+  const totalHistoryPages = Math.ceil(allForecasts.length / historyRowsPerPage);
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -243,82 +358,178 @@ const Pronostico = () => {
   }
   return (
     <Paper elevation={3} sx={{ p: 3, maxWidth: 1100, margin: '0 auto', mt: 3 }}>
-      <Typography variant="h5" mb={2} fontWeight={600}>Pronóstico de Mantenimiento</Typography>
-      {/* Filtros de búsqueda y cantidad de registros para la tabla de maquinarias */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box>
-          <TextField
-            label="Buscar por detalle o placa"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setMaqCurrentPage(1); // Reiniciar a la primera página al buscar
-            }}
-            size="small"
-            sx={{ minWidth: 250 }}
-            color="black"
-          />
-        </Box>
-        <Box>
-          <TextField
-            select
-            label="Mostrar"
-            value={maqRowsPerPage}
-            onChange={handleMaqRowsPerPageChange}
-            size="small"
-            sx={{ width: 180 }}
-            color="black"
-          >
-            <MenuItem value={5}>5 registros</MenuItem>
-            <MenuItem value={10}>10 registros</MenuItem>
-            <MenuItem value={20}>20 registros</MenuItem>
-            <MenuItem value={50}>50 registros</MenuItem>
-            <MenuItem value={100}>100 registros</MenuItem>
-          </TextField>
-        </Box>
-      </Box>
-      {/* Tabla de maquinarias con paginación */}
-      <Table sx={{ mb: 3 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell><b>N°</b></TableCell>
-            <TableCell><b>Placa</b></TableCell>
-            <TableCell><b>Detalle</b></TableCell>
-            <TableCell><b>Acción</b></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {paginatedMaquinarias.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} align="center">No hay maquinarias registradas</TableCell>
-            </TableRow>
-          ) : (
-            paginatedMaquinarias.map((m, idx) => (
-              <TableRow key={m._id?.$oid || m._id}>
-                <TableCell>{(maqCurrentPage - 1) * maqRowsPerPage + idx + 1}</TableCell>
-                <TableCell>{m.placa || '-'}</TableCell>
-                <TableCell>{m.detalle || '-'}</TableCell>
-                <TableCell>
-                  <Button variant="contained" color="primary" onClick={() => openModal(m)}>
-                    Pronosticar
-                  </Button>
-                </TableCell>
+      <Tabs value={mainTab} onChange={(e, v) => setMainTab(v)} sx={{ mb: 2 }}>
+        <Tab label="Pronóstico de Mantenimiento" />
+        <Tab label="Ver Pronóstico" />
+      </Tabs>
+      {mainTab === 0 && (
+        <>
+          <Typography variant="h5" mb={2} fontWeight={600}>Pronóstico de Mantenimiento</Typography>
+          {/* Filtros de búsqueda y cantidad de registros para la tabla de maquinarias */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box>
+              <TextField
+                label="Buscar"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setMaqCurrentPage(1); // Reiniciar a la primera página al buscar
+                }}
+                size="small"
+                sx={{ minWidth: 250 }}
+                color="black"
+              />
+            </Box>
+            <Box>
+              <TextField
+                select
+                label="Mostrar"
+                value={maqRowsPerPage}
+                onChange={handleMaqRowsPerPageChange}
+                size="small"
+                sx={{ width: 180 }}
+                color="black"
+              >
+                <MenuItem value={5}>5 registros</MenuItem>
+                <MenuItem value={10}>10 registros</MenuItem>
+                <MenuItem value={20}>20 registros</MenuItem>
+                <MenuItem value={50}>50 registros</MenuItem>
+                <MenuItem value={100}>100 registros</MenuItem>
+              </TextField>
+            </Box>
+          </Box>
+          {/* Tabla de maquinarias con paginación */}
+          <Table sx={{ mb: 3 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell><b>N°</b></TableCell>
+                <TableCell><b>Placa</b></TableCell>
+                <TableCell><b>Detalle</b></TableCell>
+                <TableCell><b>Acción</b></TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            </TableHead>
+            <TableBody>
+              {paginatedMaquinarias.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">No hay maquinarias registradas</TableCell>
+                </TableRow>
+              ) : (
+                paginatedMaquinarias.map((m, idx) => (
+                  <TableRow key={m._id?.$oid || m._id}>
+                    <TableCell>{(maqCurrentPage - 1) * maqRowsPerPage + idx + 1}</TableCell>
+                    <TableCell>{m.placa || '-'}</TableCell>
+                    <TableCell>{m.detalle || '-'}</TableCell>
+                    <TableCell>
+                      <Button variant="contained" color="primary" onClick={() => openModal(m)}>
+                        Generar Pronóstico
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-      {/* Paginación visual para tabla de maquinarias */}
-      {maqTotalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1, mb: 2 }}>
-          <Pagination
-            count={maqTotalPages}
-            page={maqCurrentPage}
-            onChange={(e, page) => setMaqCurrentPage(page)}
-            showFirstButton
-            showLastButton
-          />
+          {/* Paginación visual para tabla de maquinarias */}
+          {maqTotalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1, mb: 2 }}>
+              <Pagination
+                count={maqTotalPages}
+                page={maqCurrentPage}
+                onChange={(e, page) => setMaqCurrentPage(page)}
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          )}
+        </>
+      )}
+      {mainTab === 1 && (
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <Typography variant="h6" mb={2} align="center">Gráfica de Recorrido vs Horas</Typography>
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart>
+              <CartesianGrid />
+              <XAxis dataKey="recorrido" name="Recorrido (km)" />
+              <YAxis dataKey="horas_op" name="Horas de Operación" />
+              <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+              <Legend />
+              <Scatter name="Pronósticos" data={allForecasts} fill="#8884d8" />
+              <Line type="monotone" dataKey="horas_op" data={allForecasts} stroke="#1976d2" dot={false} legendType="plainline" name="Evolución real" />
+            </ScatterChart>
+          </ResponsiveContainer>
+          <Typography variant="h6" mt={4} mb={2} align="center">Historial de Pronósticos</Typography>
+          <Box width="100%" maxWidth={1100}>
+            <Box display="flex" justifyContent="flex-end" mb={2}>
+              <TextField
+                select
+                label="Mostrar"
+                value={historyRowsPerPage}
+                onChange={e => { setHistoryRowsPerPage(parseInt(e.target.value, 10)); setHistoryPage(1); }}
+                size="small"
+                sx={{ width: 180 }}
+              >
+                <MenuItem value={5}>5 registros</MenuItem>
+                <MenuItem value={10}>10 registros</MenuItem>
+                <MenuItem value={20}>20 registros</MenuItem>
+                <MenuItem value={50}>50 registros</MenuItem>
+                <MenuItem value={100}>100 registros</MenuItem>
+              </TextField>
+            </Box>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="center">Placa</TableCell>
+                  <TableCell align="center">Fecha Asignación</TableCell>
+                  <TableCell align="center">Horas Op.</TableCell>
+                  <TableCell align="center">Recorrido</TableCell>
+                  <TableCell align="center">Riesgo</TableCell>
+                  <TableCell align="center">Resultado</TableCell>
+                  <TableCell align="center">Fecha de Mantenimiento Programada</TableCell>
+                  <TableCell align="center">Recomendaciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedForecasts.map((item, idx) => (
+                  <TableRow key={item._id || idx}>
+                    <TableCell align="center">{item.placa}</TableCell>
+                    <TableCell align="center">{item.fecha_asig}</TableCell>
+                    <TableCell align="center">{item.horas_op}</TableCell>
+                    <TableCell align="center">{item.recorrido}</TableCell>
+                    <TableCell align="center">{item.riesgo || '-'}</TableCell>
+                    <TableCell align="center">{item.resultado || '-'}</TableCell>
+                    <TableCell align="center">{item.fecha_sugerida || (() => {
+                      try {
+                        const base = item.fecha_asig;
+                        if (!base) return 'No disponible';
+                        const d = new Date(base);
+                        d.setDate(d.getDate() + 180);
+                        return d.toISOString().split('T')[0];
+                      } catch {
+                        return 'No disponible';
+                      }
+                    })()}</TableCell>
+                    <TableCell align="center">
+                      <IconButton size="small" color="info" onClick={e => handleOpenPopover(e, getRecomendacionesPorTipo(item.resultado))}>
+                        <InfoIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {totalHistoryPages > 1 && (
+              <Box display="flex" justifyContent="center" mt={2}>
+                <Pagination
+                  count={totalHistoryPages}
+                  page={historyPage}
+                  onChange={(e, page) => setHistoryPage(page)}
+                  showFirstButton
+                  showLastButton
+                />
+              </Box>
+            )}
+          </Box>
         </Box>
       )}
       {/* Modal de pronóstico */}
@@ -373,9 +584,8 @@ const Pronostico = () => {
                 </Typography>
                 {/* Mostrar campos amigables, ocultar _id y creado_en */}
                 {Object.entries(iaResult)
-                  .filter(([key]) => !["_id", "creado_en"].includes(key))
+                  .filter(([key]) => key !== '_id' && key !== 'creado_en' && key !== 'fecha_prediccion')
                   .map(([key, value]) => {
-                    // Si es riesgo, aplicar color
                     if (key === "riesgo") {
                       return (
                         <Typography key={key} sx={{ color: getRiesgoColor(value), fontWeight: 600 }}>
@@ -383,7 +593,6 @@ const Pronostico = () => {
                         </Typography>
                       );
                     }
-                    // Si es resultado, mostrar con recomendación
                     if (key === "resultado") {
                       return (
                         <Typography key={key}>
@@ -392,7 +601,13 @@ const Pronostico = () => {
                         </Typography>
                       );
                     }
-                    // Si es fecha sugerida, mostrar destacada
+                    if (key === "probabilidad") {
+                      return (
+                        <Typography key={key} sx={{ color: 'info.main', fontWeight: 600 }}>
+                          Probabilidad: {String(value)}%
+                        </Typography>
+                      );
+                    }
                     if (key === "fecha_sugerida") {
                       return (
                         <Typography key={key} sx={{ color: 'success.dark', fontWeight: 600 }}>
@@ -411,7 +626,6 @@ const Pronostico = () => {
                 {!iaResult.fecha_sugerida && (
                   <Typography sx={{ color: 'success.dark', fontWeight: 600 }}>
                     Fecha Sugerida de Mantenimiento: {(() => {
-                      // Ejemplo: sumar 180 días a la fecha de asignación
                       try {
                         const base = iaResult.fecha_asig || iaResult.fecha_prediccion;
                         if (!base) return 'No disponible';
@@ -424,24 +638,43 @@ const Pronostico = () => {
                     })()}
                   </Typography>
                 )}
+                {/* Acciones recomendadas según tipo de mantenimiento */}
+                <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>
+                  Acciones a tomar: {getAccionPorTipo(iaResult.resultado)}
+                </Typography>
                 {saveSuccess && (
                   <Alert severity="success" sx={{ mt: 2 }}>¡Información guardada exitosamente!</Alert>
                 )}
               </Box>
-              {showSave && (
-                <Box mt={2} display="flex" justifyContent="flex-end">
-                  <Button variant="contained" color="success" onClick={handleGuardar} disabled={submitting}>
-                    Guardar Información
-                  </Button>
-                </Box>
-              )}
+              <Box mt={2} display="flex" justifyContent="flex-end">
+                <Button variant="contained" color="success" onClick={handleGuardar} disabled={submitting}>
+                  Guardar Información
+                </Button>
+              </Box>
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeModal} color="secondary">Cerrar</Button>
-        </DialogActions>
       </Dialog>
+      <Popover
+        open={openPopover}
+        anchorEl={anchorEl}
+        onClose={handleClosePopover}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Box p={2} maxWidth={350}>
+          <Typography variant="subtitle1" color="primary" mb={1}>Recomendaciones</Typography>
+          <List dense>
+            {popoverRecs.map((rec, idx) => (
+              <ListItem key={idx}>
+                <ListItemIcon>
+                  <CheckCircleIcon color="success" fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary={rec} />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Popover>
     </Paper>
   );
 };

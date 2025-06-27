@@ -1540,8 +1540,9 @@ class PronosticoAPIView(APIView):
                 "creado_en": datetime.now().isoformat()
             }
 
-            # Insertar en MongoDB y obtener el documento insertado
+            print('Intentando guardar pronóstico en la base de datos:', pronostico_data)
             inserted_id = Pronostico().insert(pronostico_data)
+            print('Pronóstico guardado con ID:', inserted_id)
             inserted_doc = Pronostico().find_one({"_id": inserted_id})
             
             # Serializar el documento para la respuesta
