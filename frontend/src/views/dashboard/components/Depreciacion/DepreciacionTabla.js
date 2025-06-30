@@ -18,7 +18,7 @@ import {
 import PropTypes from 'prop-types';
 import { useState, useMemo } from 'react';
 
-const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, depreciacionesPorMaquinaria }) => {
+const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, depreciacionesPorMaquinaria, activos = [] }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,13 +106,15 @@ const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, dep
               </TableHead>
               <TableBody>
                 {currentRows.map((row) => {
+                  const activo = activos.find(a => a.maquinaria_id === row.maquinaria_id);
                   const dep = depreciacionesPorMaquinaria?.[row.maquinaria_id];
                   const costoRaw = dep?.costo_activo ?? row.costo_activo ?? row.adqui ?? null;
                   const costoMostrar =
                     costoRaw !== undefined && costoRaw !== null && !isNaN(parseFloat(costoRaw))
                       ? `Bs. ${parseFloat(costoRaw).toFixed(2)}`
                       : '—';
-
+                  const vidaUtilMostrar = activo?.vida_util || row.vida_util || '—';
+                  const coeficienteMostrar = activo?.coeficiente || row.coeficiente || '—';
                   return (
                     <TableRow key={row.maquinaria_id}>
                       <TableCell>{row.placa || '—'}</TableCell>
@@ -120,7 +122,7 @@ const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, dep
                       <TableCell>{row.bien_de_uso || '—'}</TableCell>
                       <TableCell>{row.metodo_depreciacion || '—'}</TableCell>
                       <TableCell align="right">{costoMostrar}</TableCell>
-                      <TableCell align="right">{row.vida_util || '—'}</TableCell>
+                      <TableCell align="right">{vidaUtilMostrar}</TableCell>
                       <TableCell align="center">
                         <Button
                           variant="outlined"
@@ -158,6 +160,7 @@ DepreciacionTabla.propTypes = {
   handleVerDetalleClick: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   depreciacionesPorMaquinaria: PropTypes.object,
+  activos: PropTypes.array,
 };
 
 export default DepreciacionTabla;

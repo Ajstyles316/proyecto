@@ -15,7 +15,6 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   IconButton,
   Pagination,
   Tabs,
@@ -27,7 +26,7 @@ import {
   ListItemText,
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ScatterChart, Scatter } from 'recharts';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
@@ -206,44 +205,6 @@ const Pronostico = () => {
     }
   };
 
-  const handleGuardar = async () => {
-    if (!iaResult) return;
-    const payload = {
-      ...iaResult,
-      fecha_sugerida: iaResult.fecha_sugerida || (() => {
-        try {
-          const base = iaResult.fecha_asig;
-          if (!base) return '';
-          const d = new Date(base);
-          d.setDate(d.getDate() + 180);
-          return d.toISOString().split('T')[0];
-        } catch {
-          return '';
-        }
-      })(),
-    };
-    setSubmitting(true);
-    setSaveSuccess(false);
-    try {
-      const res = await fetch("http://localhost:8000/api/pronostico/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Error al guardar en la base de datos");
-      setSaveSuccess(true);
-      setShowSave(false);
-      // Refrescar historial
-      const resPronostico = await fetch("http://localhost:8000/api/pronostico/");
-      setPronosticos(await resPronostico.json());
-    } catch (e) {
-      setFormError(e.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Filtrado y paginación para historial
   const filteredData = pronosticos.filter((item) =>
     getMaquinariaNombre(item.maquinaria_id)
       .toLowerCase()
@@ -493,7 +454,9 @@ const Pronostico = () => {
                 {paginatedForecasts.map((item, idx) => (
                   <TableRow key={item._id || idx}>
                     <TableCell align="center">{item.placa}</TableCell>
-                    <TableCell align="center">{item.fecha_asig}</TableCell>
+                    <TableCell align="center">{
+                      item.fecha_asig ? String(item.fecha_asig).split('T')[0] : '-'
+                    }</TableCell>
                     <TableCell align="center">{item.horas_op}</TableCell>
                     <TableCell align="center">{item.recorrido}</TableCell>
                     <TableCell align="center">{item.riesgo || '-'}</TableCell>
@@ -645,11 +608,6 @@ const Pronostico = () => {
                 {saveSuccess && (
                   <Alert severity="success" sx={{ mt: 2 }}>¡Información guardada exitosamente!</Alert>
                 )}
-              </Box>
-              <Box mt={2} display="flex" justifyContent="flex-end">
-                <Button variant="contained" color="success" onClick={handleGuardar} disabled={submitting}>
-                  Guardar Información
-                </Button>
               </Box>
             </Box>
           )}

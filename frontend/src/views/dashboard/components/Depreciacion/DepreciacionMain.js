@@ -15,7 +15,7 @@ function normalizaFecha(fecha) {
   return '';
 }
 
-const DepreciacionMain = () => {
+const DepreciacionMain = ({ activos = [] }) => {
   const [depreciaciones, setDepreciaciones] = useState([]);
   const [maquinariaSeleccionada, setMaquinariaSeleccionada] = useState(null);
   const [depreciacionActual, setDepreciacionActual] = useState(null);
@@ -174,6 +174,7 @@ const DepreciacionMain = () => {
         handleVerDetalleClick={handleOpenModal}
         loading={loading}
         depreciacionesPorMaquinaria={depreciacionesPorMaquinaria}
+        activos={activos}
       />
 
       {isModalOpen && maquinariaSeleccionada && (
