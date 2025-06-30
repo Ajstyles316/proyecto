@@ -6,6 +6,13 @@ import {
   mdiWrench,
   mdiTruckFast,
   mdiClockTimeEight,
+  mdiTractor,
+  mdiShieldCheck,
+  mdiCalendarAlert,
+  mdiCalendarCheck,
+  mdiClipboardList,
+  mdiCashMultiple,
+  mdiRobot,
 } from "@mdi/js";
 
 const StatCard = ({ title, value, icon, color }) => {
@@ -14,6 +21,13 @@ const StatCard = ({ title, value, icon, color }) => {
     "mdi:wrench": mdiWrench,
     "mdi:truck-fast": mdiTruckFast,
     "mdi:clock-time-eight": mdiClockTimeEight,
+    "mdi:tractor": mdiTractor,
+    "mdi:shield-check": mdiShieldCheck,
+    "mdi:calendar-alert": mdiCalendarAlert,
+    "mdi:calendar-check": mdiCalendarCheck,
+    "mdi:clipboard-list": mdiClipboardList,
+    "mdi:cash-multiple": mdiCashMultiple,
+    "mdi:robot": mdiRobot,
   };
 
   return (
@@ -21,8 +35,8 @@ const StatCard = ({ title, value, icon, color }) => {
       {/* Ícono */}
       <Box
         sx={{
-          bgcolor: `${color}.light`,
-          color: `${color}.dark`,
+          bgcolor: color ? `${color.split('.')[0]}.light` : 'primary.light',
+          color: color || 'primary.dark',
           borderRadius: "50%",
           width: 40,
           height: 40,
@@ -31,7 +45,7 @@ const StatCard = ({ title, value, icon, color }) => {
           justifyContent: "center",
         }}
       >
-        <Icon path={iconMap[icon]} size={1} />
+        <Icon path={iconMap[icon] || mdiWrench} size={1} />
       </Box>
 
       {/* Contenido */}
