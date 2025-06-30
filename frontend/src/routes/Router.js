@@ -11,6 +11,8 @@ const SamplePage = lazy(() => import('../views/sample-page/SamplePage'))
 const Error = lazy(() => import('../views/autenticacion/Error.js'));
 const Register = lazy(() => import('../views/autenticacion/Registro.js'));
 const Login = lazy(() => import('../views/autenticacion/Login.js'));
+const ProfilePage = lazy(() => import('../views/user-profile/ProfilePage.js'));
+const AccountPage = lazy(() => import('../views/user-profile/AccountPage.js'));
 
 const BasicTable = lazy(() => import("../views/tables/BasicTable"));
 
@@ -36,6 +38,8 @@ const Router = [
       { path: "/mantenimiento", element: <PrivateRoute><ExRadio /></PrivateRoute> },
       { path: "/sample-page", element: <PrivateRoute><SamplePage /></PrivateRoute> },
       { path: "/pronostico", element: <PrivateRoute><Pronostico /></PrivateRoute> },
+      { path: "/profile", element: <PrivateRoute><ProfilePage /></PrivateRoute> },
+      { path: "/account", element: <PrivateRoute><AccountPage /></PrivateRoute> },
       { path: "*", element: <Navigate to="/auth/404" /> },
     ],
   },

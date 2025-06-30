@@ -6,7 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from bson import ObjectId, json_util
 import json, requests, logging, nbformat, os, traceback
 from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from nbconvert.preprocessors import ExecutePreprocessor
@@ -1443,16 +1443,81 @@ class LoginView(APIView):
 class DashboardStatsView(APIView):
     def get(self, request):
         try:
+            # Total de seguros
             total_seguros = get_collection(Seguro).count_documents({})
-            mantenimientos_pendientes = get_collection(Mantenimiento).count_documents({"estado": "PENDIENTE"}) 
-            unidades_en_control = get_collection(HistorialControl).count_documents({}) 
-            horas_totales_operativas = 0 # Esta lógica necesita ser revisada si el campo no existe o la estructura cambia
+
+            # Mantenimientos pendientes
+            mantenimientos_pendientes = get_collection(Mantenimiento).count_documents({"estado": "PENDIENTE"})
+
+            # Unidades en control
+            unidades_en_control = get_collection(HistorialControl).count_documents({})
+
+            # Total de maquinarias
+            total_maquinarias = get_collection(Maquinaria).count_documents({})
+
+            # Horas totales operativas (sumar horas_op de todos los pronósticos, si existen)
+            horas_totales_operativas = 0
+            try:
+                pronostico_collection = get_collection(Pronostico)
+                horas_totales_operativas = sum([
+                    float(doc.get("horas_op", 0)) for doc in pronostico_collection.find({})
+                ])
+            except Exception as e:
+                logger.warning(f"No se pudo calcular horas totales operativas: {e}")
+                horas_totales_operativas = 0
+
+            # Seguros próximos a vencer (ejemplo: próximos 30 días, si hay campo de fecha_vencimiento)
+            seguros_proximos_vencer = 0
+            try:
+                hoy = datetime.now()
+                en_30_dias = hoy.replace(hour=23, minute=59, second=59) + timedelta(days=30)
+                seguros_collection = get_collection(Seguro)
+                seguros_proximos_vencer = seguros_collection.count_documents({
+                    "fecha_vencimiento": {"$gte": hoy, "$lte": en_30_dias}
+                })
+            except Exception as e:
+                seguros_proximos_vencer = 0
+
+            # Mantenimientos realizados este mes
+            mantenimientos_este_mes = 0
+            try:
+                hoy = datetime.now()
+                primer_dia_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                mantenimientos_collection = get_collection(Mantenimiento)
+                mantenimientos_este_mes = mantenimientos_collection.count_documents({
+                    "fecha": {"$gte": primer_dia_mes, "$lte": hoy}
+                })
+            except Exception as e:
+                mantenimientos_este_mes = 0
+
+            # Depreciación total acumulada (sumar todos los valores de depreciacion_por_anio de la colección depreciaciones)
+            depreciacion_total = 0
+            try:
+                depreciaciones_collection = get_collection("depreciaciones")
+                for dep in depreciaciones_collection.find({}):
+                    for entry in dep.get("depreciacion_por_anio", []):
+                        depreciacion_total += float(entry.get("valor", 0))
+            except Exception as e:
+                depreciacion_total = 0
+
+            # Próximos mantenimientos según IA (riesgo ALTO en pronóstico)
+            proximos_mantenimientos_ia = 0
+            try:
+                pronostico_collection = get_collection(Pronostico)
+                proximos_mantenimientos_ia = pronostico_collection.count_documents({"riesgo": "ALTO"})
+            except Exception as e:
+                proximos_mantenimientos_ia = 0
 
             data = [
+                {"title": "Total de Maquinarias", "value": str(total_maquinarias), "icon": "mdi:tractor", "color": "secondary.main"},
                 {"title": "Total de Seguros", "value": str(total_seguros), "icon": "mdi:file-document-outline", "color": "primary.main"},
+                {"title": "Seguros Próximos a Vencer", "value": str(seguros_proximos_vencer), "icon": "mdi:calendar-alert", "color": "error.main"},
                 {"title": "Mantenimientos Pendientes", "value": str(mantenimientos_pendientes), "icon": "mdi:wrench", "color": "warning.main"},
+                {"title": "Mantenimientos Este Mes", "value": str(mantenimientos_este_mes), "icon": "mdi:calendar-check", "color": "info.main"},
                 {"title": "Unidades en Control", "value": str(unidades_en_control), "icon": "mdi:truck-fast", "color": "success.main"},
-                {"title": "Horas Totales Operativas", "value": f"{horas_totales_operativas:,}", "icon": "mdi:clock-time-eight", "color": "info.main"},
+                {"title": "Horas Totales Operativas", "value": f"{horas_totales_operativas:,.2f}", "icon": "mdi:clock-time-eight", "color": "info.main"},
+                {"title": "Depreciación Total Acumulada", "value": f"{depreciacion_total:,.2f}", "icon": "mdi:cash-multiple", "color": "secondary.main"},
+                {"title": "Próximos Mantenimientos", "value": str(proximos_mantenimientos_ia), "icon": "mdi:robot", "color": "primary.main"},
             ]
             return Response(data)
         except Exception as e:
@@ -1553,3 +1618,55 @@ class PronosticoAPIView(APIView):
         registros = Pronostico().find_all()
         registros_serializados = [serialize_doc(r) for r in registros]
         return Response(registros_serializados, status=status.HTTP_200_OK)
+
+class PronosticoSummaryView(APIView):
+    def get(self, request):
+        try:
+            pronostico_collection = get_collection(Pronostico)
+            pipeline = [
+                {
+                    "$group": {
+                        "_id": "$riesgo",
+                        "count": {"$sum": 1}
+                    }
+                },
+                {
+                    "$project": {
+                        "name": "$_id",
+                        "value": "$count",
+                        "_id": 0
+                    }
+                }
+            ]
+            summary = list(pronostico_collection.aggregate(pipeline))
+            
+            # Ensure all risk levels are present, even if count is 0
+            all_risks = {"ALTO", "MEDIO", "BAJO"}
+            found_risks = {s['name'] for s in summary if s['name']}
+            missing_risks = all_risks - found_risks
+            for risk in missing_risks:
+                summary.append({"name": risk, "value": 0})
+                
+            return Response(summary)
+        except Exception as e:
+            logger.error(f"Error en PronosticoSummaryView: {str(e)}")
+            return Response({"error": f"Error al obtener resumen de pronósticos: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class MaquinariaViewSet(viewsets.ViewSet):
+    """
+    ViewSet de solo lectura para la Browsable API de DRF.
+    """
+    def list(self, request):
+        maquinaria_collection = get_collection(Maquinaria)
+        maquinarias = list(maquinaria_collection.find())
+        return Response([serialize_doc(m) for m in maquinarias])
+
+    def retrieve(self, request, pk=None):
+        maquinaria_collection = get_collection(Maquinaria)
+        from bson import ObjectId
+        if not ObjectId.is_valid(pk):
+            return Response({"error": "ID inválido"}, status=400)
+        m = maquinaria_collection.find_one({"_id": ObjectId(pk)})
+        if not m:
+            return Response({"error": "No encontrado"}, status=404)
+        return Response(serialize_doc(m))

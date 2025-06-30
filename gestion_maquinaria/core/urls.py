@@ -4,6 +4,7 @@ from .views import (
     DashboardStatsView,
     RegistroView,
     LoginView,
+    PronosticoSummaryView,
 )
 
 router = DefaultRouter()
@@ -14,4 +15,5 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('registro/', RegistroView.as_view(), name='registro'),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
+    path('pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
 ]

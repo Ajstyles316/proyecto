@@ -43,6 +43,7 @@ urlpatterns = [
     # API root navegable y rutas automáticas para maquinaria
     path('api/', CustomApiRoot.as_view(), name='api-root'),
     path('api/', include(router.urls)),
+    path('api/', include('core.urls')),
     # Rutas para Maquinaria Principal (JSON puro)
     path('api/maquinaria/', MaquinariaListView.as_view(), name='maquinaria-list'),
     path('api/maquinaria/<str:id>/', MaquinariaDetailView.as_view(), name='maquinaria-detail'),
