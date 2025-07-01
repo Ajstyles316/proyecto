@@ -10,7 +10,7 @@ import {
   Alert
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getRiesgoColor, getRecomendacion, getAccionPorTipo, FIELD_LABELS } from "./hooks";
 import PropTypes from "prop-types";
 const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
@@ -23,6 +23,16 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
   const [submitting, setSubmitting] = useState(false);
   const [iaResult, setIaResult] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm({ fecha_asig: "", horas_op: "", recorrido: "" });
+      setFormError("");
+      setSubmitting(false);
+      setIaResult(null);
+      setSaveSuccess(false);
+    }
+  }, [open, maquinaria]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -46,7 +56,7 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
     try {
       const payload = {
         placa: maquinaria?.placa || "",
-        fecha_asig: form.fecha_asig,
+        fecha_asig: form.fecha_asig.includes('/') ? form.fecha_asig.split('/').reverse().join('-') : form.fecha_asig,
         horas_op: parseFloat(form.horas_op),
         recorrido: parseFloat(form.recorrido)
       };
@@ -125,7 +135,7 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
                 Resultado del Pronóstico
               </Typography>
               {Object.entries(iaResult)
-                .filter(([key]) => key !== '_id' && key !== 'creado_en' && key !== 'fecha_prediccion')
+                .filter(([key]) => key !== '_id' && key !== 'creado_en' && key !== 'fecha_prediccion' && key !== 'recomendaciones')
                 .map(([key, value]) => {
                   if (key === "riesgo") {
                     return (
@@ -169,6 +179,18 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
                     }
                   })()}
                 </Typography>
+              )}
+              <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>
+                Recomendaciones:
+              </Typography>
+              {Array.isArray(iaResult.recomendaciones) && iaResult.recomendaciones.length > 0 && iaResult.recomendaciones[0] !== 'Consultar con el área de mantenimiento.' ? (
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {iaResult.recomendaciones.map((rec, idx) => (
+                    <li key={idx} style={{ marginBottom: 4 }}>{rec}</li>
+                  ))}
+                </ul>
+              ) : (
+                <Typography color="text.secondary">No hay recomendaciones generadas.</Typography>
               )}
               <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>
                 Acciones a tomar: {getAccionPorTipo(iaResult.resultado)}

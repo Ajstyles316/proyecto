@@ -25,6 +25,7 @@
     "apexcharts": "^4.4.0",
     "chart.js": "^4.4.9",
     "lodash": "^4.17.21",
+    "papaparse": "^5.5.3",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",

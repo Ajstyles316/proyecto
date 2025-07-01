@@ -133,7 +133,6 @@ const DepreciacionMain = ({ activos = [] }) => {
 
       if (!payload.depreciacion_por_anio || payload.depreciacion_por_anio.length === 0) {
         console.error("No se generó la tabla de depreciación para guardar.");
-        // Optionally, add user-facing error handling here
         setLoading(false);
         return;
       }
@@ -141,7 +140,12 @@ const DepreciacionMain = ({ activos = [] }) => {
       if (_id) {
         await updateDepreciacion(maquinariaSeleccionada.maquinaria_id, _id, payload);
       } else {
-        await createDepreciacion(maquinariaSeleccionada.maquinaria_id, payload);
+        const existentes = await fetchDepreciaciones(maquinariaSeleccionada.maquinaria_id);
+        if (Array.isArray(existentes) && existentes.length > 0 && existentes[0]._id) {
+          await updateDepreciacion(maquinariaSeleccionada.maquinaria_id, existentes[0]._id, payload);
+        } else {
+          await createDepreciacion(maquinariaSeleccionada.maquinaria_id, payload);
+        }
       }
       handleCloseModal();
       await cargarDepreciaciones();

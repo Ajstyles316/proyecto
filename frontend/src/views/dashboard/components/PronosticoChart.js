@@ -26,14 +26,12 @@ const PronosticoChart = () => {
           throw new Error('Error al cargar datos del gráfico');
         }
         const data = await res.json();
-        
-        // Ordenar los datos por un orden lógico (ALTO, MEDIO, BAJO)
-        const order = { "ALTO": 0, "MEDIO": 1, "BAJO": 2 };
-        const sortedData = data.sort((a, b) => (order[a.name] ?? 3) - (order[b.name] ?? 3));
-        
+        // Solo 'Preventivo' y 'Correctivo'
+        const order = { "Preventivo": 0, "Correctivo": 1 };
+        const filteredData = data.filter(item => item.name === 'Preventivo' || item.name === 'Correctivo');
+        const sortedData = filteredData.sort((a, b) => (order[a.name] ?? 99) - (order[b.name] ?? 99));
         const series = sortedData.map(item => item.value);
         const labels = sortedData.map(item => item.name);
-
         setChartData({ series, labels });
       } catch (err) {
         setError(err.message);
@@ -56,7 +54,8 @@ const PronosticoChart = () => {
       },
       height: 300,
     },
-    colors: [errorColor, warning, success],
+    // Colores para tipos de mantenimiento
+    colors: ['#1976d2', '#ff9800'], // Preventivo, Correctivo
     plotOptions: {
       pie: {
         donut: {
@@ -89,7 +88,7 @@ const PronosticoChart = () => {
   };
 
   return (
-    <DashboardCard title="Riesgo de Mantenimiento">
+    <DashboardCard title="Tipos de Mantenimiento">
       {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" height="300px">
           <CircularProgress />
