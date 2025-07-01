@@ -12,11 +12,15 @@ import {
   IconButton
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
+import EventIcon from "@mui/icons-material/Event";
+import Popover from "@mui/material/Popover";
 import { useState } from "react";
 import PropTypes from "prop-types";
 const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
+  const [anchorFechas, setAnchorFechas] = useState(null);
+  const [fechasPopover, setFechasPopover] = useState([]);
 
   const totalPages = Math.ceil(data.length / rowsPerPage);
   const paginated = data.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -25,6 +29,18 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
     setRowsPerPage(parseInt(e.target.value, 10));
     setPage(1);
   };
+
+  const handleOpenFechasPopover = (event, fechas) => {
+    setAnchorFechas(event.currentTarget);
+    setFechasPopover(fechas);
+  };
+
+  const handleCloseFechasPopover = () => {
+    setAnchorFechas(null);
+    setFechasPopover([]);
+  };
+
+  const openFechasPopover = Boolean(anchorFechas);
 
   return (
     <>
@@ -55,8 +71,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
               <TableCell align="center">Fecha Asignación</TableCell>
               <TableCell align="center">Horas Op.</TableCell>
               <TableCell align="center">Recorrido</TableCell>
-              <TableCell align="center">Riesgo</TableCell>
-              <TableCell align="center">Resultado</TableCell>
+              <TableCell align="center">Tipo de Mantenimiento</TableCell>
               <TableCell align="center">Fecha de Mantenimiento Programada</TableCell>
               <TableCell align="center">Recomendaciones</TableCell>
             </TableRow>
@@ -70,28 +85,38 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                 </TableCell>
                 <TableCell align="center">{item.horas_op}</TableCell>
                 <TableCell align="center">{item.recorrido}</TableCell>
-                <TableCell align="center">{item.riesgo || "-"}</TableCell>
                 <TableCell align="center">{item.resultado || "-"}</TableCell>
                 <TableCell align="center">
-                  {item.fecha_sugerida
-                    ? item.fecha_sugerida
-                    : (() => {
-                        try {
-                          const base = item.fecha_asig;
-                          if (!base) return "No disponible";
-                          const d = new Date(base);
-                          d.setDate(d.getDate() + 180);
-                          return d.toISOString().split("T")[0];
-                        } catch {
-                          return "No disponible";
-                        }
-                      })()}
+                  <span>
+                    {item.fecha_sugerida
+                      ? item.fecha_sugerida
+                      : (() => {
+                          try {
+                            const base = item.fecha_asig;
+                            if (!base) return "No disponible";
+                            const d = new Date(base);
+                            d.setDate(d.getDate() + 180);
+                            return d.toISOString().split("T")[0];
+                          } catch {
+                            return "No disponible";
+                          }
+                        })()}
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      style={{ marginLeft: 4, verticalAlign: 'middle' }}
+                      onClick={e => handleOpenFechasPopover(e, Array.isArray(item.fechas_futuras) ? item.fechas_futuras : [])}
+                      disabled={!item.fechas_futuras || item.fechas_futuras.length === 0}
+                    >
+                      <EventIcon />
+                    </IconButton>
+                  </span>
                 </TableCell>
                 <TableCell align="center">
                   <IconButton
                     size="small"
                     color="info"
-                    onClick={(e) => onRecomendacionClick(e, item.resultado)}
+                    onClick={(e) => onRecomendacionClick(e, Array.isArray(item.recomendaciones) && item.recomendaciones.length > 0 ? item.recomendaciones : ["No hay recomendaciones generadas."])}
                   >
                     <InfoIcon />
                   </IconButton>
@@ -112,6 +137,25 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
           </Box>
         )}
       </Box>
+      <Popover
+        open={openFechasPopover}
+        anchorEl={anchorFechas}
+        onClose={handleCloseFechasPopover}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Box p={2} maxWidth={300}>
+          <Typography variant="subtitle1" color="primary" mb={1}>Fechas Futuras</Typography>
+          {fechasPopover.length > 0 ? (
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {fechasPopover.map((fecha, idx) => (
+                <li key={idx}>{fecha}</li>
+              ))}
+            </ul>
+          ) : (
+            <Typography color="text.secondary">No hay fechas futuras generadas.</Typography>
+          )}
+        </Box>
+      </Popover>
     </>
   );
 };

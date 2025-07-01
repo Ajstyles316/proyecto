@@ -22,8 +22,6 @@ from core.views import (
 )
 
 router = DefaultRouter()
-# router.register(r'maquinaria', MaquinariaViewSet, basename='maquinaria')  # Eliminado para evitar conflicto
-
 class CustomApiRoot(APIView):
     """
     API Root personalizada que lista todos los recursos principales.
@@ -34,6 +32,7 @@ class CustomApiRoot(APIView):
             'maquinaria': request.build_absolute_uri('/api/maquinaria/'),
             'depreciaciones': request.build_absolute_uri('/api/depreciacion/'),
             'activos': request.build_absolute_uri('/api/activos/'),
+            'pronostico':request.build_absolute_uri('/api/pronostico/')
         })
 
 urlpatterns = [

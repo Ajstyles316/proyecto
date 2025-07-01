@@ -17,7 +17,6 @@ import TablaPronostico from "./TablaPronostico";
 import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
-import { getRecomendacionesPorTipo } from "./hooks";
 
 const Pronostico = () => {
   const [pronosticos, setPronosticos] = useState([]);
@@ -74,6 +73,42 @@ const Pronostico = () => {
     }
   }, [mainTab]);
 
+  // Función utilitaria para sumar meses a una fecha
+  function sumarMeses(fecha, meses) {
+    const d = new Date(fecha);
+    d.setMonth(d.getMonth() + meses);
+    return d.toISOString().split('T')[0];
+  }
+
+  // Formatea una fecha a DD-MM-YYYY
+  function formatearFechaDMY(fecha) {
+    if (!fecha) return '';
+    const d = new Date(fecha);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  // Genera fechas futuras cada 4, 6, 12, 24 meses hasta hoy o fin de año
+  function generarFechasFuturas(base) {
+    if (!base) return [];
+    const fechas = [];
+    const baseDate = new Date(base);
+    const hoy = new Date();
+    const finAnio = new Date(hoy.getFullYear(), 11, 31);
+    const endDate = hoy > finAnio ? hoy : finAnio;
+    const saltos = [4, 6, 12, 24];
+    for (let salto of saltos) {
+      const nueva = new Date(baseDate);
+      nueva.setMonth(nueva.getMonth() + salto);
+      if (nueva <= endDate) {
+        fechas.push(formatearFechaDMY(nueva));
+      }
+    }
+    return fechas;
+  }
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -104,10 +139,20 @@ const Pronostico = () => {
       {mainTab === 1 && (
         <Box display="flex" flexDirection="column" alignItems="center">
           <GraficoPronosticos data={allForecasts} />
+          {console.log('Datos crudos:', allForecasts)}
+          {console.log('Datos con fechas_futuras:', allForecasts.map(item => ({
+            ...item,
+            recomendaciones: Array.isArray(item.recomendaciones) ? item.recomendaciones.slice(0, 3) : [],
+            fechas_futuras: (item.fecha_sugerida || item.fecha_asig) ? generarFechasFuturas(item.fecha_sugerida || item.fecha_asig) : [],
+          })))}
           <HistorialPronosticos
-            data={allForecasts}
-            onRecomendacionClick={(e, resultado) =>
-              handleOpenPopover(e, getRecomendacionesPorTipo(resultado))
+            data={allForecasts.map(item => ({
+              ...item,
+              recomendaciones: Array.isArray(item.recomendaciones) ? item.recomendaciones.slice(0, 3) : [],
+              fechas_futuras: (item.fecha_sugerida || item.fecha_asig) ? generarFechasFuturas(item.fecha_sugerida || item.fecha_asig) : [],
+            }))}
+            onRecomendacionClick={(e, recomendaciones) =>
+              handleOpenPopover(e, Array.isArray(recomendaciones) ? recomendaciones.slice(0, 3) : [])
             }
           />
         </Box>
@@ -133,7 +178,7 @@ const Pronostico = () => {
         <Box p={2} maxWidth={350}>
           <Typography variant="subtitle1" color="primary" mb={1}>Recomendaciones</Typography>
           <List dense>
-            {popoverRecs.map((rec, idx) => (
+            {popoverRecs.slice(0, 3).map((rec, idx) => (
               <ListItem key={idx}>
                 <ListItemIcon>
                   <CheckCircleIcon color="success" fontSize="small" />

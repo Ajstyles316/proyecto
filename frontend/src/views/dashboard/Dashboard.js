@@ -8,11 +8,6 @@ import ActivosMain from "./components/Activos/ActivosMain";
 // Mapeo de iconos más representativos
 const iconMap = {
   "Total de Maquinarias": "mdi:tractor",
-  "Total de Seguros": "mdi:shield-check",
-  "Seguros Próximos a Vencer": "mdi:calendar-alert",
-  "Mantenimientos Pendientes": "mdi:wrench",
-  "Mantenimientos Este Mes": "mdi:calendar-check",
-  "Unidades en Control": "mdi:clipboard-list",
   "Horas Totales Operativas": "mdi:clock-time-eight",
   "Depreciación Total Acumulada": "mdi:cash-multiple",
   "Próximos Mantenimientos": "mdi:robot",
