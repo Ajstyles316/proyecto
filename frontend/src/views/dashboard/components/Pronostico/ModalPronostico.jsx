@@ -107,7 +107,7 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
             required
           />
           <TextField
-            label="Horas de operación por día"
+            label="Horas de operación"
             name="horas_op"
             type="number"
             value={form.horas_op}

@@ -69,7 +69,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
             <TableRow>
               <TableCell align="center">Placa</TableCell>
               <TableCell align="center">Fecha Asignación</TableCell>
-              <TableCell align="center">Horas Op.</TableCell>
+              <TableCell align="center">Horas Operación</TableCell>
               <TableCell align="center">Recorrido</TableCell>
               <TableCell align="center">Tipo de Mantenimiento</TableCell>
               <TableCell align="center">Fecha de Mantenimiento Programada</TableCell>

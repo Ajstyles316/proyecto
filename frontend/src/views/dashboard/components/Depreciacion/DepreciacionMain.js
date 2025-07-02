@@ -36,6 +36,7 @@ const DepreciacionMain = ({ activos = [] }) => {
       if (ordenadas.length > 0) {
         datosIniciales = {
           ...ordenadas[0],
+          _id: ordenadas[0]._id,
           fecha_compra: normalizaFecha(ordenadas[0].fecha_compra),
           depreciacion_por_anio: ordenadas[0].depreciacion_por_anio || [],
           advertencia: 'Datos de depreciación guardados en el sistema.',
@@ -118,11 +119,18 @@ const DepreciacionMain = ({ activos = [] }) => {
         depreciacion_por_anio,
       } = datosActualizados;
 
-      const { _id } = depreciacionActual || {};
-      
+      let { _id } = depreciacionActual || {};
+      if (!_id) {
+        const existentes = await fetchDepreciaciones(maquinariaSeleccionada.maquinaria_id);
+        if (Array.isArray(existentes) && existentes.length > 0 && existentes[0]._id) {
+          _id = existentes[0]._id;
+        }
+      }
+      const fecha_compra_str = fecha_compra ? String(fecha_compra).split('T')[0] : '';
       const payload = {
+        maquinaria: String(maquinariaSeleccionada.maquinaria_id),
         costo_activo: parseFloat(costo_activo),
-        fecha_compra,
+        fecha_compra: fecha_compra_str,
         metodo,
         vida_util: Number(vida_util),
         coeficiente: coeficiente ? Number(coeficiente) : undefined,
@@ -136,16 +144,10 @@ const DepreciacionMain = ({ activos = [] }) => {
         setLoading(false);
         return;
       }
-      
       if (_id) {
         await updateDepreciacion(maquinariaSeleccionada.maquinaria_id, _id, payload);
       } else {
-        const existentes = await fetchDepreciaciones(maquinariaSeleccionada.maquinaria_id);
-        if (Array.isArray(existentes) && existentes.length > 0 && existentes[0]._id) {
-          await updateDepreciacion(maquinariaSeleccionada.maquinaria_id, existentes[0]._id, payload);
-        } else {
-          await createDepreciacion(maquinariaSeleccionada.maquinaria_id, payload);
-        }
+        await createDepreciacion(maquinariaSeleccionada.maquinaria_id, payload);
       }
       handleCloseModal();
       await cargarDepreciaciones();

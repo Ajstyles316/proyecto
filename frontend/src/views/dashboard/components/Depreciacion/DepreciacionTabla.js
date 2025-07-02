@@ -91,17 +91,17 @@ const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, dep
         </Box>
       ) : (
         <>
-          <TableContainer sx={{ overflowX: 'auto' }}>
+          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Placa</TableCell>
-                  <TableCell>Detalle</TableCell>
-                  <TableCell>Bien de Uso</TableCell>
-                  <TableCell>Método</TableCell>
-                  <TableCell align="right">Costo del Activo</TableCell>
-                  <TableCell align="right">Vida Útil (Años)</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Placa</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Detalle</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Bien de Uso</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Método</TableCell>
+                  <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>Costo del Activo</TableCell>
+                  <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>Vida Útil (Años)</TableCell>
+                  <TableCell align="center" sx={{ p: { xs: 0.5, sm: 1 } }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -112,18 +112,18 @@ const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, dep
                   const costoMostrar =
                     costoRaw !== undefined && costoRaw !== null && !isNaN(parseFloat(costoRaw))
                       ? `Bs. ${parseFloat(costoRaw).toFixed(2)}`
-                      : '—';
-                  const vidaUtilMostrar = activo?.vida_util || row.vida_util || '—';
-                  const coeficienteMostrar = activo?.coeficiente || row.coeficiente || '—';
+                      : '\u2014';
+                  const vidaUtilMostrar = activo?.vida_util || row.vida_util || '\u2014';
+                  const coeficienteMostrar = activo?.coeficiente || row.coeficiente || '\u2014';
                   return (
                     <TableRow key={row.maquinaria_id}>
-                      <TableCell>{row.placa || '—'}</TableCell>
-                      <TableCell>{row.detalle || '—'}</TableCell>
-                      <TableCell>{row.bien_de_uso || '—'}</TableCell>
-                      <TableCell>{row.metodo_depreciacion || '—'}</TableCell>
-                      <TableCell align="right">{costoMostrar}</TableCell>
-                      <TableCell align="right">{vidaUtilMostrar}</TableCell>
-                      <TableCell align="center">
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{row.placa || '\u2014'}</TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{row.detalle || '\u2014'}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.bien_de_uso || '\u2014'}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.metodo_depreciacion || '\u2014'}</TableCell>
+                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{costoMostrar}</TableCell>
+                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{vidaUtilMostrar}</TableCell>
+                      <TableCell align="center" sx={{ p: { xs: 0.5, sm: 1 } }}>
                         <Button
                           variant="outlined"
                           size="small"
