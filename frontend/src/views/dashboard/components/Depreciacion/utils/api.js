@@ -62,7 +62,7 @@ export async function createDepreciacion(maquinariaId, data) {
 }
 
 export async function updateDepreciacion(maquinariaId, recordId, data) {
-  const res = await fetch(`${API_BASE}/depreciacion/${maquinariaId}/${recordId}/`, {
+  const res = await fetch(`${API_BASE}/maquinaria/${maquinariaId}/depreciacion/${recordId}/`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

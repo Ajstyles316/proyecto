@@ -43,19 +43,19 @@ const MaquinariaTabla = ({
         </Box>
       ) : (
         <>
-          <TableContainer sx={{ overflowX: 'auto' }}>
+          <TableContainer sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Gestión</TableCell>
-                  <TableCell>Placa</TableCell>
-                  <TableCell>Detalle</TableCell>
-                  <TableCell>Unidad</TableCell>
-                  <TableCell>Código</TableCell>
-                  <TableCell>Marca</TableCell>
-                  <TableCell>Modelo</TableCell>
-                  <TableCell>Color</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Gestión</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Placa</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Detalle</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Unidad</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Código</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Marca</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Modelo</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Color</TableCell>
+                  <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -64,15 +64,15 @@ const MaquinariaTabla = ({
                   const cleanId = id?.toString().replace(/[^a-zA-Z0-9]/g, '');
                   return (
                     <TableRow key={cleanId}>
-                      <TableCell>{m.gestion}</TableCell>
-                      <TableCell>{m.placa}</TableCell>
-                      <TableCell>{m.detalle}</TableCell>
-                      <TableCell>{m.unidad}</TableCell>
-                      <TableCell>{m.codigo}</TableCell>
-                      <TableCell>{m.marca}</TableCell>
-                      <TableCell>{m.modelo}</TableCell>
-                      <TableCell>{m.color}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{m.gestion}</TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{m.placa}</TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{m.detalle}</TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{m.unidad}</TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{m.codigo}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{m.marca}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{m.modelo}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{m.color}</TableCell>
+                      <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>
                         <Button
                           variant="outlined"
                           size="small"

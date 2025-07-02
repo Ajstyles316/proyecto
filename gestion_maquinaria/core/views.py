@@ -29,7 +29,6 @@ from .serializers import (
 from django.conf import settings
 from .mongo_connection import get_collection, get_collection_from_activos_db # Asegúrate de importar la nueva función
 import bcrypt
-import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -1084,32 +1083,29 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class DepreciacionGeneralView(APIView):
-    def normaliza_texto(self, texto):
-        if not texto:
-            return ''
-        # Quita acentos, pasa a minúsculas y elimina espacios extras
-        texto = unicodedata.normalize('NFKD', str(texto)).encode('ascii', 'ignore').decode('utf-8')
-        return ' '.join(texto.lower().split())
-
     def determinar_bien_uso_y_vida_util(self, tipo_maquinaria, detalle_maquinaria):
         try:
-            collection = get_collection_from_activos_db('depreciacion')
-            activos = list(collection.find({}))
-            tipo_norm = self.normaliza_texto(tipo_maquinaria)
-            detalle_norm = self.normaliza_texto(detalle_maquinaria)
-            for activo in activos:
-                bien_uso_norm = self.normaliza_texto(activo.get('bien_uso', ''))
-                # Coincidencia parcial en ambos sentidos
-                if bien_uso_norm and (
-                    bien_uso_norm in tipo_norm or tipo_norm in bien_uso_norm or
-                    bien_uso_norm in detalle_norm or detalle_norm in bien_uso_norm
-                ):
-                    vida_util = activo.get('vida_util', 5)
-                    return activo.get('bien_uso', 'Desconocido'), vida_util
-            return 'Desconocido', 5
+            # Asegurar que ambos valores sean cadenas antes de usar .lower()
+            tipo_lower = str(tipo_maquinaria).lower() if tipo_maquinaria is not None else ""
+            detalle_lower = str(detalle_maquinaria).lower() if detalle_maquinaria is not None else ""
+
+            # Validaciones seguras con palabras clave
+            if any(p in tipo_lower or p in detalle_lower for p in ['camion', 'camión', 'auto', 'carro', 'vehiculo', 'vehículo', 'truck', 'car']):
+                return "Vehículos automotores", 5
+            if any(p in tipo_lower or p in detalle_lower for p in ['excavadora', 'bulldozer', 'retroexcavadora', 'cargador', 'loader', 'excavator']):
+                return "Maquinaria pesada", 8
+            if any(p in tipo_lower or p in detalle_lower for p in ['martillo', 'taladro', 'compresor', 'generador', 'soldadora', 'welder']):
+                return "Equipos de construcción", 6
+            if any(p in tipo_lower or p in detalle_lower for p in ['herramienta', 'tool', 'equipo menor', 'equipamiento']):
+                return "Herramientas menores", 4
+            if any(p in tipo_lower or p in detalle_lower for p in ['computadora', 'laptop', 'impresora', 'scanner', 'equipo oficina']):
+                return "Equipos de oficina", 5
+            if any(p in tipo_lower or p in detalle_lower for p in ['mueble', 'escritorio', 'silla', 'mesa', 'furniture']):
+                return "Muebles y enseres", 10
+            return "Otros bienes", 5
         except Exception as e:
             logger.warning(f"Error al determinar bien de uso: {e}")
-            return "Desconocido", 5
+            return "Desconocido", 5  # Valores seguros en caso de fallo
 
     # Diccionario reducido de bienes de uso relevantes para autos y maquinaria
     BIENES_DE_USO_DS_24051 = {
@@ -1650,8 +1646,6 @@ class PronosticoSummaryView(APIView):
             missing_tipos = all_tipos - found_tipos
             for tipo in missing_tipos:
                 summary.append({"name": tipo, "value": 0})
-                
-            # Filtra cualquier otro tipo que no sea Preventivo o Correctivo
             summary = [s for s in summary if s['name'] in all_tipos]
             return Response(summary)
         except Exception as e:

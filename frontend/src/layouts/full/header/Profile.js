@@ -76,19 +76,19 @@ const Profile = () => {
       >
         <MenuItem component={Link} to="/profile">
           <ListItemIcon>
-            <IconUser width={20} />
+            <IconUser width={20} color='black' />
           </ListItemIcon>
           <ListItemText>Mi Perfil</ListItemText>
         </MenuItem>
         <MenuItem component={Link} to="/account">
           <ListItemIcon>
-            <IconMail width={20} />
+            <IconMail width={20} color='black'/>
           </ListItemIcon>
           <ListItemText>Mi Cuenta</ListItemText>
         </MenuItem>
         <Box mt={1} py={1} px={2}>
           <Button onClick={handleLogout} variant="outlined" color="primary" fullWidth>
-            Logout
+            Cerrar Sesión
           </Button>
         </Box>
       </Menu>
