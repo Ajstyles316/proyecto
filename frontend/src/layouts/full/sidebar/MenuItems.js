@@ -10,10 +10,7 @@ import {
 
 // Función para cerrar sesión
 const handleLogout = () => {
-  // ✅ Elimina el usuario del localStorage
   localStorage.removeItem("user");
-  
-  // ✅ Redirige a la página de login
   window.location.href = "/login";
 };
 
@@ -76,3 +73,9 @@ const Menuitems = [
 ];
 
 export default Menuitems;
+
+export const routeTitleMap = Menuitems.filter(item => item.title && item.href)
+  .reduce((acc, item) => {
+    acc[item.href] = item.title;
+    return acc;
+  }, {});
