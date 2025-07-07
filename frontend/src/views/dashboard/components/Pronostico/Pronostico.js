@@ -17,6 +17,7 @@ import TablaPronostico from "./TablaPronostico";
 import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
 
 const Pronostico = () => {
   const [pronosticos, setPronosticos] = useState([]);
@@ -33,6 +34,8 @@ const Pronostico = () => {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [popoverRecs, setPopoverRecs] = useState([]);
+
+  const isReadOnly = useIsReadOnly();
 
   const handleOpenPopover = (event, recs) => {
     setAnchorEl(event.currentTarget);
@@ -130,9 +133,12 @@ const Pronostico = () => {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           openModal={(maq) => {
-            setSelectedMaquinaria(maq);
-            setModalOpen(true);
+            if (!isReadOnly) {
+              setSelectedMaquinaria(maq);
+              setModalOpen(true);
+            }
           }}
+          isReadOnly={isReadOnly}
         />
       )}
 

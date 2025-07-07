@@ -8,6 +8,7 @@ import {
   Paper,
   Grid,
 } from '@mui/material';
+import { useIsReadOnly } from '../../../../components/UserContext';
 
 const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
   const [form, setForm] = useState({
@@ -16,6 +17,7 @@ const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
     detalle: '',
   });
   const [errors, setErrors] = useState({});
+  const isReadOnly = useIsReadOnly();
 
   useEffect(() => {
     if (initialData) {
@@ -70,6 +72,7 @@ const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
                 error={!!errors[field.name]}
                 helperText={errors[field.name]}
                 required={field.required}
+                disabled={isReadOnly}
               />
             </Grid>
           ))}

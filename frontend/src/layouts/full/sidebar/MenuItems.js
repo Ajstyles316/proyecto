@@ -6,6 +6,7 @@ import {
   IconAperture,
   IconAlignBoxLeftBottom,
   IconTable,
+  IconUsers,
 } from '@tabler/icons-react';
 
 // Función para cerrar sesión
@@ -14,7 +15,7 @@ const handleLogout = () => {
   window.location.href = "/login";
 };
 
-const Menuitems = [
+const baseMenuItems = [
   {
     navlabel: true,
     subheader: 'Inicio',
@@ -70,11 +71,25 @@ const Menuitems = [
     href: '/login',
     onClick: handleLogout,
   },
+  {
+    id: uniqueId(),
+    title: 'Usuarios',
+    icon: IconUsers,
+    href: '/usuarios',
+    onlyEncargado: true,
+  },
 ];
 
-export default Menuitems;
+const getMenuItems = (user) => {
+  if (!user) return baseMenuItems.filter(item => !item.onlyEncargado);
+  if (user.Cargo && user.Cargo.toLowerCase() === 'encargado') return baseMenuItems;
+  return baseMenuItems.filter(item => !item.onlyEncargado);
+};
 
-export const routeTitleMap = Menuitems.filter(item => item.title && item.href)
+export default baseMenuItems;
+export { getMenuItems };
+
+export const routeTitleMap = baseMenuItems.filter(item => item.title && item.href)
   .reduce((acc, item) => {
     acc[item.href] = item.title;
     return acc;

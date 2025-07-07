@@ -9,7 +9,7 @@ import {
   Grid,
 } from '@mui/material';
 
-const MantenimientoForm = ({ onSubmit, initialData, isEditing }) => {
+const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
 
@@ -54,6 +54,7 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing }) => {
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
+              disabled={isReadOnly}
             />
           </Grid>
         ))}
@@ -69,6 +70,7 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
+          disabled={isReadOnly}
         >
           {isEditing ? 'Actualizar' : 'Guardar'}
         </Button>
@@ -82,6 +84,7 @@ MantenimientoForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
+  isReadOnly: PropTypes.bool,
 };
 
 export default MantenimientoForm; 

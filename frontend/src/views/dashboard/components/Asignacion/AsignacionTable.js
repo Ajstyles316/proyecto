@@ -13,7 +13,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading }) => {
+const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -59,20 +59,24 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
             <TableCell>{asignacion.recorrido_entregado || ''}</TableCell>
             <TableCell>{asignacion.encargado || ''}</TableCell>
             <TableCell align="right">
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => onEdit(asignacion)}
-              >
-                <EditIcon />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                color="error"
-                onClick={() => onDelete(asignacion._id)}
-              >
-                <DeleteIcon />
-              </IconButton>
+              {!isReadOnly && (
+                <>
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => onEdit(asignacion)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => onDelete(asignacion._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -87,6 +91,7 @@ AsignacionTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
+  isReadOnly: PropTypes.bool.isRequired,
 };
 
 export default AsignacionTable; 

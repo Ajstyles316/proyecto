@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import ITVForm from './ITVForm';
 import ITVTable from './ITVTable';
+import { useIsReadOnly } from '../../../../components/UserContext';
 
 const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [itvs, setItvs] = useState([]);
@@ -16,6 +17,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingItv, setEditingItv] = useState(null);
+  const isReadOnly = useIsReadOnly();
 
   const fetchItvs = useCallback(async () => {
     if (!maquinariaId) return;
@@ -120,20 +122,33 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
         flexWrap: 'wrap'
       }}>
         <Typography variant="h6">ITV</Typography>
-        <Button 
-          variant="contained" 
-          color={showForm ? "error" : "success"}
-          onClick={() => {
-            if (showForm) {
-              handleResetForm();
-            } else {
-              setShowForm(true);
-            }
-          }}
-        >
-          {showForm ? 'Cancelar' : 'Nuevo ITV'}
-        </Button>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 1, 
+          mt: { xs: 2, sm: 0 }
+        }}>
+          <Button 
+            variant="contained" 
+            color={showForm ? "error" : "success"}
+            onClick={() => {
+              if (showForm) {
+                handleResetForm();
+              } else {
+                setShowForm(true);
+              }
+            }}
+            disabled={isReadOnly}
+          >
+            {showForm ? 'Cancelar' : 'Nuevo ITV'}
+          </Button>
+        </Box>
       </Box>
+
+      {isReadOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Tienes acceso solo de lectura. No puedes crear, editar ni eliminar registros.
+        </Alert>
+      )}
 
       {showForm && (
         <ITVForm
@@ -141,15 +156,17 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingItv}
           isEditing={!!editingItv}
+          isReadOnly={isReadOnly}
         />
       )}
 
       <ITVTable
         itvs={itvs}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={handleOpenEditForm}
-        onDelete={handleDelete}
+        onEdit={isReadOnly ? undefined : handleOpenEditForm}
+        onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
+        isReadOnly={isReadOnly}
       />
     </Box>
   );

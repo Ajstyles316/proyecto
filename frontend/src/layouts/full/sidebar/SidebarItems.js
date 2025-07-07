@@ -9,9 +9,11 @@ import {
   Submenu,
 } from "react-mui-sidebar";
 import { IconPoint } from '@tabler/icons-react';
-import Menuitems from "./MenuItems";
+import { getMenuItems } from "./MenuItems";
 import logoicn from "../../../assets/images/logos/logo_cofa_new.png";
 import './SidebarItems.css'
+import { useUser } from '../../../components/UserContext';
+
 const renderMenuItems = (items, pathDirect) => {
 
 
@@ -78,6 +80,8 @@ const renderMenuItems = (items, pathDirect) => {
 const SidebarItems = () => {
   const location = useLocation();
   const pathDirect = location.pathname;
+  const { user } = useUser();
+  const menuItems = getMenuItems(user);
 
   return (
     <Box sx={{ px: "24px", overflowX: 'hidden' }}>
@@ -86,7 +90,7 @@ const SidebarItems = () => {
           <Logo img={logoicn} component={NavLink} to="/" className="logo-img">Activos Fijos</Logo>
         </Box>
         <Box sx={{ color: 'inherit' }}>
-          {renderMenuItems(Menuitems, pathDirect)}
+          {renderMenuItems(menuItems, pathDirect)}
         </Box>
       </MUI_Sidebar>
     </Box>

@@ -13,7 +13,9 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import PropTypes from "prop-types";
-const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal }) => {
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
+
+const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal, isReadOnly }) => {
   const [maqCurrentPage, setMaqCurrentPage] = useState(1);
   const [maqRowsPerPage, setMaqRowsPerPage] = useState(10);
 
@@ -86,7 +88,7 @@ const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal }) 
                 <TableCell>{m.placa || '-'}</TableCell>
                 <TableCell>{m.detalle || '-'}</TableCell>
                 <TableCell>
-                  <Button variant="contained" color="primary" onClick={() => openModal(m)}>
+                  <Button variant="contained" color="primary" onClick={() => openModal(m)} disabled={isReadOnly}>
                     Generar Pronóstico
                   </Button>
                 </TableCell>
@@ -116,6 +118,7 @@ TablaPronostico.propTypes = {
     searchTerm: PropTypes.string.isRequired,
     setSearchTerm: PropTypes.func.isRequired,
     openModal: PropTypes.func.isRequired,
+    isReadOnly: PropTypes.bool.isRequired,
 };
 export default TablaPronostico;
 

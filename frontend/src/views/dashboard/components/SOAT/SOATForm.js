@@ -8,8 +8,9 @@ import {
   Paper,
   Grid,
 } from '@mui/material';
+import { useIsReadOnly } from '../../../../components/UserContext';
 
-const SOATForm = ({ onSubmit, initialData, isEditing }) => {
+const SOATForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
 
@@ -52,6 +53,7 @@ const SOATForm = ({ onSubmit, initialData, isEditing }) => {
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
+              disabled={isReadOnly}
             />
           </Grid>
         ))}
@@ -67,6 +69,7 @@ const SOATForm = ({ onSubmit, initialData, isEditing }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
+          disabled={isReadOnly}
         >
           {isEditing ? 'Actualizar' : 'Guardar'}
         </Button>
@@ -80,6 +83,7 @@ SOATForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
+  isReadOnly: PropTypes.bool,
 };
 
 export default SOATForm; 

@@ -13,7 +13,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading }) => {
+const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -49,20 +49,24 @@ const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading }) =>
             <TableCell>{seguro.importe}</TableCell>
             <TableCell>{seguro.detalle}</TableCell>
             <TableCell align="right">
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => onEdit(seguro)}
-              >
-                <EditIcon />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                color="error"
-                onClick={() => onDelete(seguro._id)}
-              >
-                <DeleteIcon />
-              </IconButton>
+              {!isReadOnly && (
+                <>
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => onEdit && onEdit(seguro)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => onDelete && onDelete(seguro._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -82,6 +86,7 @@ SeguroTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
+  isReadOnly: PropTypes.bool,
 };
 
 export default SeguroTable; 

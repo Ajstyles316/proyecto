@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import AsignacionForm from './AsignacionForm';
 import AsignacionTable from './AsignacionTable';
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
 
 const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [asignaciones, setAsignaciones] = useState([]);
@@ -16,6 +17,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingAsignacion, setEditingAsignacion] = useState(null);
+  const isReadOnly = useIsReadOnly();
 
   const fetchAsignaciones = useCallback(async () => {
     setLoading(true);
@@ -135,9 +137,9 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
           gap: 1, 
           mt: { xs: 2, sm: 0 }
         }}>
-          <Button 
-            variant="contained" 
-            color={showForm ? "error" : "success"} 
+          <Button
+            variant="contained"
+            color={showForm ? "error" : "success"}
             onClick={() => {
               if (showForm) {
                 handleResetForm();
@@ -145,6 +147,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
+            disabled={isReadOnly}
           >
             {showForm ? 'Cancelar' : 'Nueva Asignación'}
           </Button>
@@ -157,6 +160,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingAsignacion}
           isEditing={!!editingAsignacion}
+          isReadOnly={isReadOnly}
         />
       )}
 
@@ -166,6 +170,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
+        isReadOnly={isReadOnly}
       />
     </Box>
   );

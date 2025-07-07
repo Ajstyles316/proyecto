@@ -13,6 +13,7 @@ const Register = lazy(() => import('../views/autenticacion/Registro.js'));
 const Login = lazy(() => import('../views/autenticacion/Login.js'));
 const ProfilePage = lazy(() => import('../views/user-profile/ProfilePage.js'));
 const AccountPage = lazy(() => import('../views/user-profile/AccountPage.js'));
+const UserManagement = lazy(() => import("../views/user-profile/UserManagement"));
 
 const BasicTable = lazy(() => import("../views/tables/BasicTable"));
 
@@ -42,6 +43,7 @@ const Router = [
       { path: "/profile", element: <PrivateRoute><ProfilePage /></PrivateRoute> },
       { path: "/account", element: <PrivateRoute><AccountPage /></PrivateRoute> },
       { path: "/reportes", element: <PrivateRoute><ReportesMain /></PrivateRoute> },
+      { path: "/usuarios", element: <PrivateRoute><UserManagement /></PrivateRoute> },
       { path: "*", element: <Navigate to="/auth/404" /> },
     ],
   },

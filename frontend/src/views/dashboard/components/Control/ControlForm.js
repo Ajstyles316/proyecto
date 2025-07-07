@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import { useState, useEffect } from 'react';
 
-const ControlForm = ({ onSubmit, initialData, isEditing }) => {
+const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
@@ -68,6 +68,7 @@ const ControlForm = ({ onSubmit, initialData, isEditing }) => {
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
+              disabled={isReadOnly}
             />
           </Grid>
         ))}
@@ -84,6 +85,7 @@ const ControlForm = ({ onSubmit, initialData, isEditing }) => {
             onChange={(e) => setForm({ ...form, observacion: e.target.value })}
             error={!!errors.observacion}
             helperText={errors.observacion}
+            disabled={isReadOnly}
           />
         </Grid>
       </Grid>
@@ -99,6 +101,7 @@ const ControlForm = ({ onSubmit, initialData, isEditing }) => {
           variant="contained"
           color="success"
           onClick={handleSubmit}
+          disabled={isReadOnly}
         >
           {isEditing ? 'Actualizar' : 'Guardar'}
         </Button>
@@ -112,6 +115,7 @@ ControlForm.propTypes = {
   onCancel: PropTypes.func,
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
+  isReadOnly: PropTypes.bool,
 };
 
 export default ControlForm;

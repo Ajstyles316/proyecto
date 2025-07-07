@@ -13,7 +13,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading }) => {
+const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -47,20 +47,24 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading }) => {
             <TableCell>{soat.importe_2024 || ''}</TableCell>
             <TableCell>{soat.importe_2025 || ''}</TableCell>
             <TableCell align="right">
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => onEdit(soat)}
-              >
-                <EditIcon />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                color="error"
-                onClick={() => onDelete(soat._id)}
-              >
-                <DeleteIcon />
-              </IconButton>
+              {!isReadOnly && (
+                <>
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => onEdit && onEdit(soat)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => onDelete && onDelete(soat._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -75,6 +79,7 @@ SOATTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
+  isReadOnly: PropTypes.bool,
 };
 
 export default SOATTable; 

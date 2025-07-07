@@ -29,6 +29,7 @@ from .serializers import (
 from django.conf import settings
 from .mongo_connection import get_collection, get_collection_from_activos_db # Asegúrate de importar la nueva función
 import bcrypt
+from rest_framework.permissions import AllowAny
 
 logger = logging.getLogger(__name__)
 
@@ -1470,6 +1471,10 @@ class LoginView(APIView):
             if not bcrypt.checkpw(data["Password"].encode("utf-8"), user["Password"].encode("utf-8")):
                 return Response({"error": "Contraseña inválida"}, status=status.HTTP_401_UNAUTHORIZED)
 
+            # Si el usuario tiene permiso Denegado, no puede acceder
+            if user.get("Permiso", "Editor").lower() == "denegado":
+                return Response({"error": "Acceso denegado por el administrador"}, status=status.HTTP_403_FORBIDDEN)
+
             return Response(json.loads(json_util.dumps(serialize_doc(user))), status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -1709,3 +1714,77 @@ class MaquinariaViewSet(viewsets.ViewSet):
         if not m:
             return Response({"error": "No encontrado"}, status=404)
         return Response(serialize_doc(m))
+
+class UsuarioListView(APIView):
+    """Solo el encargado puede ver la lista de usuarios."""
+    def get(self, request):
+        # Se espera que el encargado envíe su Email en headers para autenticación simple
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        usuarios = list(collection.find())
+        return Response([serialize_doc(u) for u in usuarios], status=status.HTTP_200_OK)
+
+class UsuarioCargoUpdateView(APIView):
+    """Solo el encargado puede cambiar el cargo de otros usuarios."""
+    def put(self, request, id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        # No puede cambiarse a sí mismo
+        if str(user.get('_id')) == id:
+            return Response({'error': 'No puedes cambiar tu propio cargo'}, status=status.HTTP_400_BAD_REQUEST)
+        nuevo_cargo = request.data.get('Cargo')
+        if not nuevo_cargo:
+            return Response({'error': 'Cargo requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        result = collection.update_one({'_id': ObjectId(id)}, {'$set': {'Cargo': nuevo_cargo}})
+        if result.matched_count == 0:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        usuario_actualizado = collection.find_one({'_id': ObjectId(id)})
+        return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
+
+class UsuarioPermisoUpdateView(APIView):
+    """Solo el encargado puede cambiar el permiso de otros usuarios."""
+    def put(self, request, id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if str(user.get('_id')) == id:
+            return Response({'error': 'No puedes cambiar tu propio permiso'}, status=status.HTTP_400_BAD_REQUEST)
+        nuevo_permiso = request.data.get('Permiso')
+        if not nuevo_permiso:
+            return Response({'error': 'Permiso requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        result = collection.update_one({'_id': ObjectId(id)}, {'$set': {'Permiso': nuevo_permiso}})
+        if result.matched_count == 0:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        usuario_actualizado = collection.find_one({'_id': ObjectId(id)})
+        return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
+
+class UsuarioDeleteView(APIView):
+    """Solo el encargado puede eliminar usuarios (no a sí mismo)."""
+    def delete(self, request, id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if str(user.get('_id')) == id:
+            return Response({'error': 'No puedes eliminarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
+        result = collection.delete_one({'_id': ObjectId(id)})
+        if result.deleted_count == 0:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'success': True}, status=status.HTTP_204_NO_CONTENT)

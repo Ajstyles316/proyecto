@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import ImpuestoForm from './ImpuestoForm';
 import ImpuestoTable from './ImpuestoTable';
+import { useIsReadOnly } from '../../../../components/UserContext';
 
 const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [impuestos, setImpuestos] = useState([]);
@@ -16,6 +17,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingImpuesto, setEditingImpuesto] = useState(null);
+  const isReadOnly = useIsReadOnly();
 
   const fetchImpuestos = useCallback(async () => {
     if (!maquinariaId) return;
@@ -134,7 +136,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
         }}>
           <Button 
             variant="contained" 
-            color={showForm ? "error" : "success"} 
+            color={showForm ? "error" : "success"}
             onClick={() => {
               if (showForm) {
                 handleResetForm();
@@ -142,11 +144,18 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
+            disabled={isReadOnly}
           >
             {showForm ? 'Cancelar' : 'Nuevo Impuesto'}
           </Button>
         </Box>
       </Box>
+
+      {isReadOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Tienes acceso solo de lectura. No puedes crear, editar ni eliminar registros.
+        </Alert>
+      )}
 
       {showForm && (
         <ImpuestoForm
@@ -154,15 +163,17 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingImpuesto}
           isEditing={!!editingImpuesto}
+          isReadOnly={isReadOnly}
         />
       )}
 
       <ImpuestoTable
         impuestos={impuestos}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={handleOpenEditForm}
-        onDelete={handleDelete}
+        onEdit={isReadOnly ? undefined : handleOpenEditForm}
+        onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
+        isReadOnly={isReadOnly}
       />
     </Box>
   );

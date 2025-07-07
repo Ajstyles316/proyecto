@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import SeguroForm from './SeguroForm';
 import SeguroTable from './SeguroTable';
+import { useIsReadOnly } from '../../../../components/UserContext';
 
 const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [seguros, setSeguros] = useState([]);
@@ -16,6 +17,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingSeguro, setEditingSeguro] = useState(null);
+  const isReadOnly = useIsReadOnly();
 
   const fetchSeguros = useCallback(async () => {
     if (!maquinariaId) return;
@@ -141,11 +143,18 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
+            disabled={isReadOnly}
           >
             {showForm ? 'Cancelar' : 'Nuevo Seguro'}
           </Button>
         </Box>
       </Box>
+
+      {isReadOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Tienes acceso solo de lectura. No puedes crear, editar ni eliminar registros.
+        </Alert>
+      )}
 
       {showForm && (
         <SeguroForm
@@ -153,15 +162,17 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingSeguro}
           isEditing={!!editingSeguro}
+          isReadOnly={isReadOnly}
         />
       )}
 
       <SeguroTable
         seguros={seguros}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={handleOpenEditForm}
-        onDelete={handleDelete}
+        onEdit={isReadOnly ? undefined : handleOpenEditForm}
+        onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
+        isReadOnly={isReadOnly}
       />
     </Box>
   );
