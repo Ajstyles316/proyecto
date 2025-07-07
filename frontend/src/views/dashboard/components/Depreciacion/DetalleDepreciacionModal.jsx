@@ -132,12 +132,23 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     }
     setError('');
     const depreciacion_por_anio = generarTablaDepreciacion();
+    // Calcular depreciacion_acumulada para cada año
+    let acumulado = 0;
+    const depreciacion_por_anio_completa = depreciacion_por_anio.map((item) => {
+      acumulado += item.valor;
+      return {
+        anio: item.anio,
+        valor_anual_depreciado: item.valor,
+        depreciacion_acumulada: parseFloat(acumulado.toFixed(2)),
+        valor_en_libros: item.valor_en_libros
+      };
+    });
     onSave({
       ...editableData,
       vida_util: Number(editableData.vida_util),
       coeficiente: editableData.coeficiente ? Number(editableData.coeficiente) : '',
       valor_residual: editableData.valor_residual ? Number(editableData.valor_residual) : 0,
-      depreciacion_por_anio: depreciacion_por_anio.map(({ anio, valor }) => ({ anio, valor })),
+      depreciacion_por_anio: depreciacion_por_anio_completa,
     });
   };
 

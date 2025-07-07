@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import PropTypes from "prop-types";
-
 const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal }) => {
   const [maqCurrentPage, setMaqCurrentPage] = useState(1);
   const [maqRowsPerPage, setMaqRowsPerPage] = useState(10);
@@ -33,7 +32,6 @@ const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal }) 
     setMaqRowsPerPage(parseInt(e.target.value, 10));
     setMaqCurrentPage(1);
   };
-
   return (
     <>
       <Typography variant="h5" mb={2} fontWeight={600}>Pronóstico de Mantenimiento</Typography>
@@ -120,3 +118,4 @@ TablaPronostico.propTypes = {
     openModal: PropTypes.func.isRequired,
 };
 export default TablaPronostico;
+

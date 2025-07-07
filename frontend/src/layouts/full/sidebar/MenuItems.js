@@ -57,7 +57,7 @@ const Menuitems = [
     id: uniqueId(),
     title: 'Reportes',
     icon: IconAperture,
-    href: '/sample-page',
+    href: '/reportes',
   },
   {
     navlabel: true,

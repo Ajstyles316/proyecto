@@ -1,5 +1,5 @@
 import {
-  Modal, Paper, Typography, Grid, TextField, Box, Button
+  Modal, Paper, Typography, Grid, TextField, Box, Button, MenuItem
 } from '@mui/material';
 import PropTypes from 'prop-types';
 import { fieldLabels } from '../utils/fieldLabels';
@@ -10,8 +10,10 @@ const NuevoModalMaquinaria = ({
   newMaquinariaForm,
   setNewMaquinariaForm,
   newMaquinariaErrors,
+  setNewMaquinariaErrors,
   handleNewMaquinariaSubmit,
   handleFileChange,
+  unidadesUnicas
 }) => {
   return (
     <Modal open={open} onClose={onClose}>
@@ -48,6 +50,26 @@ const NuevoModalMaquinaria = ({
                     </Typography>
                   )}
                 </Box>
+              ) : field.name === 'unidad' ? (
+                <TextField
+                  select
+                  fullWidth
+                  label={field.label}
+                  name={field.name}
+                  value={newMaquinariaForm[field.name] || ''}
+                  onChange={e => setNewMaquinariaForm({
+                    ...newMaquinariaForm,
+                    [field.name]: e.target.value
+                  })}
+                  size="small"
+                  error={!!newMaquinariaErrors[field.name]}
+                  helperText={newMaquinariaErrors[field.name] || ''}
+                >
+                  <MenuItem value="">Seleccione una unidad</MenuItem>
+                  {unidadesUnicas.map((unidad) => (
+                    <MenuItem key={unidad} value={unidad}>{unidad}</MenuItem>
+                  ))}
+                </TextField>
               ) : (
                 <TextField
                   fullWidth
@@ -89,6 +111,7 @@ NuevoModalMaquinaria.propTypes = {
   setNewMaquinariaErrors: PropTypes.func.isRequired,
   handleNewMaquinariaSubmit: PropTypes.func.isRequired,
   handleFileChange: PropTypes.func.isRequired,
+  unidadesUnicas: PropTypes.array.isRequired,
 };
 
 export default NuevoModalMaquinaria;

@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Box, Paper, Button, Avatar, Typography, Grid, TextField } from '@mui/material';
+import { Box, Paper, Button, Avatar, Typography, Grid, TextField, MenuItem } from '@mui/material';
 import { SECTIONS } from '../utils/constants';
 import ControlMain from '../../Control/ControlMain';
 import AsignacionMain from '../../Asignacion/AsignacionMain';
@@ -23,7 +23,8 @@ const MaquinariaDetalle = ({
   setSectionForm,
   newMaquinariaErrors,
   setNewMaquinariaErrors,
-  handleFileChange
+  handleFileChange,
+  unidadesUnicas
 }) => {
   const maquinariaId = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
   const maquinariaPlaca = sectionForm.Maquinaria?.placa;
@@ -59,6 +60,41 @@ const MaquinariaDetalle = ({
                       </Typography>
                     )}
                   </Box>
+                ) : field.name === 'unidad' ? (
+                  <TextField
+                    select
+                    fullWidth
+                    label={field.label}
+                    name={field.name}
+                    value={sectionForm.Maquinaria[field.name] || ''}
+                    onChange={e => {
+                      setSectionForm((prev) => ({
+                        ...prev,
+                        [activeSection]: {
+                          ...prev[activeSection],
+                          [field.name]: e.target.value,
+                        },
+                      }));
+                      if (!e.target.value) {
+                        setNewMaquinariaErrors({
+                          ...newMaquinariaErrors,
+                          [field.name]: 'Este campo es obligatorio'
+                        });
+                      } else {
+                        const newErrors = { ...newMaquinariaErrors };
+                        delete newErrors[field.name];
+                        setNewMaquinariaErrors(newErrors);
+                      }
+                    }}
+                    size="small"
+                    error={!!newMaquinariaErrors[field.name]}
+                    helperText={newMaquinariaErrors[field.name] || ''}
+                  >
+                    <MenuItem value="">Seleccione una unidad</MenuItem>
+                    {unidadesUnicas.map((unidad) => (
+                      <MenuItem key={unidad} value={unidad}>{unidad}</MenuItem>
+                    ))}
+                  </TextField>
                 ) : (
                   <TextField
                     fullWidth
@@ -171,7 +207,8 @@ MaquinariaDetalle.propTypes = {
   setSectionForm: PropTypes.func.isRequired,
   newMaquinariaErrors: PropTypes.object,
   setNewMaquinariaErrors: PropTypes.func,
-  handleFileChange: PropTypes.func
+  handleFileChange: PropTypes.func,
+  unidadesUnicas: PropTypes.array.isRequired,
 };
 
 export default MaquinariaDetalle;

@@ -70,6 +70,7 @@ const Maquinaria = () => {
     newMaquinariaErrors={newMaquinariaErrors}
     setNewMaquinariaErrors={setNewMaquinariaErrors}
     handleFileChange={handleFileChange}
+    unidadesUnicas={unidadesUnicas}
   />
       ) : (
         <>
@@ -172,6 +173,7 @@ const Maquinaria = () => {
         setNewMaquinariaErrors={setNewMaquinariaErrors}
         handleNewMaquinariaSubmit={handleNewMaquinariaSubmit}
         handleFileChange={handleFileChange}
+        unidadesUnicas={unidadesUnicas}
       />
     </Box>
   );
