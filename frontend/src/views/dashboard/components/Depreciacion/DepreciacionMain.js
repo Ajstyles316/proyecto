@@ -47,24 +47,39 @@ const DepreciacionMain = ({ activos = [] }) => {
         const fecha_compra =
           normalizaFecha(maquinaria.fecha_compra) || new Date().toISOString().slice(0, 10);
         const costo_activo = parseFloat(maquinaria.costo_activo || 0);
-
-        const tabla = [];
+        const valor_residual = maquinaria.valor_residual ? parseFloat(maquinaria.valor_residual) : 0;
+        let tabla = [];
         let fecha = new Date(fecha_compra);
         if (metodo === 'linea_recta') {
-          const anual = costo_activo / vida_util;
+          const anual = (costo_activo - valor_residual) / vida_util;
+          let depreciacionAcumulada = 0;
+          let valorEnLibros = costo_activo;
           for (let i = 0; i < vida_util; i++) {
-            tabla.push({ anio: fecha.getFullYear() + i, valor: parseFloat(anual.toFixed(2)) });
+            depreciacionAcumulada += anual;
+            valorEnLibros -= anual;
+            tabla.push({
+              anio: fecha.getFullYear() + i,
+              valor_anual_depreciado: parseFloat(anual.toFixed(2)),
+              depreciacion_acumulada: parseFloat(depreciacionAcumulada.toFixed(2)),
+              valor_en_libros: parseFloat(Math.max(valorEnLibros, 0).toFixed(2)),
+            });
           }
         } else if (metodo === 'saldo_decreciente') {
           let en_libros = costo_activo;
           const tasa = (1 / vida_util) * 2;
+          let depreciacionAcumulada = 0;
           for (let i = 0; i < vida_util; i++) {
             const dep = en_libros * tasa;
+            depreciacionAcumulada += dep;
             en_libros -= dep;
-            tabla.push({ anio: fecha.getFullYear() + i, valor: parseFloat(dep.toFixed(2)) });
+            tabla.push({
+              anio: fecha.getFullYear() + i,
+              valor_anual_depreciado: parseFloat(dep.toFixed(2)),
+              depreciacion_acumulada: parseFloat(depreciacionAcumulada.toFixed(2)),
+              valor_en_libros: parseFloat(Math.max(en_libros, 0).toFixed(2)),
+            });
           }
         }
-
         datosIniciales = {
           costo_activo,
           fecha_compra,

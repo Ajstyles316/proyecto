@@ -190,7 +190,10 @@ class LoginSerializer(serializers.Serializer):
 
 class DepreciacionEntrySerializer(serializers.Serializer):
     anio = serializers.IntegerField()
-    valor = serializers.FloatField()
+    valor = serializers.FloatField(required=False)  # compatibilidad antigua
+    valor_anual_depreciado = serializers.FloatField(required=False)
+    depreciacion_acumulada = serializers.FloatField(required=False)
+    valor_en_libros = serializers.FloatField(required=False)
 
 class DepreciacionSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)

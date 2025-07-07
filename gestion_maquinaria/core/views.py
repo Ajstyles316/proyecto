@@ -1082,6 +1082,12 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
             return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+# Agregar función auxiliar para formatear el método como oración
+def format_metodo_oracion(metodo):
+    if not metodo:
+        return "-"
+    return metodo.replace('_', ' ').capitalize()
+
 class DepreciacionGeneralView(APIView):
     def determinar_bien_uso_y_vida_util(self, tipo_maquinaria, detalle_maquinaria):
         try:
@@ -1119,7 +1125,6 @@ class DepreciacionGeneralView(APIView):
 
     def generar_detalle_depreciacion(self, metodo, costo_activo, vida_util, fecha_compra_str, valor_residual=0, bien_de_uso=None):
         try:
-            # Si bien_de_uso está en la tabla, usar sus valores
             coeficiente = None
             if bien_de_uso and bien_de_uso in self.BIENES_DE_USO_DS_24051:
                 vida_util = self.BIENES_DE_USO_DS_24051[bien_de_uso]['vida_util']
@@ -1132,7 +1137,6 @@ class DepreciacionGeneralView(APIView):
             if not isinstance(valor_residual, (int, float)) or valor_residual < 0:
                 valor_residual = 0
 
-            # Procesar fecha
             try:
                 fecha_compra = datetime.strptime(fecha_compra_str.split('T')[0], "%Y-%m-%d")
             except (ValueError, TypeError):
@@ -1146,62 +1150,84 @@ class DepreciacionGeneralView(APIView):
             if base < 0:
                 base = 0
 
+            depreciacion_acumulada = 0
+            valor_en_libros = costo_activo
+
             if metodo in ["coeficiente", "ds_24051"] and coeficiente:
-                # Depreciación usando coeficiente de la tabla
                 for i in range(vida_util):
                     dep_anual = base * coeficiente
-                    # Último año: ajustar para no pasar de base
                     if i == vida_util - 1 or base - dep_anual < 0:
                         dep_anual = base
                     base -= dep_anual
+                    depreciacion_acumulada += dep_anual
+                    valor_en_libros -= dep_anual
                     detalle.append({
                         "anio": fecha_compra.year + i,
-                        "valor": round(dep_anual, 2)
+                        "valor_anual_depreciado": round(dep_anual, 2),
+                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
+                        "valor_en_libros": round(valor_en_libros, 2)
                     })
             elif metodo == "linea_recta":
                 depreciacion_anual = base / vida_util
-                valor_en_libros = costo_activo
                 for i in range(vida_util):
                     if i == vida_util - 1:
                         dep_anual = valor_en_libros - valor_residual
                     else:
                         dep_anual = depreciacion_anual
+                    depreciacion_acumulada += dep_anual
                     valor_en_libros -= dep_anual
                     detalle.append({
                         "anio": fecha_compra.year + i,
-                        "valor": round(dep_anual, 2)
+                        "valor_anual_depreciado": round(dep_anual, 2),
+                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
+                        "valor_en_libros": round(valor_en_libros, 2)
                     })
             elif metodo == "saldo_decreciente":
-                valor_en_libros = costo_activo
                 tasa = (1 / vida_util) * 2
                 for i in range(vida_util):
                     dep_anual = valor_en_libros * tasa
                     if i == vida_util - 1 or valor_en_libros - dep_anual < valor_residual:
                         dep_anual = valor_en_libros - valor_residual
+                    depreciacion_acumulada += dep_anual
                     valor_en_libros -= dep_anual
                     detalle.append({
                         "anio": fecha_compra.year + i,
-                        "valor": round(dep_anual, 2)
+                        "valor_anual_depreciado": round(dep_anual, 2),
+                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
+                        "valor_en_libros": round(valor_en_libros, 2)
                     })
             elif metodo == "suma_digitos":
                 suma_digitos = sum(range(1, vida_util + 1))
-                valor_en_libros = costo_activo
                 for i in range(vida_util):
                     años_restantes = vida_util - i
                     factor = años_restantes / suma_digitos
                     dep_anual = base * factor
+                    depreciacion_acumulada += dep_anual
                     valor_en_libros -= dep_anual
                     detalle.append({
                         "anio": fecha_compra.year + i,
-                        "valor": round(dep_anual, 2)
+                        "valor_anual_depreciado": round(dep_anual, 2),
+                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
+                        "valor_en_libros": round(valor_en_libros, 2)
                     })
             else:
                 depreciacion_anual = base / vida_util
                 for i in range(vida_util):
+                    depreciacion_acumulada += depreciacion_anual
+                    valor_en_libros -= depreciacion_anual
                     detalle.append({
                         "anio": fecha_compra.year + i,
-                        "valor": round(depreciacion_anual, 2)
+                        "valor_anual_depreciado": round(depreciacion_anual, 2),
+                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
+                        "valor_en_libros": round(valor_en_libros, 2)
                     })
+            # --- Eliminar campo 'valor' si existe en algún objeto y asegurar solo los campos requeridos ---
+            for d in detalle:
+                if "valor" in d:
+                    del d["valor"]
+                # Eliminar auditoria y observacion si existen
+                d.pop("auditoria", None)
+                d.pop("observacion", None)
             return detalle, advertencia
         except Exception as e:
             logger.error(f"Error generando tabla de depreciación: {e}")
@@ -1256,6 +1282,12 @@ class DepreciacionGeneralView(APIView):
                         if isinstance(fecha_compra, datetime):
                             fecha_compra_str = fecha_compra.strftime('%Y-%m-%d')
                         depreciacion_por_anio = depreciacion_existente.get("depreciacion_por_anio", [])
+                        # --- Asegurar que cada objeto tenga los campos requeridos ---
+                        for d in depreciacion_por_anio:
+                            d.setdefault("anio", None)
+                            d.setdefault("valor_anual_depreciado", d.get("valor", None))
+                            d.setdefault("depreciacion_acumulada", None)
+                            d.setdefault("valor_en_libros", None)
                         advertencia = "Datos de depreciación guardados en el sistema."
                     else:
                         costo_activo = None
@@ -1263,6 +1295,12 @@ class DepreciacionGeneralView(APIView):
                         depreciacion_por_anio, advertencia = self.generar_detalle_depreciacion(
                             metodo, adqui, vida_util, fecha_compra_str
                         )
+                        # --- Asegurar que cada objeto tenga los campos requeridos ---
+                        for d in depreciacion_por_anio:
+                            d.setdefault("anio", None)
+                            d.setdefault("valor_anual_depreciado", d.get("valor", None))
+                            d.setdefault("depreciacion_acumulada", None)
+                            d.setdefault("valor_en_libros", None)
 
                     # Agregar a resultado
                     resultado.append({
@@ -1270,7 +1308,8 @@ class DepreciacionGeneralView(APIView):
                         "placa": m.get("placa"),
                         "detalle": m.get("detalle"),
                         "codigo": m.get("codigo"),
-                        "metodo_depreciacion": metodo,
+                        # --- Mostrar el método como oración ---
+                        "metodo_depreciacion": format_metodo_oracion(metodo),
                         "costo_activo": costo_activo,  # Ahora incluye el valor real si existe
                         "adqui": adqui,  # Valor de adquisición como referencia
                         "vida_util": vida_util,
