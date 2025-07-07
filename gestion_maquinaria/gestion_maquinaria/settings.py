@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import pymongo
+from corsheaders.defaults import default_headers
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -145,3 +146,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configuración explícita para conexión MongoDB usada por los modelos
 MONGO_URI = "mongodb://localhost:27017/"
 MONGO_DB_NAME = "activos"
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-user-email',
+]

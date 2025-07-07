@@ -24,6 +24,8 @@ const Login = () => {
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const [denied, setDenied] = useState("");
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -52,7 +54,14 @@ const Login = () => {
         }),
       });
 
-      if (!response.ok) throw new Error("Credenciales inválidas");
+      if (!response.ok) {
+        const data = await response.json();
+        if (data.error && data.error.toLowerCase().includes("denegado")) {
+          setDenied(data.error);
+          return;
+        }
+        throw new Error("Credenciales inválidas");
+      }
 
       const data = await response.json();
       localStorage.setItem("user", JSON.stringify(data));
@@ -109,6 +118,9 @@ const Login = () => {
 
         <form onSubmit={handleSubmit}>
           <Stack spacing={2}>
+            {denied && (
+              <Typography color="error" textAlign="center">{denied}</Typography>
+            )}
             <TextField
               label="Correo electrónico"
               name="Email"

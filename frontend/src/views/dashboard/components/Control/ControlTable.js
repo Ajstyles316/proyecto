@@ -13,7 +13,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading }) => {
+const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -55,20 +55,24 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading }) 
             <TableCell>{control.hoja_tramite}</TableCell>
             <TableCell>{control.fecha_ingreso}</TableCell>
             <TableCell align="right">
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={() => onEdit(control)}
-              >
-                <EditIcon />
-              </IconButton>
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => onDelete(control._id)}
-              >
-                <DeleteIcon />
-              </IconButton>
+              {!isReadOnly && (
+                <>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => onEdit(control)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => onDelete(control._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -92,6 +96,7 @@ ControlTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
+  isReadOnly: PropTypes.bool.isRequired,
 };
 
 export default ControlTable;

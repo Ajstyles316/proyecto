@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import ControlForm from './ControlForm';
 import ControlTable from './ControlTable';
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
 
 const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [controls, setControls] = useState([]);
@@ -16,6 +17,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingControl, setEditingControl] = useState(null);
+  const isReadOnly = useIsReadOnly();
 
   const fetchControls = useCallback(async () => {
     if (!maquinariaId) return;
@@ -131,8 +133,8 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
           gap: 1, 
           mt: { xs: 2, sm: 0 }
         }}>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             color={showForm ? "error" : "success"}
             onClick={() => {
               if (showForm) {
@@ -141,6 +143,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
+            disabled={isReadOnly}
           >
             {showForm ? 'Cancelar' : 'Nuevo Control'}
           </Button>
@@ -153,6 +156,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingControl}
           isEditing={!!editingControl}
+          isReadOnly={isReadOnly}
         />
       )}
 
@@ -162,6 +166,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
+        isReadOnly={isReadOnly}
       />
     </Box>
   );

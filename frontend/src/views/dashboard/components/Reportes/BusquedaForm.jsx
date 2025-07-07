@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { TextField, Button, Grid } from '@mui/material';
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
 
 const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading }) => {
   const [search, setSearch] = useState('');
+  const isReadOnly = useIsReadOnly();
 
   const handleSubmit = () => {
     onBuscar(search);
@@ -26,7 +28,7 @@ const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading 
           Buscar
         </Button>
       </Grid>
-      {maquinaria && (
+      {maquinaria && !isReadOnly && (
         <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center">
           <Button
             variant="contained"

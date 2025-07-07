@@ -7,6 +7,7 @@ import useMaquinariaLogic from "./hooks/useMaquinariaLogic";
 import NuevoModalMaquinaria from "./components/NuevoModalMaquinaria";
 import MaquinariaTabla from "./components/MaquinariaTabla";
 import MaquinariaDetalle from "./components/MaquinariaDetalle";
+import { useIsReadOnly } from '../../../../components/UserContext';
 
 const Maquinaria = () => {
   const {
@@ -43,6 +44,8 @@ const Maquinaria = () => {
     selectedImage
   } = useMaquinariaLogic();
 
+  const isReadOnly = useIsReadOnly();
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Snackbar */}
@@ -56,6 +59,14 @@ const Maquinaria = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {isReadOnly && (
+        <Box mb={2}>
+          <Alert severity="info">
+            Tienes acceso solo de lectura. No puedes crear, editar ni eliminar registros.
+          </Alert>
+        </Box>
+      )}
 
       {detailView ? (
         <MaquinariaDetalle
@@ -133,6 +144,7 @@ const Maquinaria = () => {
                 color="success"
                 startIcon={<AddIcon />}
                 onClick={() => setNewMaquinariaModalOpen(true)}
+                disabled={isReadOnly}
               >
                 Nuevo
               </Button>

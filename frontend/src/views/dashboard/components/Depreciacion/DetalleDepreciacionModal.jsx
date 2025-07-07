@@ -19,6 +19,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
 
 const BIENES_DE_USO = [
   {
@@ -77,6 +78,7 @@ function normalizaFecha(fecha) {
 }
 
 const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave }) => {
+  const isReadOnly = useIsReadOnly();
   const [editableData, setEditableData] = useState({
     costo_activo: '',
     fecha_compra: '',
@@ -281,7 +283,6 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     <Grid item xs={12} sm={4}>
       <InfoItem label="Detalle" value={maquinariaInfo.detalle} />
     </Grid>
-
     <Grid item xs={12} sm={6}>
       <TextField
         fullWidth
@@ -292,9 +293,9 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         onChange={handleInputChange}
         variant="outlined"
         inputProps={{ min: 0 }}
+        disabled={isReadOnly}
       />
     </Grid>
-
     <Grid item xs={12} sm={6}>
       <TextField
         fullWidth
@@ -305,9 +306,9 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         onChange={handleInputChange}
         InputLabelProps={{ shrink: true }}
         variant="outlined"
+        disabled={isReadOnly}
       />
     </Grid>
-
     <Grid item xs={12} sm={6}>
       <Typography variant="caption" color="text.secondary" display="block">
         Método de depreciación
@@ -318,13 +319,13 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         value={editableData.metodo}
         onChange={handleInputChange}
         variant="outlined"
+        disabled={isReadOnly}
       >
         <MenuItem value="linea_recta">Línea recta</MenuItem>
         <MenuItem value="saldo_decreciente">Saldo decreciente</MenuItem>
         <MenuItem value="suma_digitos">Suma de dígitos</MenuItem>
       </Select>
     </Grid>
-
     <Grid item xs={12} sm={6}>
       <Typography variant="caption" color="text.secondary" display="block">
         Vida Útil (años)
@@ -386,8 +387,14 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
           <Button onClick={handleClose} sx={{ mr: 1 }}>
             Cancelar
           </Button>
-          <Button onClick={handleSaveClick} variant="contained" disabled={faltaDatos}>
-            Guardar Cambios
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSaveClick}
+            sx={{ mr: 1 }}
+            disabled={isReadOnly}
+          >
+            Guardar
           </Button>
         </Box>
       </Paper>

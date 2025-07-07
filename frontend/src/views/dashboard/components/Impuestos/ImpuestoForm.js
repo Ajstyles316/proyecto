@@ -8,8 +8,9 @@ import {
   Grid,
 } from '@mui/material';
 import { useState, useEffect } from 'react';
+import { useIsReadOnly } from '../../../../components/UserContext';
 
-const ImpuestoForm = ({ onSubmit, initialData, isEditing }) => {
+const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
@@ -62,6 +63,7 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing }) => {
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
+              disabled={isReadOnly}
             />
           </Grid>
         ))}
@@ -77,6 +79,7 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
+          disabled={isReadOnly}
         >
           {isEditing ? 'Actualizar' : 'Guardar'}
         </Button>
@@ -90,6 +93,7 @@ ImpuestoForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
+  isReadOnly: PropTypes.bool,
 };
 
 export default ImpuestoForm; 

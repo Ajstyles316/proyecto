@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import MantenimientoForm from './MantenimientoForm';
 import MantenimientoTable from './MantenimientoTable';
+import { useIsReadOnly } from 'src/components/UserContext.jsx';
 
 const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -16,6 +17,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingMantenimiento, setEditingMantenimiento] = useState(null);
+  const isReadOnly = useIsReadOnly();
 
   const fetchMantenimientos = useCallback(async () => {
     if (!maquinariaId) return;
@@ -121,8 +123,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         flexWrap: 'wrap'
       }}>
         <Typography variant="h6">Mantenimientos</Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           color={showForm ? "error" : "success"}
           onClick={() => {
             if (showForm) {
@@ -131,6 +133,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
               setShowForm(true);
             }
           }}
+          disabled={isReadOnly}
         >
           {showForm ? 'Cancelar' : 'Nuevo Mantenimiento'}
         </Button>
@@ -142,6 +145,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingMantenimiento}
           isEditing={!!editingMantenimiento}
+          isReadOnly={isReadOnly}
         />
       )}
 
@@ -151,6 +155,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
+        isReadOnly={isReadOnly}
       />
     </Box>
   );

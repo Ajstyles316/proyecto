@@ -9,7 +9,7 @@ import {
   Grid,
 } from '@mui/material';
 
-const AsignacionForm = ({ onSubmit, initialData, isEditing }) => {
+const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
 
@@ -56,6 +56,7 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing }) => {
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
+              disabled={isReadOnly}
             />
           </Grid>
         ))}
@@ -71,6 +72,7 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
+          disabled={isReadOnly}
         >
           {isEditing ? 'Actualizar' : 'Guardar'}
         </Button>
@@ -84,6 +86,7 @@ AsignacionForm.propTypes = {
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
+  isReadOnly: PropTypes.bool,
 };
 
 export default AsignacionForm; 

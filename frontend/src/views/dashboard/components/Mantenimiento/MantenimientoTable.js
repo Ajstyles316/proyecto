@@ -13,7 +13,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
-const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading }) => {
+const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -51,20 +51,24 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
             <TableCell>{m.gestion || ''}</TableCell>
             <TableCell>{m.ubicacion || ''}</TableCell>
             <TableCell align="right">
-              <IconButton 
-                size="small" 
-                color="primary"
-                onClick={() => onEdit(m)}
-              >
-                <EditIcon />
-              </IconButton>
-              <IconButton 
-                size="small" 
-                color="error"
-                onClick={() => onDelete(m._id)}
-              >
-                <DeleteIcon />
-              </IconButton>
+              {!isReadOnly && (
+                <>
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => onEdit(m)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => onDelete(m._id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -79,6 +83,7 @@ MantenimientoTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
+  isReadOnly: PropTypes.bool.isRequired,
 };
 
 export default MantenimientoTable; 

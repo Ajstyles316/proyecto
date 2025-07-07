@@ -9,6 +9,7 @@ import ITVMain from '../../ITV/ITVMain';
 import SOATMain from '../../SOAT/SOATMain';
 import ImpuestoMain from '../../Impuestos/ImpuestoMain';
 import { fieldLabels } from '../utils/fieldLabels';
+import { useIsReadOnly } from '../../../../../components/UserContext';
 
 const maquinariaImage = 'https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=400&q=80';
 
@@ -28,6 +29,7 @@ const MaquinariaDetalle = ({
 }) => {
   const maquinariaId = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
   const maquinariaPlaca = sectionForm.Maquinaria?.placa;
+  const isReadOnly = useIsReadOnly();
 
   const renderSectionForm = () => {
     switch (activeSection) {
@@ -53,6 +55,7 @@ const MaquinariaDetalle = ({
                       accept="image/*" 
                       onChange={handleFileChange} 
                       style={{ marginTop: '8px' }}
+                      disabled={isReadOnly}
                     />
                     {sectionForm.Maquinaria?.imagen && (
                       <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
@@ -89,6 +92,7 @@ const MaquinariaDetalle = ({
                     size="small"
                     error={!!newMaquinariaErrors[field.name]}
                     helperText={newMaquinariaErrors[field.name] || ''}
+                    disabled={isReadOnly}
                   >
                     <MenuItem value="">Seleccione una unidad</MenuItem>
                     {unidadesUnicas.map((unidad) => (
@@ -125,7 +129,7 @@ const MaquinariaDetalle = ({
                     error={!!newMaquinariaErrors[field.name]}
                     helperText={newMaquinariaErrors[field.name] || ''}
                     InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-                    disabled={field.name === 'placa' && activeSection !== 'Maquinaria'}
+                    disabled={isReadOnly || (field.name === 'placa' && activeSection !== 'Maquinaria')}
                   />
                 )}
               </Grid>
@@ -159,6 +163,7 @@ const MaquinariaDetalle = ({
               variant="contained"
               sx={{ bgcolor: 'red', color: 'white', minWidth: 120 }}
               onClick={handleDeleteMaquinaria}
+              disabled={isReadOnly}
             >
               Eliminar
             </Button>
@@ -167,6 +172,7 @@ const MaquinariaDetalle = ({
               color="info"
               sx={{ minWidth: 120 }}
               onClick={handleUpdateMaquinaria}
+              disabled={isReadOnly}
             >
               Actualizar
             </Button>
