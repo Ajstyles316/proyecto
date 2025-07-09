@@ -52,7 +52,14 @@ def serialize_doc(doc):
             return [convert(v) for v in value]
         else:
             return value
-    return convert(doc)
+    doc = convert(doc)
+    # --- Asegurar maquinaria_id como string si existe ---
+    if 'maquinaria' in doc:
+        doc['maquinaria_id'] = str(doc['maquinaria'])
+        doc['bien_de_uso'] = doc.get('bien_uso', '')
+        doc['vida_util'] = doc.get('vida_util', '')
+        doc['costo_activo'] = doc.get('costo_activo', 0)
+    return doc
 
 def serialize_list(docs):
     """Serializa una lista de documentos de PyMongo."""
@@ -1089,14 +1096,11 @@ def format_metodo_oracion(metodo):
         return "-"
     return metodo.replace('_', ' ').capitalize()
 
-class DepreciacionGeneralView(APIView):
+class DepreciacionesGeneralView(APIView):
     def determinar_bien_uso_y_vida_util(self, tipo_maquinaria, detalle_maquinaria):
         try:
-            # Asegurar que ambos valores sean cadenas antes de usar .lower()
             tipo_lower = str(tipo_maquinaria).lower() if tipo_maquinaria is not None else ""
             detalle_lower = str(detalle_maquinaria).lower() if detalle_maquinaria is not None else ""
-
-            # Validaciones seguras con palabras clave
             if any(p in tipo_lower or p in detalle_lower for p in ['camion', 'camión', 'auto', 'carro', 'vehiculo', 'vehículo', 'truck', 'car']):
                 return "Vehículos automotores", 5
             if any(p in tipo_lower or p in detalle_lower for p in ['excavadora', 'bulldozer', 'retroexcavadora', 'cargador', 'loader', 'excavator']):
@@ -1112,228 +1116,50 @@ class DepreciacionGeneralView(APIView):
             return "Otros bienes", 5
         except Exception as e:
             logger.warning(f"Error al determinar bien de uso: {e}")
-            return "Desconocido", 5  # Valores seguros en caso de fallo
-
-    # Diccionario reducido de bienes de uso relevantes para autos y maquinaria
-    BIENES_DE_USO_DS_24051 = {
-        'Vehículos automotores': {'vida_util': 5, 'coeficiente': 0.20},
-        'Maquinaria en general': {'vida_util': 8, 'coeficiente': 0.125},
-        'Maquinaria para la construcción': {'vida_util': 5, 'coeficiente': 0.20},
-        'Equipos e instalaciones': {'vida_util': 8, 'coeficiente': 0.125},
-        'Equipos de computación': {'vida_util': 4, 'coeficiente': 0.25},
-        'Muebles y enseres de oficina': {'vida_util': 10, 'coeficiente': 0.10},
-    }
-
-    def generar_detalle_depreciacion(self, metodo, costo_activo, vida_util, fecha_compra_str, valor_residual=0, bien_de_uso=None):
-        try:
-            coeficiente = None
-            if bien_de_uso and bien_de_uso in self.BIENES_DE_USO_DS_24051:
-                vida_util = self.BIENES_DE_USO_DS_24051[bien_de_uso]['vida_util']
-                coeficiente = self.BIENES_DE_USO_DS_24051[bien_de_uso]['coeficiente']
-
-            if not isinstance(costo_activo, (int, float)) or costo_activo <= 0:
-                costo_activo = 1
-            if not isinstance(vida_util, int) or vida_util <= 0:
-                vida_util = 5
-            if not isinstance(valor_residual, (int, float)) or valor_residual < 0:
-                valor_residual = 0
-
-            try:
-                fecha_compra = datetime.strptime(fecha_compra_str.split('T')[0], "%Y-%m-%d")
-            except (ValueError, TypeError):
-                fecha_compra = datetime.now()
-                advertencia = "Fecha de compra inválida, usando fecha actual."
-            else:
-                advertencia = ""
-
-            detalle = []
-            base = costo_activo - valor_residual
-            if base < 0:
-                base = 0
-
-            depreciacion_acumulada = 0
-            valor_en_libros = costo_activo
-
-            if metodo in ["coeficiente", "ds_24051"] and coeficiente:
-                for i in range(vida_util):
-                    dep_anual = base * coeficiente
-                    if i == vida_util - 1 or base - dep_anual < 0:
-                        dep_anual = base
-                    base -= dep_anual
-                    depreciacion_acumulada += dep_anual
-                    valor_en_libros -= dep_anual
-                    detalle.append({
-                        "anio": fecha_compra.year + i,
-                        "valor_anual_depreciado": round(dep_anual, 2),
-                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
-                        "valor_en_libros": round(valor_en_libros, 2)
-                    })
-            elif metodo == "linea_recta":
-                depreciacion_anual = base / vida_util
-                for i in range(vida_util):
-                    if i == vida_util - 1:
-                        dep_anual = valor_en_libros - valor_residual
-                    else:
-                        dep_anual = depreciacion_anual
-                    depreciacion_acumulada += dep_anual
-                    valor_en_libros -= dep_anual
-                    detalle.append({
-                        "anio": fecha_compra.year + i,
-                        "valor_anual_depreciado": round(dep_anual, 2),
-                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
-                        "valor_en_libros": round(valor_en_libros, 2)
-                    })
-            elif metodo == "saldo_decreciente":
-                tasa = (1 / vida_util) * 2
-                for i in range(vida_util):
-                    dep_anual = valor_en_libros * tasa
-                    if i == vida_util - 1 or valor_en_libros - dep_anual < valor_residual:
-                        dep_anual = valor_en_libros - valor_residual
-                    depreciacion_acumulada += dep_anual
-                    valor_en_libros -= dep_anual
-                    detalle.append({
-                        "anio": fecha_compra.year + i,
-                        "valor_anual_depreciado": round(dep_anual, 2),
-                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
-                        "valor_en_libros": round(valor_en_libros, 2)
-                    })
-            elif metodo == "suma_digitos":
-                suma_digitos = sum(range(1, vida_util + 1))
-                for i in range(vida_util):
-                    años_restantes = vida_util - i
-                    factor = años_restantes / suma_digitos
-                    dep_anual = base * factor
-                    depreciacion_acumulada += dep_anual
-                    valor_en_libros -= dep_anual
-                    detalle.append({
-                        "anio": fecha_compra.year + i,
-                        "valor_anual_depreciado": round(dep_anual, 2),
-                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
-                        "valor_en_libros": round(valor_en_libros, 2)
-                    })
-            else:
-                depreciacion_anual = base / vida_util
-                for i in range(vida_util):
-                    depreciacion_acumulada += depreciacion_anual
-                    valor_en_libros -= depreciacion_anual
-                    detalle.append({
-                        "anio": fecha_compra.year + i,
-                        "valor_anual_depreciado": round(depreciacion_anual, 2),
-                        "depreciacion_acumulada": round(depreciacion_acumulada, 2),
-                        "valor_en_libros": round(valor_en_libros, 2)
-                    })
-            # --- Eliminar campo 'valor' si existe en algún objeto y asegurar solo los campos requeridos ---
-            for d in detalle:
-                if "valor" in d:
-                    del d["valor"]
-                # Eliminar auditoria y observacion si existen
-                d.pop("auditoria", None)
-                d.pop("observacion", None)
-            return detalle, advertencia
-        except Exception as e:
-            logger.error(f"Error generando tabla de depreciación: {e}")
-            return [], "Error al generar tabla de depreciación"
+            return "Desconocido", 5
 
     def get(self, request):
         try:
-            maquinaria_collection = get_collection("maquinaria")
             depreciaciones_collection = get_collection("depreciaciones")
-            maquinarias = list(maquinaria_collection.find({}, {
-                "_id": 1, "placa": 1, "detalle": 1, "codigo": 1,
-                "metodo_depreciacion": 1, "adqui": 1, "fecha_registro": 1,
-                "tipo": 1
-            }))
-            resultado = []
-            for m in maquinarias:
-                try:
-                    # Extraer valores base
-                    tipo_maquinaria = m.get("tipo")
-                    detalle_maquinaria = m.get("detalle")
-                    adqui = m.get("adqui")  # Valor de adquisición (no es costo_activo)
-                    fecha_registro_raw = m.get("fecha_registro")
-
-                    # Buscar depreciación existente para obtener costo_activo real
-                    depreciacion_existente = depreciaciones_collection.find_one(
-                        {"maquinaria": m["_id"]},
-                        sort=[("fecha_creacion", -1)]  # Obtener el más reciente
-                    )
-
-                    # Procesar valor de adquisición (solo como referencia)
-                    try:
-                        adqui = float(adqui) if adqui else 0
-                    except (ValueError, TypeError):
-                        adqui = 0
-
-                    # Procesar fecha
-                    if isinstance(fecha_registro_raw, datetime):
-                        fecha_compra_str = fecha_registro_raw.strftime('%Y-%m-%d')
-                    elif isinstance(fecha_registro_raw, str):
-                        fecha_compra_str = fecha_registro_raw.split('T')[0]
-                    else:
-                        fecha_compra_str = datetime.now().strftime('%Y-%m-%d')
-
-                    # Determinar bien de uso y vida útil
-                    bien_de_uso, vida_util = self.determinar_bien_uso_y_vida_util(tipo_maquinaria, detalle_maquinaria)
-
-                    # Usar datos de depreciación existente si hay
-                    if depreciacion_existente:
-                        costo_activo = depreciacion_existente.get("costo_activo")
-                        metodo = depreciacion_existente.get("metodo", m.get("metodo_depreciacion", "linea_recta"))
-                        fecha_compra = depreciacion_existente.get("fecha_compra")
-                        if isinstance(fecha_compra, datetime):
-                            fecha_compra_str = fecha_compra.strftime('%Y-%m-%d')
-                        depreciacion_por_anio = depreciacion_existente.get("depreciacion_por_anio", [])
-                        # --- Asegurar que cada objeto tenga los campos requeridos ---
-                        for d in depreciacion_por_anio:
-                            d.setdefault("anio", None)
-                            d.setdefault("valor_anual_depreciado", d.get("valor", None))
-                            d.setdefault("depreciacion_acumulada", None)
-                            d.setdefault("valor_en_libros", None)
-                        advertencia = "Datos de depreciación guardados en el sistema."
-                    else:
-                        costo_activo = None
-                        metodo = m.get("metodo_depreciacion", "linea_recta")
-                        depreciacion_por_anio, advertencia = self.generar_detalle_depreciacion(
-                            metodo, adqui, vida_util, fecha_compra_str
-                        )
-                        # --- Asegurar que cada objeto tenga los campos requeridos ---
-                        for d in depreciacion_por_anio:
-                            d.setdefault("anio", None)
-                            d.setdefault("valor_anual_depreciado", d.get("valor", None))
-                            d.setdefault("depreciacion_acumulada", None)
-                            d.setdefault("valor_en_libros", None)
-
-                    # Agregar a resultado
-                    resultado.append({
-                        "maquinaria_id": str(m["_id"]),
-                        "placa": m.get("placa"),
-                        "detalle": m.get("detalle"),
-                        "codigo": m.get("codigo"),
-                        # --- Mostrar el método como oración ---
-                        "metodo_depreciacion": format_metodo_oracion(metodo),
-                        "costo_activo": costo_activo,  # Ahora incluye el valor real si existe
-                        "adqui": adqui,  # Valor de adquisición como referencia
-                        "vida_util": vida_util,
-                        "depreciacion_por_anio": depreciacion_por_anio,
-                        "bien_de_uso": bien_de_uso,
-                        "fecha_compra": fecha_compra_str,
-                        "advertencia": advertencia,
-                    })
-                except Exception as inner_error:
-                    logger.warning(f"Error procesando máquina {m.get('_id')}: {inner_error}")
-                    continue  # Saltar máquinas con errores
-
+            depreciaciones = list(depreciaciones_collection.find({}))
+            if depreciaciones:
+                return Response(serialize_list(depreciaciones))
+            # Si no hay depreciaciones reales, devolver ejemplo forzado
+            resultado = [{
+                "_id": {"$oid": "1"},
+                "maquinaria_id": "1",
+                "placa": "ABC-123",
+                "detalle": "Maquinaria de ejemplo",
+                "codigo": "COD-001",
+                "metodo_depreciacion": "Línea Recta",
+                "costo_activo": 10000,
+                "adqui": 10000,
+                "vida_util": 5,
+                "depreciacion_por_anio": [
+                    {"anio": 2025, "valor_anual_depreciado": 2000, "depreciacion_acumulada": 2000, "valor_en_libros": 8000},
+                    {"anio": 2026, "valor_anual_depreciado": 2000, "depreciacion_acumulada": 4000, "valor_en_libros": 6000},
+                    {"anio": 2027, "valor_anual_depreciado": 2000, "depreciacion_acumulada": 6000, "valor_en_libros": 4000},
+                    {"anio": 2028, "valor_anual_depreciado": 2000, "depreciacion_acumulada": 8000, "valor_en_libros": 2000},
+                    {"anio": 2029, "valor_anual_depreciado": 2000, "depreciacion_acumulada": 10000, "valor_en_libros": 0}
+                ],
+                "bien_de_uso": "Ejemplo",
+                "fecha_compra": "2025-07-04",
+                "advertencia": "Datos de ejemplo forzados.",
+            }]
             return Response(resultado)
         except Exception as e:
-            logger.error(f"Error en DepreciacionGeneralView: {str(e)}\n{traceback.format_exc()}")
+            logger.error(f"Error en DepreciacionesGeneralView: {str(e)}\n{traceback.format_exc()}")
             return Response({"error": "Error interno del servidor"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class DepreciacionListView(APIView):
+class DepreciacionesListView(APIView):
     def get(self, request, maquinaria_id):
+        print("[DepreciacionesListView] ID recibido:", maquinaria_id)
         if not ObjectId.is_valid(maquinaria_id):
+            print("[DepreciacionesListView] ID inválido")
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         collection = get_collection('depreciaciones')
         records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        print(f"[DepreciacionesListView] Registros encontrados: {len(records)}")
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1361,7 +1187,7 @@ class DepreciacionListView(APIView):
         logger.error(f"Errores de validación en depreciación: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DepreciacionDetailView(APIView):
+class DepreciacionesDetailView(APIView):
     def get(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1534,13 +1360,14 @@ class DashboardStatsView(APIView):
             except Exception as e:
                 mantenimientos_este_mes = 0
 
-            # Depreciación total acumulada (sumar todos los valores de depreciacion_por_anio de la colección depreciaciones)
             depreciacion_total = 0
             try:
                 depreciaciones_collection = get_collection("depreciaciones")
                 for dep in depreciaciones_collection.find({}):
-                    for entry in dep.get("depreciacion_por_anio", []):
-                        depreciacion_total += float(entry.get("valor", 0))
+                    por_anio = dep.get("depreciacion_por_anio", [])
+                    if por_anio:
+                        ultimo = por_anio[-1]
+                        depreciacion_total += float(ultimo.get("depreciacion_acumulada", 0))
             except Exception as e:
                 depreciacion_total = 0
 
@@ -1598,7 +1425,7 @@ def activos_list(request):
             {
                 'bien_uso': a.get('bien_uso', ''),
                 'vida_util': a.get('vida_util', ''),
-                'coeficiente': round(float(a.get('coeficiente', 0)) * 100, 2) if a.get('coeficiente') is not None else ''
+                'coeficiente': float(a.get('coeficiente', 0)) if a.get('coeficiente') is not None else ''
             }
             for a in activos
         ]
@@ -1788,3 +1615,26 @@ class UsuarioDeleteView(APIView):
         if result.deleted_count == 0:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
         return Response({'success': True}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+def sugerir_bien_uso(request):
+    tipo = request.data.get('tipo_maquinaria', '')
+    detalle = request.data.get('detalle_maquinaria', '')
+    view = DepreciacionesGeneralView()
+    bien_uso, vida_util = view.determinar_bien_uso_y_vida_util(tipo, detalle)
+    coeficientes = {
+        'Vehículos automotores': 0.20,
+        'Maquinaria pesada': 0.125,
+        'Equipos de construcción': 0.20,
+        'Herramientas menores': 0.25,
+        'Equipos de oficina': 0.25,
+        'Muebles y enseres': 0.10,
+        'Otros bienes': 0.20,
+        'Desconocido': 0.20,
+    }
+    coeficiente = coeficientes.get(bien_uso, 0.20)
+    return Response({
+        'bien_uso': bien_uso,
+        'vida_util': vida_util,
+        'coeficiente': coeficiente
+    })

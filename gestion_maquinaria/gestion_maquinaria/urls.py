@@ -16,9 +16,8 @@ from core.views import (
     ITVListView, ITVDetailView,
     SOATListView, SOATDetailView,
     ImpuestoListView, ImpuestoDetailView,
-    DepreciacionGeneralView,
-    DepreciacionListView, DepreciacionDetailView,
-    activos_list, PronosticoAPIView
+    activos_list, PronosticoAPIView, DashboardStatsView, PronosticoSummaryView,
+    DepreciacionesDetailView,DepreciacionesGeneralView,DepreciacionesListView
 )
 
 router = DefaultRouter()
@@ -30,7 +29,7 @@ class CustomApiRoot(APIView):
         base = request.build_absolute_uri('/api/maquinaria/')
         return Response({
             'maquinaria': request.build_absolute_uri('/api/maquinaria/'),
-            'depreciaciones': request.build_absolute_uri('/api/depreciacion/'),
+            'depreciaciones': request.build_absolute_uri('/api/depreciaciones/'),
             'activos': request.build_absolute_uri('/api/activos/'),
             'pronostico':request.build_absolute_uri('/api/pronostico/')
         })
@@ -42,7 +41,7 @@ urlpatterns = [
     # API root navegable y rutas automáticas para maquinaria
     path('api/', CustomApiRoot.as_view(), name='api-root'),
     path('api/', include(router.urls)),
-    path('api/', include('core.urls')),
+    path('api/', include('core.urls')),  # <--- Cambiado aquí
     # Rutas para Maquinaria Principal (JSON puro)
     path('api/maquinaria/', MaquinariaListView.as_view(), name='maquinaria-list'),
     path('api/maquinaria/<str:id>/', MaquinariaDetailView.as_view(), name='maquinaria-detail'),
@@ -69,10 +68,13 @@ urlpatterns = [
 
     path('api/maquinaria/<str:maquinaria_id>/impuestos/', ImpuestoListView.as_view(), name='impuesto-list'),
     path('api/maquinaria/<str:maquinaria_id>/impuestos/<str:record_id>/', ImpuestoDetailView.as_view(), name='impuesto-detail'),
-
-    path('api/depreciacion/', DepreciacionGeneralView.as_view(), name='depreciacion-general'),
-    path('api/depreciacion/<str:maquinaria_id>/', DepreciacionListView.as_view(), name='depreciacion-list'),
-    path('api/maquinaria/<str:maquinaria_id>/depreciacion/<str:record_id>/', DepreciacionDetailView.as_view(), name='depreciacion-detail'),
+    
+    path('api/depreciaciones/', DepreciacionesGeneralView.as_view(), name='depreciaciones-general'),
+    path('api/depreciaciones/<str:maquinaria_id>/', DepreciacionesListView.as_view(), name='depreciaciones-list'),
+    path('api/maquinaria/<str:maquinaria_id>/depreciaciones/<str:record_id>/', DepreciacionesDetailView.as_view(), name='depreciaciones-detail'),
+    
     path('api/activos/', activos_list, name='activos-list'),
     path("api/pronostico/", PronosticoAPIView.as_view(), name="api_pronostico"),
+    path('api/dashboard/', DashboardStatsView.as_view(), name='dashboard'),
+    path('api/pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
 ]

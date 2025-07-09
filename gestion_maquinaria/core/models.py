@@ -42,7 +42,7 @@ class Pronostico:
     collection_name = "pronostico"
     def __init__(self):
         self.client = MongoClient(settings.MONGO_URI)
-        self.db = self.client["activos_fijos"]
+        self.db = self.client["gestion_maquinaria"]
         self.collection = self.db[self.collection_name]
 
     def insert(self, data):

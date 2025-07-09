@@ -38,9 +38,9 @@ const baseMenuItems = [
   },
   {
     id: uniqueId(),
-    title: 'Depreciación',
+    title: 'Depreciaciones',
     icon: IconTable,
-    href: '/depreciacion',
+    href: '/depreciaciones',
   },
   {
     id: uniqueId(),

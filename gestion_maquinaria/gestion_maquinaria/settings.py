@@ -62,7 +62,7 @@ CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
 RECAPTCHA_SECRET_KEY = "6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9" 
-MONGO_CLIENT = pymongo.MongoClient("mongodb://localhost:27017/")
+MONGO_CLIENT = pymongo.MongoClient("mongodb+srv://fabriciochoque11:ajstyles@cluster0.iig1hgi.mongodb.net/")
 MONGO_DB = MONGO_CLIENT["activos"]
 MAQUINARIA_COLLECTION = MONGO_DB["maquinaria"]# Reemplaza con tu clave de Google reCAPTCHA
 TEMPLATES = [
@@ -96,9 +96,7 @@ DATABASES = {
 # settings.py
 
 MONGODB_SETTINGS = {
-    'host': 'mongodb://localhost:27017/gestion_maquinaria',
-    # o si usas MongoDB Atlas:
-    # 'host': 'mongodb+srv://usuario:contraseña@cluster.mongodb.net/gestion_maquinaria?retryWrites=true&w=majority',
+    'host': 'mongodb+srv://fabriciochoque11:ajstyles@cluster0.iig1hgi.mongodb.net/gestion_maquinaria?retryWrites=true&w=majority',
 }
 
 
@@ -144,7 +142,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuración explícita para conexión MongoDB usada por los modelos
-MONGO_URI = "mongodb://localhost:27017/"
+MONGO_URI = "mongodb+srv://fabriciochoque11:ajstyles@cluster0.iig1hgi.mongodb.net/"
 MONGO_DB_NAME = "activos"
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
