@@ -43,7 +43,7 @@ export async function deleteMaquinaria(id) {
 // 📌 -- Depreciación --
 
 export async function fetchDepreciaciones(maquinariaId) {
-  const res = await fetch(`http://localhost:8000/api/depreciacion/${maquinariaId}/`);
+  const res = await fetch(`http://localhost:8000/api/depreciaciones/${maquinariaId}/`);
   if (!res.ok) {
     console.error('ERROR', res.status, res.statusText);
     throw new Error('Error al obtener depreciaciones');
@@ -52,7 +52,7 @@ export async function fetchDepreciaciones(maquinariaId) {
 }
 
 export async function createDepreciacion(maquinariaId, data) {
-  const res = await fetch(`${API_BASE}/depreciacion/${maquinariaId}/`, {
+  const res = await fetch(`${API_BASE}/depreciaciones/${maquinariaId}/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -62,7 +62,7 @@ export async function createDepreciacion(maquinariaId, data) {
 }
 
 export async function updateDepreciacion(maquinariaId, recordId, data) {
-  const res = await fetch(`${API_BASE}/maquinaria/${maquinariaId}/depreciacion/${recordId}/`, {
+  const res = await fetch(`${API_BASE}/maquinaria/${maquinariaId}/depreciaciones/${recordId}/`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -72,7 +72,7 @@ export async function updateDepreciacion(maquinariaId, recordId, data) {
 }
 
 export async function deleteDepreciacion(maquinariaId, recordId) {
-  const res = await fetch(`${API_BASE}/depreciacion/${maquinariaId}/${recordId}/`, {
+  const res = await fetch(`${API_BASE}/depreciaciones/${maquinariaId}/${recordId}/`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Error al eliminar depreciación');
@@ -80,7 +80,7 @@ export async function deleteDepreciacion(maquinariaId, recordId) {
 }
 
 export async function fetchDetalleDepreciacion(maquinariaId) {
-  const res = await fetch(`http://localhost:8000/api/depreciacion/detalle/${maquinariaId}/`);
+  const res = await fetch(`http://localhost:8000/api/depreciaciones/detalle/${maquinariaId}/`);
   if (!res.ok) throw new Error('Error al obtener el detalle de depreciación');
   return await res.json();
 }

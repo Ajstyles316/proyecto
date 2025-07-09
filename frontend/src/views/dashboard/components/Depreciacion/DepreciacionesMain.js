@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import DepreciacionTabla from './DepreciacionTabla';
 import DetalleDepreciacionModal from './DetalleDepreciacionModal';
 import {
   fetchDepreciaciones,
   createDepreciacion,
   updateDepreciacion,
-  fetchActivos,
+  fetchMaquinarias,
 } from './utils/api';
 
 function normalizaFecha(fecha) {
@@ -16,53 +15,15 @@ function normalizaFecha(fecha) {
   return '';
 }
 
-const getMaquinariaId = (maquinaria) => maquinaria._id?.$oid || maquinaria._id || maquinaria.maquinaria_id || maquinaria.id;
+const getMaquinariaId = (maquinaria) =>
+  maquinaria._id?.$oid || maquinaria._id || maquinaria.maquinaria_id || maquinaria.id;
 
-const DepreciacionesMain = ({ activos = [] }) => {
-  const [depreciaciones, setDepreciaciones] = useState([]);
+const DepreciacionesMain = () => {
+  const [maquinarias, setMaquinarias] = useState([]);
   const [maquinariaSeleccionada, setMaquinariaSeleccionada] = useState(null);
   const [depreciacionActual, setDepreciacionActual] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activosData, setActivosData] = useState([]);
-
-  // Función para obtener datos de activos desde la base de datos
-  const obtenerDatosActivos = async () => {
-    try {
-      const activosResponse = await fetchActivos();
-      setActivosData(activosResponse);
-    } catch (error) {
-      console.error('Error al obtener activos:', error);
-      setActivosData([]);
-    }
-  };
-
-  // Función para determinar bien de uso, vida útil y coeficiente basado en el detalle de maquinaria
-  const determinarBienUsoYVidaUtil = (tipo_maquinaria, detalle_maquinaria) => {
-    const tipo_lower = String(tipo_maquinaria || '').toLowerCase();
-    const detalle_lower = String(detalle_maquinaria || '').toLowerCase();
-    
-    // Buscar en los datos de activos
-    for (const activo of activosData) {
-      const bien_uso_lower = String(activo.bien_uso || '').toLowerCase();
-      
-      // Comparar con el tipo y detalle de maquinaria
-      if (tipo_lower.includes(bien_uso_lower) || detalle_lower.includes(bien_uso_lower)) {
-        return {
-          bien_uso: activo.bien_uso,
-          vida_util: activo.vida_util,
-          coeficiente: activo.coeficiente
-        };
-      }
-    }
-    
-    // Si no se encuentra en activos, usar valores por defecto
-    return {
-      bien_uso: "Otros bienes",
-      vida_util: 5,
-      coeficiente: 0.20
-    };
-  };
 
   const handleOpenModal = async (maquinaria) => {
     setMaquinariaSeleccionada(maquinaria);
@@ -85,20 +46,12 @@ const DepreciacionesMain = ({ activos = [] }) => {
           advertencia: 'Datos de depreciación guardados en el sistema.',
         };
       } else {
-        // Obtener datos de activos basado en el detalle de maquinaria
-        const datosActivos = determinarBienUsoYVidaUtil(
-          maquinaria.tipo_maquinaria, 
-          maquinaria.detalle_maquinaria
-        );
-        
-        const vida_util = datosActivos.vida_util || 5;
+        const vida_util = maquinaria.vida_util || 5;
         const metodo = maquinaria.metodo_depreciacion || 'linea_recta';
         const fecha_compra =
           normalizaFecha(maquinaria.fecha_compra) || new Date().toISOString().slice(0, 10);
         const costo_activo = parseFloat(maquinaria.costo_activo || 0);
         const valor_residual = maquinaria.valor_residual ? parseFloat(maquinaria.valor_residual) : 0;
-        const coeficiente = datosActivos.coeficiente || 0.20;
-        
         let tabla = [];
         let fecha = new Date(fecha_compra);
         if (metodo === 'linea_recta') {
@@ -115,29 +68,12 @@ const DepreciacionesMain = ({ activos = [] }) => {
               valor_en_libros: parseFloat(Math.max(valorEnLibros, 0).toFixed(2)),
             });
           }
-        } else if (metodo === 'saldo_decreciente') {
-          let en_libros = costo_activo;
-          const tasa = coeficiente; // Usar el coeficiente de activos
-          let depreciacionAcumulada = 0;
-          for (let i = 0; i < vida_util; i++) {
-            const dep = en_libros * tasa;
-            depreciacionAcumulada += dep;
-            en_libros -= dep;
-            tabla.push({
-              anio: fecha.getFullYear() + i,
-              valor_anual_depreciado: parseFloat(dep.toFixed(2)),
-              depreciacion_acumulada: parseFloat(depreciacionAcumulada.toFixed(2)),
-              valor_en_libros: parseFloat(Math.max(en_libros, 0).toFixed(2)),
-            });
-          }
         }
         datosIniciales = {
           costo_activo,
           fecha_compra,
           metodo,
           vida_util,
-          coeficiente,
-          bien_uso: datosActivos.bien_uso,
           depreciacion_por_anio: tabla,
           advertencia: 'Datos temporales (sin historial previo). Puede guardar para crear el registro.',
         };
@@ -145,7 +81,6 @@ const DepreciacionesMain = ({ activos = [] }) => {
 
       setDepreciacionActual(datosIniciales);
     } catch (error) {
-      console.error('Error al abrir modal:', error);
       setDepreciacionActual(null);
     } finally {
       setLoading(false);
@@ -158,15 +93,37 @@ const DepreciacionesMain = ({ activos = [] }) => {
     setDepreciacionActual(null);
   };
 
-  const cargarDepreciaciones = async () => {
+  const cargarMaquinarias = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:8000/api/depreciaciones/');
-      const data = response.data;
-      setDepreciaciones(Array.isArray(data) ? data : []);
+      const data = await fetchMaquinarias();
+      const maquinarias = Array.isArray(data) ? data : [];
+
+      const maquinariasConDepreciacion = await Promise.all(
+        maquinarias.map(async (maquinaria) => {
+          try {
+            const depreciaciones = await fetchDepreciaciones(getMaquinariaId(maquinaria));
+            const ultimaDepreciacion =
+              Array.isArray(depreciaciones) && depreciaciones.length > 0
+                ? depreciaciones.sort(
+                    (a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
+                  )[0]
+                : null;
+            return {
+              ...maquinaria,
+              bien_de_uso: ultimaDepreciacion?.bien_uso || '',
+              costo_activo: ultimaDepreciacion?.costo_activo || 0,
+              vida_util: ultimaDepreciacion?.vida_util || '',
+            };
+          } catch {
+            return maquinaria;
+          }
+        })
+      );
+
+      setMaquinarias(maquinariasConDepreciacion);
     } catch (error) {
-      console.error('Error al cargar depreciaciones:', error);
-      setDepreciaciones([]);
+      setMaquinarias([]);
     } finally {
       setLoading(false);
     }
@@ -195,11 +152,11 @@ const DepreciacionesMain = ({ activos = [] }) => {
           _id = existentes[0]._id;
         }
       }
-      const fecha_compra_str = fecha_compra ? String(fecha_compra).split('T')[0] : '';
+
       const payload = {
         maquinaria: String(maquinariaId),
         costo_activo: parseFloat(costo_activo),
-        fecha_compra: fecha_compra_str,
+        fecha_compra,
         metodo,
         vida_util: Number(vida_util),
         coeficiente: coeficiente ? Number(coeficiente) : undefined,
@@ -209,50 +166,36 @@ const DepreciacionesMain = ({ activos = [] }) => {
       };
 
       if (!payload.depreciacion_por_anio || payload.depreciacion_por_anio.length === 0) {
-        console.error("No se generó la tabla de depreciación para guardar.");
         setLoading(false);
         return;
       }
+
       if (_id) {
         await updateDepreciacion(maquinariaId, _id, payload);
       } else {
         await createDepreciacion(maquinariaId, payload);
       }
+
       handleCloseModal();
-      await cargarDepreciaciones();
+      await cargarMaquinarias();
     } catch (error) {
-      console.error('Error al guardar depreciación:', error);
+      // ignore
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    cargarDepreciaciones();
-    obtenerDatosActivos();
+    cargarMaquinarias();
   }, []);
 
-  const depreciacionesPorMaquinaria = {};
-  if (Array.isArray(depreciaciones)) {
-    depreciaciones.forEach((item) => {
-      if (!item.maquinaria_id) return;
-      const actual = depreciacionesPorMaquinaria[item.maquinaria_id];
-      if (!actual || new Date(item.fecha_creacion) > new Date(actual.fecha_creacion)) {
-        depreciacionesPorMaquinaria[item.maquinaria_id] = item;
-      }
-    });
-  }
-
   return (
-    <div className='depreciacion'>
+    <div className="depreciacion">
       <DepreciacionTabla
-        depreciaciones={depreciaciones}
+        maquinarias={maquinarias}
         handleVerDetalleClick={handleOpenModal}
         loading={loading}
-        depreciacionesPorMaquinaria={depreciacionesPorMaquinaria}
-        activos={activos}
       />
-
       {isModalOpen && maquinariaSeleccionada && (
         <DetalleDepreciacionModal
           open={isModalOpen}

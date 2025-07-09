@@ -198,6 +198,7 @@ class DepreciacionEntrySerializer(serializers.Serializer):
 class DepreciacionSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
+    bien_uso = serializers.CharField(required=False, allow_blank=True)
     costo_activo = serializers.FloatField(required=True)
     fecha_compra = serializers.DateTimeField(required=True, input_formats=['%Y-%m-%d'])
     metodo = serializers.CharField(max_length=100, required=True)

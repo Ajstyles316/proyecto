@@ -9,6 +9,10 @@ from .views import (
     UsuarioCargoUpdateView,
     UsuarioPermisoUpdateView,
     UsuarioDeleteView,
+    DepreciacionesGeneralView,
+    DepreciacionesListView,
+    DepreciacionesDetailView,
+    sugerir_bien_uso,
 )
 
 router = DefaultRouter()
@@ -21,7 +25,11 @@ urlpatterns = [
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
     path('pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
     path('usuarios/', UsuarioListView.as_view(), name='usuarios-list'),
+    path('sugerir_bien_uso/', sugerir_bien_uso, name='sugerir_bien_uso'),
     path('usuarios/<str:id>/cargo/', UsuarioCargoUpdateView.as_view(), name='usuario-cargo-update'),
     path('usuarios/<str:id>/permiso/', UsuarioPermisoUpdateView.as_view(), name='usuario-permiso-update'),
     path('usuarios/<str:id>/', UsuarioDeleteView.as_view(), name='usuario-delete'),
+    path('api/depreciaciones/', DepreciacionesGeneralView.as_view(), name='depreciaciones-general'),
+    path('api/depreciaciones/<str:maquinaria_id>/', DepreciacionesListView.as_view(), name='depreciaciones-list'),
+    path('api/maquinaria/<str:maquinaria_id>/depreciaciones/<str:record_id>/', DepreciacionesDetailView.as_view(), name='depreciaciones-detail'),
 ]

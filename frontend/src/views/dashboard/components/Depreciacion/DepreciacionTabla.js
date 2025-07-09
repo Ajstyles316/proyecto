@@ -18,22 +18,22 @@ import {
 import PropTypes from 'prop-types';
 import { useState, useMemo } from 'react';
 
-const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, depreciacionesPorMaquinaria, activos = [] }) => {
+const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredRows = useMemo(() => {
-    return depreciaciones.filter((item) => {
+    return (maquinarias || []).filter((item) => {
       const term = searchTerm.toLowerCase();
       return (
-        item.placa?.toLowerCase().includes(term) ||
-        item.detalle?.toLowerCase().includes(term) ||
-        item.metodo_depreciacion?.toLowerCase().includes(term) ||
-        item.codigo?.toLowerCase().includes(term)
+        (item.placa || '').toLowerCase().includes(term) ||
+        (item.detalle || '').toLowerCase().includes(term) ||
+        (item.metodo_depreciacion || '').toLowerCase().includes(term) ||
+        (item.codigo || '').toLowerCase().includes(term)
       );
     });
-  }, [searchTerm, depreciaciones]);
+  }, [searchTerm, maquinarias]);
 
   const totalPages =
     pageSize === 'Todos'
@@ -86,7 +86,7 @@ const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, dep
       ) : filteredRows.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 5 }}>
           <Typography variant="body1" color="text.secondary">
-            No hay registros de depreciación disponibles.
+            No hay registros de maquinaria disponibles.
           </Typography>
         </Box>
       ) : (
@@ -106,23 +106,15 @@ const DepreciacionTabla = ({ depreciaciones, handleVerDetalleClick, loading, dep
               </TableHead>
               <TableBody>
                 {currentRows.map((row) => {
-                  const activo = activos.find(a => a.maquinaria_id === row.maquinaria_id);
-                  const dep = depreciacionesPorMaquinaria?.[row.maquinaria_id];
-                  const costoRaw = dep?.costo_activo ?? row.costo_activo ?? row.adqui ?? null;
-                  const costoMostrar =
-                    costoRaw !== undefined && costoRaw !== null && !isNaN(parseFloat(costoRaw))
-                      ? `Bs. ${parseFloat(costoRaw).toFixed(2)}`
-                      : '\u2014';
-                  const vidaUtilMostrar = activo?.vida_util || row.vida_util || '\u2014';
-                  const coeficienteMostrar = activo?.coeficiente || row.coeficiente || '\u2014';
+                  const key = row.maquinaria_id || row._id?.$oid || row._id || row.id || Math.random();
                   return (
-                    <TableRow key={row.maquinaria_id}>
+                    <TableRow key={key}>
                       <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{row.placa || '\u2014'}</TableCell>
                       <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{row.detalle || '\u2014'}</TableCell>
-                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.bien_de_uso || '\u2014'}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.bien_uso || row.bien_de_uso || '\u2014'}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.metodo_depreciacion || '\u2014'}</TableCell>
-                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{costoMostrar}</TableCell>
-                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{vidaUtilMostrar}</TableCell>
+                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{row.costo_activo !== undefined && row.costo_activo !== null && !isNaN(parseFloat(row.costo_activo)) ? `Bs. ${parseFloat(row.costo_activo).toFixed(2)}` : '\u2014'}</TableCell>
+                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{row.vida_util || '\u2014'}</TableCell>
                       <TableCell align="center" sx={{ p: { xs: 0.5, sm: 1 } }}>
                         <Button
                           variant="outlined"
@@ -161,6 +153,7 @@ DepreciacionTabla.propTypes = {
   loading: PropTypes.bool.isRequired,
   depreciacionesPorMaquinaria: PropTypes.object,
   activos: PropTypes.array,
+  maquinarias:PropTypes.array
 };
 
 export default DepreciacionTabla;

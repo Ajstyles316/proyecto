@@ -23,6 +23,7 @@ const DepreciacionMain = lazy(() => import("../views/dashboard/components/Deprec
 const ActivosMain = lazy(() => import("../views/dashboard/components/Activos/ActivosMain"));
 const Pronostico = lazy(() => import("../views/dashboard/components/Pronostico/Pronostico"));
 const ReportesMain = lazy(() => import("../views/dashboard/components/Reportes/ReportesMain"));
+const DepreciacionesMain = lazy(() => import("../views/dashboard/components/Depreciacion/DepreciacionesMain"));
 
 const Router = [
   {
@@ -35,7 +36,7 @@ const Router = [
         element: <PrivateRoute><Dashboard /></PrivateRoute>,
       },
       { path: "/maquinaria", element: <PrivateRoute><BasicTable /></PrivateRoute> },
-      { path: "/depreciacion", element: <PrivateRoute><DepreciacionMain /></PrivateRoute>},
+      { path: "/depreciaciones", element: <PrivateRoute><DepreciacionesMain /></PrivateRoute>},
       { path: "/activos", element: <PrivateRoute><ActivosMain /></PrivateRoute>},
       { path: "/mantenimiento", element: <PrivateRoute><ExRadio /></PrivateRoute> },
       { path: "/sample-page", element: <PrivateRoute><SamplePage /></PrivateRoute> },
