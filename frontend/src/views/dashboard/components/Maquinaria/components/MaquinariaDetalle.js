@@ -10,6 +10,8 @@ import SOATMain from '../../SOAT/SOATMain';
 import ImpuestoMain from '../../Impuestos/ImpuestoMain';
 import { fieldLabels } from '../utils/fieldLabels';
 import { useIsReadOnly } from '../../../../../components/UserContext';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
 const maquinariaImage = 'https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=400&q=80';
 
@@ -150,7 +152,7 @@ const MaquinariaDetalle = ({
           </Typography>
           <Button
             variant="contained"
-            sx={{ bgcolor: 'yellow', color: 'black', minWidth: 120 }}
+            sx={{ bgcolor: 'grey.600', color: 'white', minWidth: 120, '&:hover': { bgcolor: 'grey.700' } }}
             onClick={() => setDetailView(false)}
           >
             Volver
@@ -161,19 +163,20 @@ const MaquinariaDetalle = ({
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3, flexWrap: 'wrap' }}>
             <Button
               variant="contained"
-              sx={{ bgcolor: 'red', color: 'white', minWidth: 120 }}
+              sx={{ bgcolor: 'red', color: 'white', minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
               onClick={handleDeleteMaquinaria}
               disabled={isReadOnly}
             >
+              <DeleteIcon sx={{ color: '#fff', mr: 1 }} />
               Eliminar
             </Button>
             <Button
               variant="contained"
-              color="info"
-              sx={{ minWidth: 120 }}
+              sx={{ bgcolor: '#03a9f4', color: 'white', minWidth: 120, display: 'flex', alignItems: 'center', gap: 1, '&:hover': { bgcolor: '#0288d1' } }}
               onClick={handleUpdateMaquinaria}
               disabled={isReadOnly}
             >
+              <EditIcon sx={{ color: '#fff', mr: 1 }} />
               Actualizar
             </Button>
           </Box>

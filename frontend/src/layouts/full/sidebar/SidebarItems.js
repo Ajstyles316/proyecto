@@ -10,7 +10,7 @@ import {
 } from "react-mui-sidebar";
 import { IconPoint } from '@tabler/icons-react';
 import { getMenuItems } from "./MenuItems";
-import logoicn from "../../../assets/images/logos/logo_cofa_new.png";
+import logo from '../../../assets/images/logos/logo_cofadena_white.png';
 import './SidebarItems.css'
 import { useUser } from '../../../components/UserContext';
 
@@ -86,8 +86,17 @@ const SidebarItems = () => {
   return (
     <Box sx={{ px: "24px", overflowX: 'hidden' }}>
       <MUI_Sidebar width={"100%"} showProfile={false} themeColor={"#1e4db7"} themeSecondaryColor={'#1a97f51a'} textColor="white">
-        <Box sx={{ margin: "0 -24px", color: 'white' }}>
-          <Logo img={logoicn} component={NavLink} to="/" className="logo-img">Activos Fijos</Logo>
+        <Box sx={{
+          margin: "0 -24px",
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: 80,
+          py: 0,
+          mb: 1
+        }}>
+          <Logo img={logo} component={NavLink} to="/" className="logo-img" style={{ maxWidth: 80, maxHeight: 50, objectFit: 'contain', display: 'block', margin: '0 auto' }}>Activos Fijos</Logo>
         </Box>
         <Box sx={{ color: 'inherit' }}>
           {renderMenuItems(menuItems, pathDirect)}

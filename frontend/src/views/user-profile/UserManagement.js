@@ -137,7 +137,7 @@ const UserManagement = () => {
                       <Typography variant="caption" color="textSecondary">(Tú)</Typography>
                     ) : (
                       <IconButton color="error" onClick={() => handleEliminarUsuario(id)}>
-                        <DeleteIcon />
+                        <DeleteIcon sx={{ color: '#f44336' }} />
                       </IconButton>
                     )}
                   </TableCell>

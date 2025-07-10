@@ -54,14 +54,14 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
                     color="primary"
                     onClick={() => onEdit && onEdit(soat)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete && onDelete(soat._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}

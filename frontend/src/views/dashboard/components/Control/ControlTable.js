@@ -62,14 +62,14 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
                     color="primary"
                     onClick={() => onEdit(control)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton
                     size="small"
                     color="error"
                     onClick={() => onDelete(control._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}

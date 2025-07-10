@@ -66,14 +66,14 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
                     color="primary"
                     onClick={() => onEdit(asignacion)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete(asignacion._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}

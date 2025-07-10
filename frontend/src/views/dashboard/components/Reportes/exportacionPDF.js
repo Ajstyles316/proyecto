@@ -121,9 +121,12 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     }
     let rows = data.map(cleanRow);
     let keys = Object.keys(rows[0] || {});
-    // Excluir campos de depreciaciones no deseados
-    if (title.toLowerCase().includes('depreciacion') || title.toLowerCase().includes('depreciación')) {
-      keys = keys.filter(k => !['bien_uso', 'vida_util', 'costo_activo'].includes(k.toLowerCase()));
+    // Excluir campos no deseados en todas las tablas relevantes
+    if ([
+      'control', 'asignación', 'asignacion', 'mantenimiento', 'soat', 'seguros', 'itv', 'impuestos',
+      'depreciacion', 'depreciación'
+    ].some(tabla => title.toLowerCase().includes(tabla))) {
+      keys = keys.filter(k => !['bien_uso', 'bien_de_uso', 'vida_util', 'costo_activo'].includes(k.toLowerCase()));
     }
     if (opts.skipDates) {
       keys = keys.filter(k => !k.toLowerCase().includes('creacion') && !k.toLowerCase().includes('actualizacion'));

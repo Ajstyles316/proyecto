@@ -54,14 +54,14 @@ const ImpuestoTable = ({ impuestos, maquinariaPlaca, onEdit, onDelete, loading, 
                     color="primary"
                     onClick={() => onEdit && onEdit(impuesto)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete && onDelete(impuesto._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}

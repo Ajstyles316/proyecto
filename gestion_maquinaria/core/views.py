@@ -1541,7 +1541,10 @@ class PronosticoAPIView(APIView):
 
     def get(self, request):
         # Devolver todos los pronósticos sin paginación
-        cursor = Pronostico().collection.find({}, {"_id": 1, "placa": 1, "fecha_asig": 1, "horas_op": 1, "recorrido": 1, "resultado": 1, "creado_en": 1, "recomendaciones": 1, "fechas_futuras": 1})
+        cursor = Pronostico().collection.find({}, {
+            "_id": 1, "placa": 1, "fecha_asig": 1, "horas_op": 1, "recorrido": 1, "resultado": 1, "creado_en": 1, "recomendaciones": 1, "fechas_futuras": 1,
+            "riesgo": 1, "probabilidad": 1
+        })
         registros = list(cursor)
         registros_serializados = [serialize_doc(r) for r in registros]
         return Response(registros_serializados, status=status.HTTP_200_OK)
@@ -1608,7 +1611,7 @@ class UsuarioListView(APIView):
         user = collection.find_one({"Email": email})
         if not user or user.get('Cargo', '').lower() != 'encargado':
             return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
-        usuarios = list(collection.find({}, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1}))
+        usuarios = list(collection.find({}, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1}))
         return Response([serialize_doc(u) for u in usuarios], status=status.HTTP_200_OK)
 
 class UsuarioCargoUpdateView(APIView):

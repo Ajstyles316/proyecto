@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import logoicn from "src/assets/images/logos/logo_cofa_new.png";
+import logo from 'src/assets/images/logos/cofadena.jpg';
 import { styled } from "@mui/material";
 
 const LinkStyled = styled(Link)(() => ({
@@ -19,7 +19,7 @@ const Logo = () => {
         alignItems: "center", justifyContent: 'center'
       }}
     >
-      <Logo img={logoicn}/>
+      <Logo img={logo}/>
     </LinkStyled>
   );
 };
