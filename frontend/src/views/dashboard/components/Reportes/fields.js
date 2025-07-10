@@ -18,6 +18,7 @@ export const depFields = [
   { key: 'fecha_compra', label: 'Fecha compra' },
   { key: 'metodo', label: 'Método' },
   { key: 'vida_util', label: 'Vida útil' },
+  { key: 'bien_uso', label: 'Bien de Uso' },
 ];
 
 export const proFields = [

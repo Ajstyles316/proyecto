@@ -53,7 +53,7 @@ const Pronostico = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const resPronostico = await fetch("http://localhost:8000/api/pronostico/");
+        const resPronostico = await fetch("http://localhost:8000/api/pronostico/?page_size=1000");
         const resMaquinarias = await fetch("http://localhost:8000/api/maquinaria/");
         const dataPronostico = await resPronostico.json();
         const dataMaquinarias = await resMaquinarias.json();
@@ -70,7 +70,7 @@ const Pronostico = () => {
 
   useEffect(() => {
     if (mainTab === 1) {
-      fetch('http://localhost:8000/api/pronostico/')
+      fetch('http://localhost:8000/api/pronostico/?page_size=1000')
         .then(res => res.json())
         .then(data => setAllForecasts(data));
     }
@@ -145,21 +145,9 @@ const Pronostico = () => {
       {mainTab === 1 && (
         <Box display="flex" flexDirection="column" alignItems="center">
           <GraficoPronosticos data={allForecasts} />
-          {console.log('Datos crudos:', allForecasts)}
-          {console.log('Datos con fechas_futuras:', allForecasts.map(item => ({
-            ...item,
-            recomendaciones: Array.isArray(item.recomendaciones) ? item.recomendaciones.slice(0, 3) : [],
-            fechas_futuras: (item.fecha_sugerida || item.fecha_asig) ? generarFechasFuturas(item.fecha_sugerida || item.fecha_asig) : [],
-          })))}
           <HistorialPronosticos
-            data={allForecasts.map(item => ({
-              ...item,
-              recomendaciones: Array.isArray(item.recomendaciones) ? item.recomendaciones.slice(0, 3) : [],
-              fechas_futuras: (item.fecha_sugerida || item.fecha_asig) ? generarFechasFuturas(item.fecha_sugerida || item.fecha_asig) : [],
-            }))}
-            onRecomendacionClick={(e, recomendaciones) =>
-              handleOpenPopover(e, Array.isArray(recomendaciones) ? recomendaciones.slice(0, 3) : [])
-            }
+            data={allForecasts}
+            onRecomendacionClick={handleOpenPopover}
           />
         </Box>
       )}
@@ -184,7 +172,7 @@ const Pronostico = () => {
         <Box p={2} maxWidth={350}>
           <Typography variant="subtitle1" color="primary" mb={1}>Recomendaciones</Typography>
           <List dense>
-            {popoverRecs.slice(0, 3).map((rec, idx) => (
+            {popoverRecs.map((rec, idx) => (
               <ListItem key={idx}>
                 <ListItemIcon>
                   <CheckCircleIcon color="success" fontSize="small" />

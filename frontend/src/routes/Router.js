@@ -19,7 +19,6 @@ const BasicTable = lazy(() => import("../views/tables/BasicTable"));
 
 const ExRadio = lazy(() => import("../views/form-elements/ExButton"));
 
-const DepreciacionMain = lazy(() => import("../views/dashboard/components/Depreciacion/DepreciacionMain"));
 const ActivosMain = lazy(() => import("../views/dashboard/components/Activos/ActivosMain"));
 const Pronostico = lazy(() => import("../views/dashboard/components/Pronostico/Pronostico"));
 const ReportesMain = lazy(() => import("../views/dashboard/components/Reportes/ReportesMain"));

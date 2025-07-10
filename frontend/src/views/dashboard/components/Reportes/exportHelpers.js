@@ -4,21 +4,41 @@ export function formatDateOnly(dateStr) {
   if (isNaN(d)) return dateStr.split('T')[0];
   return d.toLocaleDateString('es-BO');
 }
-export function cleanRow(row) {
+
+export function cleanRow(row, section = '') {
   const cleaned = {};
   Object.entries(row).forEach(([k, v]) => {
-    if (k.endsWith('_id') || k === 'maquinaria' || k === 'fecha_ingreso') return;
-    if (k.toLowerCase().includes('fecha') && v) {
-      cleaned[k] = formatDateOnly(v);
+    if (
+      k.endsWith('_id') ||
+      k === 'maquinaria' ||
+      k === 'fecha_ingreso' ||
+      k === 'bien_de_uso' ||
+      k === 'vida_util' ||
+      k === 'costo_activo'
+    )
+      return;
+
+    let keyLabel = k;
+    if (k.toLowerCase() === 'ubicación') keyLabel = 'Ubicación';
+    if (k.toLowerCase() === 'numero_2024') keyLabel = 'N° 2024';
+
+    if (section === 'Pronósticos' && (k === 'riesgo' || k === 'probabilidad')) {
+      cleaned[keyLabel] = v ?? '-';
+    } else if (k.toLowerCase().includes('fecha') && v) {
+      cleaned[keyLabel] = formatDateOnly(v);
     } else {
-      cleaned[k] = Array.isArray(v) ? v.join('; ') : v;
+      cleaned[keyLabel] = Array.isArray(v) ? v.join('; ') : v;
     }
   });
   return cleaned;
 }
+
 export function formatHeader(key) {
+  if (key.toLowerCase() === 'ubicación') return 'Ubicación';
+  if (key.toLowerCase() === 'numero 2024' || key.toLowerCase() === 'número 2024') return 'N° 2024';
   return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
+
 export function formatCurrency(value) {
   if (value === null || value === undefined) return '-';
   return new Intl.NumberFormat('es-BO', {
@@ -26,6 +46,7 @@ export function formatCurrency(value) {
     currency: 'BOB'
   }).format(value);
 }
+
 export function calcularDepreciacionAnual({ costo_activo, vida_util, metodo = 'linea_recta', fecha_compra, valor_residual = 0, coeficiente = null }) {
   const detalle = [];
   let depreciacion_acumulada = 0;
@@ -33,6 +54,7 @@ export function calcularDepreciacionAnual({ costo_activo, vida_util, metodo = 'l
   let base = costo_activo;
   const anio_inicio = fecha_compra ? new Date(fecha_compra).getFullYear() : new Date().getFullYear();
   function round(num) { return Math.round((num + Number.EPSILON) * 100) / 100; }
+
   if (metodo === 'coeficiente' && coeficiente) {
     for (let i = 0; i < vida_util; i++) {
       let dep_anual = base * coeficiente;
@@ -78,7 +100,7 @@ export function calcularDepreciacionAnual({ costo_activo, vida_util, metodo = 'l
         valor_en_libros: round(valor_en_libros)
       });
     }
-  } else { // línea recta por defecto
+  } else {
     const depreciacion_anual = (costo_activo - valor_residual) / vida_util;
     for (let i = 0; i < vida_util; i++) {
       let dep_anual = (i === vida_util - 1) ? valor_en_libros - valor_residual : depreciacion_anual;
@@ -93,4 +115,4 @@ export function calcularDepreciacionAnual({ costo_activo, vida_util, metodo = 'l
     }
   }
   return detalle;
-} 
+}
