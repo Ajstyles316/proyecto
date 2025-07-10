@@ -14,8 +14,13 @@ import {
 } from "recharts";
 import PropTypes from "prop-types";
 const GraficoPronosticos = ({ data }) => {
-  // Ordenar los datos por recorrido ascendente
-  const sortedData = [...data].sort((a, b) => (a.recorrido ?? 0) - (b.recorrido ?? 0));
+  // Ordenar los datos por recorrido ascendente y, si hay empate, por horas_op ascendente
+  const sortedData = [...data].sort((a, b) => {
+    const recA = a.recorrido ?? 0;
+    const recB = b.recorrido ?? 0;
+    if (recA !== recB) return recA - recB;
+    return (a.horas_op ?? 0) - (b.horas_op ?? 0);
+  });
   // Calcular el dominio exacto para el eje X
   const recorridos = sortedData.map(d => d.recorrido ?? 0);
   const minRecorrido = Math.min(...recorridos);

@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import pymongo
 from corsheaders.defaults import default_headers
+import os
+from dotenv import load_dotenv
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -62,8 +65,8 @@ CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
 RECAPTCHA_SECRET_KEY = "6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9" 
-MONGO_CLIENT = pymongo.MongoClient("mongodb+srv://fabriciochoque11:ajstyles@cluster0.iig1hgi.mongodb.net/")
-MONGO_DB = MONGO_CLIENT["activos"]
+MONGO_CLIENT = pymongo.MongoClient(os.environ.get('MONGO_URI'))
+MONGO_DB = MONGO_CLIENT[os.environ.get('MONGO_DB_NAME', 'activos')]
 MAQUINARIA_COLLECTION = MONGO_DB["maquinaria"]# Reemplaza con tu clave de Google reCAPTCHA
 TEMPLATES = [
     {
@@ -96,7 +99,7 @@ DATABASES = {
 # settings.py
 
 MONGODB_SETTINGS = {
-    'host': 'mongodb+srv://fabriciochoque11:ajstyles@cluster0.iig1hgi.mongodb.net/gestion_maquinaria?retryWrites=true&w=majority',
+    'host': os.environ.get('MONGO_URI_GESTION', ''),
 }
 
 
@@ -142,8 +145,8 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuración explícita para conexión MongoDB usada por los modelos
-MONGO_URI = "mongodb+srv://fabriciochoque11:ajstyles@cluster0.iig1hgi.mongodb.net/"
-MONGO_DB_NAME = "activos"
+MONGO_URI = os.environ.get('MONGO_URI', '')
+MONGO_DB_NAME = os.environ.get('MONGO_DB_NAME', 'activos')
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',

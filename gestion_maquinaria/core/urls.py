@@ -13,6 +13,8 @@ from .views import (
     DepreciacionesListView,
     DepreciacionesDetailView,
     sugerir_bien_uso,
+    MaquinariasConDepreciacionView,
+    MaquinariaConDepreciacionBuscarView,
 )
 
 router = DefaultRouter()
@@ -32,4 +34,6 @@ urlpatterns = [
     path('api/depreciaciones/', DepreciacionesGeneralView.as_view(), name='depreciaciones-general'),
     path('api/depreciaciones/<str:maquinaria_id>/', DepreciacionesListView.as_view(), name='depreciaciones-list'),
     path('api/maquinaria/<str:maquinaria_id>/depreciaciones/<str:record_id>/', DepreciacionesDetailView.as_view(), name='depreciaciones-detail'),
+    path('api/maquinarias_con_depreciacion/', MaquinariasConDepreciacionView.as_view(), name='maquinarias-con-depreciacion'),
+    path('api/maquinarias_con_depreciacion/buscar/', MaquinariaConDepreciacionBuscarView.as_view(), name='maquinarias-con-depreciacion-buscar'),
 ]

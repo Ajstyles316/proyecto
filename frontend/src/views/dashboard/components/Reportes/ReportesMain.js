@@ -98,6 +98,8 @@ const ReportesMain = () => {
     }
   };
 
+  const ocultarCampos = ['bien_de_uso', 'vida_util', 'costo_activo'];
+
   return (
     <PageContainer title="Reportes" description="Busca una maquinaria por placa, código o detalle y exporta sus datos">
       <DashboardCard title="Reportes">
@@ -118,13 +120,13 @@ const ReportesMain = () => {
               fields={maquinariaFields}
               emptyMessage="No hay datos de maquinaria"
             />
-            <TablaGenerica title="Control" data={control} />
-            <TablaGenerica title="Asignación" data={asignacion} />
-            <TablaGenerica title="Mantenimiento" data={mantenimiento} />
-            <TablaGenerica title="SOAT" data={soat} />
-            <TablaGenerica title="Seguros" data={seguros} />
-            <TablaGenerica title="ITV" data={itv} />
-            <TablaGenerica title="Impuestos" data={impuestos} />
+            <TablaGenerica title="Control" data={control} ocultarCampos={ocultarCampos} reemplazos={{ 'gerente': 'Gerente', 'encargado': 'Encargado', 'estado': 'Estado', 'ubicacion': 'Ubicación' }} />
+            <TablaGenerica title="Asignación" data={asignacion} ocultarCampos={ocultarCampos} reemplazos={{ 'fecha_asignacion': 'Fecha de Asignación', 'recorrido_km': 'Recorrido Km', 'encargado': 'Encargado', 'ubicacion': 'Ubicación' }} />
+            <TablaGenerica title="Mantenimiento" data={mantenimiento} ocultarCampos={ocultarCampos} />
+            <TablaGenerica title="SOAT" data={soat} ocultarCampos={ocultarCampos} />
+            <TablaGenerica title="Seguros" data={seguros} ocultarCampos={ocultarCampos} reemplazos={{ 'numero_2024': 'N° 2024' }} />
+            <TablaGenerica title="ITV" data={itv} ocultarCampos={ocultarCampos} />
+            <TablaGenerica title="Impuestos" data={impuestos} ocultarCampos={ocultarCampos} />
             <TablaGenericaAvanzada
               title="Depreciaciones"
               data={depreciaciones}

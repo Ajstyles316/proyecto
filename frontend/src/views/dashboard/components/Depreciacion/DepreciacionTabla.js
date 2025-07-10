@@ -35,14 +35,36 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
     });
   }, [searchTerm, maquinarias]);
 
-  const totalPages =
-    pageSize === 'Todos'
-      ? 1
-      : Math.ceil(filteredRows.length / parseInt(pageSize, 10));
-  const currentRows =
-    pageSize === 'Todos'
-      ? filteredRows
-      : filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = pageSize === 'Todos' ? 1 : Math.ceil(filteredRows.length / parseInt(pageSize, 10));
+  // Lógica para determinar bien de uso, vida útil y coeficiente en base al tipo y detalle
+  function determinarBienUsoYVidaUtil(tipo, detalle) {
+    const reglas = [
+      { tipos: ['vehículo', 'vehiculos', 'camión', 'camion', 'auto', 'camioneta'], bien_uso: 'Vehículos automotores', vida_util: 5 },
+      { tipos: ['maquinaria', 'excavadora', 'retroexcavadora', 'cargador'], bien_uso: 'Maquinaria pesada', vida_util: 8 },
+      { tipos: ['equipo', 'herramienta'], bien_uso: 'Equipos de construcción', vida_util: 5 },
+      { tipos: ['oficina', 'computadora', 'impresora'], bien_uso: 'Equipos de oficina', vida_util: 4 },
+      { tipos: ['mueble', 'enseres'], bien_uso: 'Muebles y enseres', vida_util: 10 },
+    ];
+    const texto = `${tipo || ''} ${detalle || ''}`.toLowerCase();
+    for (const regla of reglas) {
+      if (regla.tipos.some(t => texto.includes(t))) {
+        return { bien_de_uso: regla.bien_uso, vida_util: regla.vida_util };
+      }
+    }
+    return { bien_de_uso: 'Otros bienes', vida_util: 5 };
+  }
+  // Enriquecer cada maquinaria antes de mostrarla
+  function enriquecerMaquinaria(row) {
+    if (row.bien_de_uso && row.vida_util && row.costo_activo !== undefined && row.costo_activo !== null) return row;
+    const enriquecido = determinarBienUsoYVidaUtil(row.tipo, row.detalle);
+    return {
+      ...row,
+      bien_de_uso: row.bien_de_uso || enriquecido.bien_de_uso,
+      vida_util: row.vida_util || enriquecido.vida_util,
+      costo_activo: row.costo_activo !== undefined && row.costo_activo !== null ? row.costo_activo : 0,
+    };
+  }
+  const currentRows = pageSize === 'Todos' ? filteredRows.map(enriquecerMaquinaria) : filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(enriquecerMaquinaria);
 
   return (
     <Paper elevation={1} sx={{ borderRadius: 3, p: 3, backgroundColor: '#fff' }}>
@@ -99,7 +121,6 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
                   <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>Detalle</TableCell>
                   <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Bien de Uso</TableCell>
                   <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>Método</TableCell>
-                  <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>Costo del Activo</TableCell>
                   <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>Vida Útil (Años)</TableCell>
                   <TableCell align="center" sx={{ p: { xs: 0.5, sm: 1 } }}>Acciones</TableCell>
                 </TableRow>
@@ -111,10 +132,9 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
                     <TableRow key={key}>
                       <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{row.placa || '\u2014'}</TableCell>
                       <TableCell sx={{ p: { xs: 0.5, sm: 1 } }}>{row.detalle || '\u2014'}</TableCell>
-                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.bien_uso || row.bien_de_uso || '\u2014'}</TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.bien_de_uso || '—'}</TableCell>
                       <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, p: { xs: 0.5, sm: 1 } }}>{row.metodo_depreciacion || '\u2014'}</TableCell>
-                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{row.costo_activo !== undefined && row.costo_activo !== null && !isNaN(parseFloat(row.costo_activo)) ? `Bs. ${parseFloat(row.costo_activo).toFixed(2)}` : '\u2014'}</TableCell>
-                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{row.vida_util || '\u2014'}</TableCell>
+                      <TableCell align="right" sx={{ p: { xs: 0.5, sm: 1 } }}>{row.vida_util || '—'}</TableCell>
                       <TableCell align="center" sx={{ p: { xs: 0.5, sm: 1 } }}>
                         <Button
                           variant="outlined"

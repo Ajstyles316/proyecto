@@ -19,6 +19,25 @@ import PropTypes from 'prop-types';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 'Todos'];
 
+// Lógica para determinar bien de uso, vida útil y coeficiente en base al tipo y detalle
+function determinarBienUsoYVidaUtil(tipo, detalle) {
+  // Puedes ajustar estos valores según tu lógica de negocio/backend
+  const reglas = [
+    { tipos: ['vehículo', 'vehiculos', 'camión', 'camion', 'auto', 'camioneta'], bien_uso: 'Vehículos automotores', vida_util: 5, coeficiente: 20 },
+    { tipos: ['maquinaria', 'excavadora', 'retroexcavadora', 'cargador'], bien_uso: 'Maquinaria pesada', vida_util: 8, coeficiente: 12.5 },
+    { tipos: ['equipo', 'herramienta'], bien_uso: 'Equipos de construcción', vida_util: 5, coeficiente: 20 },
+    { tipos: ['oficina', 'computadora', 'impresora'], bien_uso: 'Equipos de oficina', vida_util: 4, coeficiente: 25 },
+    { tipos: ['mueble', 'enseres'], bien_uso: 'Muebles y enseres', vida_util: 10, coeficiente: 10 },
+  ];
+  const texto = `${tipo || ''} ${detalle || ''}`.toLowerCase();
+  for (const regla of reglas) {
+    if (regla.tipos.some(t => texto.includes(t))) {
+      return { bien_uso: regla.bien_uso, vida_util: regla.vida_util, coeficiente: regla.coeficiente };
+    }
+  }
+  return { bien_uso: 'Otros bienes', vida_util: 5, coeficiente: 20 };
+}
+
 const ActivosTabla = ({ activos, loading }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,10 +59,22 @@ const ActivosTabla = ({ activos, loading }) => {
 
   const getDisplayedData = () => {
     if (!Array.isArray(filteredActivos)) return [];
-    if (pageSize === 'Todos') return filteredActivos;
+    if (pageSize === 'Todos') return filteredActivos.map(enriquecerActivo);
     const start = (currentPage - 1) * parseInt(pageSize, 10);
-    return filteredActivos.slice(start, start + parseInt(pageSize, 10));
+    return filteredActivos.slice(start, start + parseInt(pageSize, 10)).map(enriquecerActivo);
   };
+
+  // Enriquecer cada activo antes de mostrarlo
+  function enriquecerActivo(row) {
+    if (row.bien_uso && row.vida_util && row.coeficiente) return row;
+    const enriquecido = determinarBienUsoYVidaUtil(row.tipo, row.detalle);
+    return {
+      ...row,
+      bien_uso: row.bien_uso || enriquecido.bien_uso,
+      vida_util: row.vida_util || enriquecido.vida_util,
+      coeficiente: row.coeficiente || enriquecido.coeficiente,
+    };
+  }
 
   return (
     <>

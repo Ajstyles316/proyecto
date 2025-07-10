@@ -1,7 +1,4 @@
-import { useState } from "react";
-import {
-  Box,
-} from "@mui/material";
+import {Box} from "@mui/material";
 import Pronostico from "../dashboard/components/Pronostico/Pronostico";
 const ExButton = () => {
   return (

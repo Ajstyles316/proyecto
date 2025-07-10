@@ -1,14 +1,33 @@
 import PropTypes from 'prop-types';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 
-const TablaGenericaAvanzada = ({ title, data, fields, emptyMessage, customCellRender }) => {
+const TablaGenericaAvanzada = ({
+  title,
+  data,
+  fields,
+  emptyMessage,
+  customCellRender,
+  ocultarCampos = [],
+  reemplazos = {}
+}) => {
   if (!data || data.length === 0) {
     return <Typography color="text.secondary" mb={2}>{emptyMessage || `No hay datos de ${title?.toLowerCase() || ''}`}</Typography>;
   }
 
-  // Si no se pasan fields, los infiere del primer objeto
-  const keys = fields ? fields.map(f => f.key) : Object.keys(data[0] || {}).filter(k => !k.endsWith('_id') && k !== 'maquinaria');
-  const headers = fields ? fields.map(f => f.label) : keys.map(k => k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+  // Si no se pasan fields, los infiere del primer objeto, quitando los ocultos
+  const keys = fields
+    ? fields.map(f => f.key).filter(k => !ocultarCampos.includes(k))
+    : Object.keys(data[0] || {}).filter(k => !k.endsWith('_id') && k !== 'maquinaria' && !ocultarCampos.includes(k));
+
+  const headers = fields
+    ? fields.filter(f => !ocultarCampos.includes(f.key)).map(f => reemplazos[f.label] || f.label)
+    : keys.map(k => {
+        // Corrección específica para 'ubicacion' y variantes
+        if (k.toLowerCase() === 'ubicacion' || k.toLowerCase() === 'ubicacióN'.toLowerCase()) {
+          return 'Ubicación';
+        }
+        return reemplazos[k] || k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      });
 
   return (
     <Box mb={3}>
@@ -47,6 +66,8 @@ TablaGenericaAvanzada.propTypes = {
   fields: PropTypes.array, // [{key, label}]
   emptyMessage: PropTypes.string,
   customCellRender: PropTypes.func,
+  ocultarCampos: PropTypes.array, // Ej: ['bien_de_uso', 'vida_util']
+  reemplazos: PropTypes.object,   // Ej: {'Numero 2024': 'N° 2024', 'Ubicacion': 'Ubicación'}
 };
 
 export default TablaGenericaAvanzada;

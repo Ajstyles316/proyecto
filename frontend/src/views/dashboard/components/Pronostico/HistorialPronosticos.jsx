@@ -16,22 +16,37 @@ import EventIcon from "@mui/icons-material/Event";
 import Popover from "@mui/material/Popover";
 import { useState } from "react";
 import PropTypes from "prop-types";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+
 const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
   const [anchorFechas, setAnchorFechas] = useState(null);
   const [fechasPopover, setFechasPopover] = useState([]);
 
-  const totalPages = Math.ceil(data.length / rowsPerPage);
-  const paginated = data.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const totalPages = rowsPerPage === 'Todos' ? 1 : Math.ceil(data.length / rowsPerPage);
+  const paginated = rowsPerPage === 'Todos' ? data : data.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
   const handleRowsPerPageChange = (e) => {
     setRowsPerPage(parseInt(e.target.value, 10));
     setPage(1);
   };
 
-  const handleOpenFechasPopover = (event, fechas) => {
+  const handleOpenFechasPopover = (event, fechaBase) => {
     setAnchorFechas(event.currentTarget);
+    const fechas = [];
+    if (fechaBase) {
+      const base = new Date(fechaBase);
+      for (let i = 1; i <= 3; i++) {
+        const nueva = new Date(base);
+        nueva.setFullYear(nueva.getFullYear() + i);
+        fechas.push(nueva.toISOString().split('T')[0]);
+      }
+    }
     setFechasPopover(fechas);
   };
 
@@ -53,7 +68,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
             select
             label="Mostrar"
             value={rowsPerPage}
-            onChange={handleRowsPerPageChange}
+            onChange={e => { setRowsPerPage(e.target.value === 'Todos' ? 'Todos' : parseInt(e.target.value, 10)); setPage(1); }}
             size="small"
             sx={{ width: 180 }}
           >
@@ -62,6 +77,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
             <MenuItem value={20}>20 registros</MenuItem>
             <MenuItem value={50}>50 registros</MenuItem>
             <MenuItem value={100}>100 registros</MenuItem>
+            <MenuItem value={'Todos'}>Todos</MenuItem>
           </TextField>
         </Box>
         <Table>
@@ -105,8 +121,8 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                       size="small"
                       color="primary"
                       style={{ marginLeft: 4, verticalAlign: 'middle' }}
-                      onClick={e => handleOpenFechasPopover(e, Array.isArray(item.fechas_futuras) ? item.fechas_futuras : [])}
-                      disabled={!item.fechas_futuras || item.fechas_futuras.length === 0}
+                      onClick={e => handleOpenFechasPopover(e, item.fecha_sugerida || item.fecha_asig)}
+                      disabled={!item.fecha_sugerida && !item.fecha_asig}
                     >
                       <EventIcon />
                     </IconButton>
@@ -125,7 +141,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
             ))}
           </TableBody>
         </Table>
-        {totalPages > 1 && (
+        {totalPages > 1 && rowsPerPage !== 'Todos' && (
           <Box display="flex" justifyContent="center" mt={2}>
             <Pagination
               count={totalPages}

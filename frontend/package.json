@@ -29,7 +29,7 @@
     "jspdf-autotable": "^5.0.2",
     "jszip": "^3.10.1",
     "lodash": "^4.17.21",
-    "papaparse": "^5.5.3",
+    "papaparse": "^5.4.1",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
     "react-apexcharts": "^1.7.0",
