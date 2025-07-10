@@ -58,14 +58,14 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
                     color="primary"
                     onClick={() => onEdit(m)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete(m._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}

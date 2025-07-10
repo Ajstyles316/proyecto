@@ -56,14 +56,14 @@ const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading, isRe
                     color="primary"
                     onClick={() => onEdit && onEdit(seguro)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete && onDelete(seguro._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}

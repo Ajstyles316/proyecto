@@ -22,6 +22,27 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
+// Agregar utilidades para capitalizar y formatear probabilidad
+function capitalizeSentence(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+function formatProbabilidad(prob) {
+  if (prob === undefined || prob === null) return '-';
+  const num = Number(prob);
+  return Number.isInteger(num) ? `${num}%` : `${num.toFixed(2)}%`;
+}
+
+// Utilidad para color de riesgo
+function getRiesgoColor(riesgo) {
+  if (!riesgo) return undefined;
+  const val = String(riesgo).toLowerCase();
+  if (val === 'alto') return '#d32f2f';
+  if (val === 'medio') return '#ff9800';
+  if (val === 'bajo') return '#388e3c';
+  return undefined;
+}
+
 const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
@@ -101,22 +122,38 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                 </TableCell>
                 <TableCell align="center">{item.horas_op}</TableCell>
                 <TableCell align="center">{item.recorrido}</TableCell>
-                <TableCell align="center">{item.resultado || "-"}</TableCell>
+                <TableCell align="center">
+                  {/* Mejorar capitalización de resultado y mostrar riesgo y probabilidad si existen */}
+                  <span style={{ display: 'block', fontWeight: 500 }}>{capitalizeSentence(item.resultado) || "-"}</span>
+                  {item.riesgo && (
+                    <span style={{ display: 'block', fontWeight: 600, color: getRiesgoColor(item.riesgo) }}>
+                      Riesgo: {capitalizeSentence(item.riesgo)}
+                    </span>
+                  )}
+                  {item.probabilidad !== undefined && (
+                    <span style={{ display: 'block', color: '#1976d2' }}>
+                      Probabilidad: {formatProbabilidad(item.probabilidad)}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell align="center">
                   <span>
-                    {item.fecha_sugerida
-                      ? item.fecha_sugerida
-                      : (() => {
-                          try {
-                            const base = item.fecha_asig;
-                            if (!base) return "No disponible";
-                            const d = new Date(base);
-                            d.setDate(d.getDate() + 180);
-                            return d.toISOString().split("T")[0];
-                          } catch {
-                            return "No disponible";
-                          }
-                        })()}
+                    {/* Mostrar fechas futuras si existen */}
+                    {Array.isArray(item.fechas_futuras) && item.fechas_futuras.length > 0
+                      ? item.fechas_futuras.join(', ')
+                      : item.fecha_sugerida
+                        ? item.fecha_sugerida
+                        : (() => {
+                            try {
+                              const base = item.fecha_asig;
+                              if (!base) return "No disponible";
+                              const d = new Date(base);
+                              d.setDate(d.getDate() + 180);
+                              return d.toISOString().split("T")[0];
+                            } catch {
+                              return "No disponible";
+                            }
+                          })()}
                     <IconButton
                       size="small"
                       color="primary"

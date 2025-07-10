@@ -132,7 +132,15 @@ const ActivosTabla = ({ activos, loading }) => {
                   <TableRow key={idx}>
                     <TableCell>{row.bien_uso || '—'}</TableCell>
                     <TableCell>{row.vida_util || '—'}</TableCell>
-                    <TableCell>{row.coeficiente !== '' ? `${row.coeficiente}%` : '—'}</TableCell>
+                    <TableCell>{
+  row.coeficiente !== '' && row.coeficiente !== undefined && row.coeficiente !== null
+    ? (() => {
+        let val = Number(row.coeficiente);
+        if (val < 1) val = val * 100;
+        return Number.isInteger(val) ? `${val}%` : `${val.toFixed(2)}%`;
+      })()
+    : '—'
+}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

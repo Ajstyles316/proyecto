@@ -13,6 +13,16 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useState, useEffect } from "react";
 import { getRiesgoColor, getRecomendacion, getAccionPorTipo, FIELD_LABELS } from "./hooks";
 import PropTypes from "prop-types";
+// Utilidades para capitalizar y formatear probabilidad
+function capitalizeSentence(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+function formatProbabilidad(prob) {
+  if (prob === undefined || prob === null) return '-';
+  const num = Number(prob);
+  return Number.isInteger(num) ? `${num}%` : `${num.toFixed(2)}%`;
+}
 const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
   const [form, setForm] = useState({
     fecha_asig: "",
@@ -135,19 +145,26 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
                 Resultado del Pronóstico
               </Typography>
               {Object.entries(iaResult)
-                .filter(([key]) => key !== '_id' && key !== 'creado_en' && key !== 'fecha_prediccion' && key !== 'recomendaciones')
+                .filter(([key]) => key !== '_id' && key !== 'creado_en' && key !== 'fecha_prediccion' && key !== 'recomendaciones' && key !== 'fechas_futuras')
                 .map(([key, value]) => {
                   if (key === "riesgo") {
                     return (
                       <Typography key={key} sx={{ color: getRiesgoColor(value), fontWeight: 600 }}>
-                        {FIELD_LABELS[key] || key}: {String(value)}
+                        {FIELD_LABELS[key] || capitalizeSentence(key)}: {capitalizeSentence(String(value))}
+                      </Typography>
+                    );
+                  }
+                  if (key === "probabilidad") {
+                    return (
+                      <Typography key={key}>
+                        {FIELD_LABELS[key] || capitalizeSentence(key)}: {formatProbabilidad(value)}
                       </Typography>
                     );
                   }
                   if (key === "resultado") {
                     return (
                       <Typography key={key}>
-                        {FIELD_LABELS[key] || key}: <b>{String(value)}</b> <br />
+                        {FIELD_LABELS[key] || capitalizeSentence(key)}: <b>{capitalizeSentence(String(value))}</b> <br />
                         <span style={{ fontStyle: 'italic', color: '#1976d2' }}>{getRecomendacion(String(value))}</span>
                       </Typography>
                     );
@@ -155,13 +172,13 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
                   if (key === "fecha_sugerida") {
                     return (
                       <Typography key={key} sx={{ color: 'success.dark', fontWeight: 600 }}>
-                        {FIELD_LABELS[key] || key}: {String(value)}
+                        {FIELD_LABELS[key] || capitalizeSentence(key)}: {String(value)}
                       </Typography>
                     );
                   }
                   return (
                     <Typography key={key}>
-                      {FIELD_LABELS[key] || key}: {String(value)}
+                      {FIELD_LABELS[key] || capitalizeSentence(key)}: {String(value)}
                     </Typography>
                   );
                 })}

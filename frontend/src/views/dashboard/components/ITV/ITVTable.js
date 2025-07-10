@@ -54,14 +54,14 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
                     color="primary"
                     onClick={() => onEdit && onEdit(itv)}
                   >
-                    <EditIcon />
+                    <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete && onDelete(itv._id)}
                   >
-                    <DeleteIcon />
+                    <DeleteIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}
