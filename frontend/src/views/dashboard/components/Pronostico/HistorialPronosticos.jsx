@@ -21,6 +21,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { useUser } from 'src/components/UserContext.jsx';
 
 // Agregar utilidades para capitalizar y formatear probabilidad
 function capitalizeSentence(str) {
@@ -48,6 +49,10 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
   const [page, setPage] = useState(1);
   const [anchorFechas, setAnchorFechas] = useState(null);
   const [fechasPopover, setFechasPopover] = useState([]);
+  const { user } = useUser();
+  const permisosPronostico = user?.permisos?.['Pronóstico'] || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canEdit = isAdminOrEncargado || permisosPronostico.editar;
 
   const totalPages = rowsPerPage === 'Todos' ? 1 : Math.ceil(data.length / rowsPerPage);
   const paginated = rowsPerPage === 'Todos' ? data : data.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -158,8 +163,8 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                       size="small"
                       color="primary"
                       style={{ marginLeft: 4, verticalAlign: 'middle' }}
-                      onClick={e => handleOpenFechasPopover(e, item.fecha_sugerida || item.fecha_asig)}
-                      disabled={!item.fecha_sugerida && !item.fecha_asig}
+                      onClick={e => canEdit && handleOpenFechasPopover(e, item.fecha_sugerida || item.fecha_asig)}
+                      disabled={(!canEdit && !isAdminOrEncargado) || (!item.fecha_sugerida && !item.fecha_asig)}
                     >
                       <EventIcon />
                     </IconButton>
@@ -169,7 +174,8 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                   <IconButton
                     size="small"
                     color="info"
-                    onClick={(e) => onRecomendacionClick(e, Array.isArray(item.recomendaciones) && item.recomendaciones.length > 0 ? item.recomendaciones : ["No hay recomendaciones generadas."])}
+                    onClick={e => canEdit && onRecomendacionClick(e, Array.isArray(item.recomendaciones) && item.recomendaciones.length > 0 ? item.recomendaciones : ["No hay recomendaciones generadas."])}
+                    disabled={!canEdit && !isAdminOrEncargado}
                   >
                     <InfoIcon />
                   </IconButton>

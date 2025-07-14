@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import SOATForm from './SOATForm';
 import SOATTable from './SOATTable';
-import { useIsReadOnly } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
 const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [soats, setSoats] = useState([]);
@@ -17,7 +17,12 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingSoat, setEditingSoat] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosSOAT = user?.permisos?.SOAT || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosSOAT.eliminar;
+  const canEdit = isAdminOrEncargado || permisosSOAT.editar;
+  const isReadOnly = !canEdit && permisosSOAT.ver;
 
   const fetchSoats = useCallback(async () => {
     setLoading(true);
@@ -64,7 +69,10 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Email': user.Email
+        },
         body: JSON.stringify(payload),
       });
       
@@ -95,6 +103,9 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'SOAT eliminado exitosamente!', severity: 'success' });
@@ -103,6 +114,10 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a SOAT</Typography>;
+  }
 
   return (
     <Box>
@@ -140,7 +155,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={isReadOnly}
+            disabled={!canEdit}
           >
             {showForm ? 'Cancelar' : 'Nuevo SOAT'}
           </Button>
@@ -159,7 +174,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingSoat}
           isEditing={!!editingSoat}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -169,7 +184,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={isReadOnly ? undefined : handleOpenEditForm}
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );

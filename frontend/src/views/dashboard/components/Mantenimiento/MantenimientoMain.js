@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import MantenimientoForm from './MantenimientoForm';
 import MantenimientoTable from './MantenimientoTable';
-import { useIsReadOnly } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
 
 const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -17,13 +17,22 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingMantenimiento, setEditingMantenimiento] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosMantenimiento = user?.permisos?.Mantenimiento || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosMantenimiento.eliminar;
+  const canEdit = isAdminOrEncargado || permisosMantenimiento.editar;
+  const isReadOnly = !canEdit && permisosMantenimiento.ver;
 
   const fetchMantenimientos = useCallback(async () => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/`);
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/`, {
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
       if (!response.ok) throw new Error('Error al cargar mantenimientos');
       const data = await response.json();
       setMantenimientos(Array.isArray(data) ? data : []);
@@ -33,7 +42,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     } finally {
       setLoading(false);
     }
-  }, [maquinariaId]);
+  }, [maquinariaId, user.Email]);
 
   useEffect(() => {
     fetchMantenimientos();
@@ -65,7 +74,10 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Email': user.Email
+        },
         body: JSON.stringify(payload),
       });
 
@@ -96,6 +108,9 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'Mantenimiento eliminado exitosamente!', severity: 'success' });
@@ -104,6 +119,10 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a Mantenimiento</Typography>;
+  }
 
   return (
     <Box>
@@ -133,7 +152,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
               setShowForm(true);
             }
           }}
-          disabled={isReadOnly}
+          disabled={!canEdit}
         >
           {showForm ? 'Cancelar' : 'Nuevo Mantenimiento'}
         </Button>
@@ -145,7 +164,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingMantenimiento}
           isEditing={!!editingMantenimiento}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -155,7 +174,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );

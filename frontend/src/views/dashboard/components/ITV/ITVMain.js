@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import ITVForm from './ITVForm';
 import ITVTable from './ITVTable';
-import { useIsReadOnly } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
 const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [itvs, setItvs] = useState([]);
@@ -17,7 +17,12 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingItv, setEditingItv] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosITV = user?.permisos?.ITV || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosITV.eliminar;
+  const canEdit = isAdminOrEncargado || permisosITV.editar;
+  const isReadOnly = !canEdit && permisosITV.ver;
 
   const fetchItvs = useCallback(async () => {
     if (!maquinariaId) return;
@@ -64,7 +69,10 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Email': user.Email
+        },
         body: JSON.stringify(payload),
       });
       
@@ -95,6 +103,9 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'ITV eliminado exitosamente!', severity: 'success' });
@@ -103,6 +114,10 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a ITV</Typography>;
+  }
 
   return (
     <Box>
@@ -137,7 +152,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={isReadOnly}
+            disabled={!canEdit}
           >
             {showForm ? 'Cancelar' : 'Nuevo ITV'}
           </Button>
@@ -156,7 +171,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingItv}
           isEditing={!!editingItv}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -166,7 +181,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={isReadOnly ? undefined : handleOpenEditForm}
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );

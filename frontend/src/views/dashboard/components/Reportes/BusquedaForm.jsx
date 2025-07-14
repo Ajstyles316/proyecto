@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { TextField, Button, Grid } from '@mui/material';
-import { useIsReadOnly } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
 
 const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading }) => {
   const [search, setSearch] = useState('');
+  const { user } = useUser();
+  const permisosReportes = user?.permisos?.Reportes || {};
+  // Permitir exportar siempre a admin/encargado
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canExport = isAdminOrEncargado || permisosReportes.editar;
   const isReadOnly = useIsReadOnly();
 
   const handleSubmit = () => {
@@ -28,7 +33,7 @@ const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading 
           Buscar
         </Button>
       </Grid>
-      {maquinaria && !isReadOnly && (
+      {maquinaria && canExport && (
         <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center">
           <Button
             variant="contained"

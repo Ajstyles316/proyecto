@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import ControlForm from './ControlForm';
 import ControlTable from './ControlTable';
-import { useIsReadOnly } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
 
 const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [controls, setControls] = useState([]);
@@ -17,13 +17,22 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingControl, setEditingControl] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosControl = user?.permisos?.Control || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosControl.eliminar;
+  const canEdit = isAdminOrEncargado || permisosControl.editar;
+  const isReadOnly = !canEdit && permisosControl.ver;
 
   const fetchControls = useCallback(async () => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/`);
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/`, {
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
       if (!response.ok) throw new Error('Error al cargar controles');
       const data = await response.json();
       setControls(Array.isArray(data) ? data : []);
@@ -33,7 +42,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
     } finally {
       setLoading(false);
     }
-  }, [maquinariaId]);
+  }, [maquinariaId, user.Email]);
 
   useEffect(() => {
     fetchControls();
@@ -67,6 +76,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'X-User-Email': user.Email
         },
         body: JSON.stringify(payload),
       });
@@ -98,6 +108,9 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'Control eliminado exitosamente!', severity: 'success' });
@@ -106,6 +119,10 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a Control</Typography>;
+  }
 
   return (
     <Box>
@@ -143,7 +160,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={isReadOnly}
+            disabled={!canEdit}
           >
             {showForm ? 'Cancelar' : 'Nuevo Control'}
           </Button>
@@ -156,7 +173,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingControl}
           isEditing={!!editingControl}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -166,7 +183,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );

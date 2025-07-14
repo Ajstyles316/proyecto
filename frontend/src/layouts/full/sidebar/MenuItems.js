@@ -66,24 +66,40 @@ const baseMenuItems = [
   },
   {
     id: uniqueId(),
+    title: 'Permisos y Roles',
+    icon: IconUsers,
+    href: '/usuarios',
+    onlyEncargado: true,
+  },
+  {
+    id: uniqueId(),
     title: 'Cerrar Sesión',
     icon: IconLogin,
     href: '/login',
     onClick: handleLogout,
   },
-  {
-    id: uniqueId(),
-    title: 'Usuarios',
-    icon: IconUsers,
-    href: '/usuarios',
-    onlyEncargado: true,
-  },
 ];
+
+const moduloMap = {
+  'Dashboard': 'Dashboard',
+  'Maquinaria': 'Maquinaria',
+  'Depreciaciones': 'Depreciaciones',
+  'Activos': 'Activos',
+  'Pronóstico': 'Pronóstico',
+  'Reportes': 'Reportes',
+  'Usuarios': 'Usuarios',
+};
 
 const getMenuItems = (user) => {
   if (!user) return baseMenuItems.filter(item => !item.onlyEncargado);
-  if (user.Cargo && user.Cargo.toLowerCase() === 'encargado') return baseMenuItems;
-  return baseMenuItems.filter(item => !item.onlyEncargado);
+  if (user.Cargo && (user.Cargo.toLowerCase() === 'encargado' || user.Cargo.toLowerCase() === 'admin')) return baseMenuItems;
+  // Filtrar por permisos granulares
+  return baseMenuItems.filter(item => {
+    if (item.onlyEncargado) return false;
+    if (!item.title || !moduloMap[item.title]) return true; // navlabel, subheader, logout, etc.
+    const mod = moduloMap[item.title];
+    return user.permisos && user.permisos[mod] && user.permisos[mod].ver;
+  });
 };
 
 export default baseMenuItems;
