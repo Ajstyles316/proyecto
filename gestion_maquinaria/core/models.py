@@ -56,3 +56,6 @@ class Pronostico:
 
     def find_by_placa(self, placa):
         return self.collection.find_one({"placa": placa})
+
+class Seguimiento:
+    collection_name = "seguimiento"

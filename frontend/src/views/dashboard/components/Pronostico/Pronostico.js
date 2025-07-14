@@ -17,7 +17,7 @@ import TablaPronostico from "./TablaPronostico";
 import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
-import { useIsReadOnly } from 'src/components/UserContext.jsx';
+import { useUser } from 'src/components/UserContext.jsx';
 
 const Pronostico = () => {
   const [pronosticos, setPronosticos] = useState([]);
@@ -35,7 +35,12 @@ const Pronostico = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [popoverRecs, setPopoverRecs] = useState([]);
 
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosPronostico = user?.permisos?.['Pronóstico'] || {};
+  // Permitir acceso total a admin/encargado
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosPronostico.eliminar;
+  const canEdit = isAdminOrEncargado || permisosPronostico.editar;
 
   const handleOpenPopover = (event, recs) => {
     setAnchorEl(event.currentTarget);
@@ -120,6 +125,10 @@ const Pronostico = () => {
     );
   }
 
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a Pronóstico</Typography>;
+  }
+
   return (
     <Paper elevation={3} sx={{ p: 3, maxWidth: 1100, margin: '0 auto', mt: 3 }}>
       <Tabs value={mainTab} onChange={(e, v) => setMainTab(v)} sx={{ mb: 2 }}>
@@ -132,13 +141,11 @@ const Pronostico = () => {
           maquinarias={maquinarias}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          openModal={(maq) => {
-            if (!isReadOnly) {
-              setSelectedMaquinaria(maq);
-              setModalOpen(true);
-            }
-          }}
-          isReadOnly={isReadOnly}
+          openModal={canEdit ? (maq) => {
+            setSelectedMaquinaria(maq);
+            setModalOpen(true);
+          } : () => {}}
+          isReadOnly={!canEdit}
         />
       )}
 

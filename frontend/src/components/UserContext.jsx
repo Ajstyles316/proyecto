@@ -6,6 +6,10 @@ export const useUser = () => useContext(UserContext);
 
 export const useIsReadOnly = () => {
   const { user } = useUser();
+  // Si es admin o encargado, nunca es solo lectura
+  if (user && (user.Cargo?.toLowerCase() === 'admin' || user.Cargo?.toLowerCase() === 'encargado')) {
+    return false;
+  }
   return user && user.Permiso && user.Permiso.toLowerCase() === "lector";
 };
 

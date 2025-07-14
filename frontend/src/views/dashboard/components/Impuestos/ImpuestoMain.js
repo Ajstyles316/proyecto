@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import ImpuestoForm from './ImpuestoForm';
 import ImpuestoTable from './ImpuestoTable';
-import { useIsReadOnly } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
 const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [impuestos, setImpuestos] = useState([]);
@@ -17,7 +17,12 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingImpuesto, setEditingImpuesto] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosImpuestos = user?.permisos?.Impuestos || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosImpuestos.eliminar;
+  const canEdit = isAdminOrEncargado || permisosImpuestos.editar;
+  const isReadOnly = !canEdit && permisosImpuestos.ver;
 
   const fetchImpuestos = useCallback(async () => {
     if (!maquinariaId) return;
@@ -68,6 +73,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'X-User-Email': user.Email
         },
         body: JSON.stringify(payload),
       });
@@ -99,6 +105,9 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'Impuesto eliminado exitosamente!', severity: 'success' });
@@ -107,6 +116,10 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a Impuestos</Typography>;
+  }
 
   return (
     <Box>
@@ -144,7 +157,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={isReadOnly}
+            disabled={!canEdit}
           >
             {showForm ? 'Cancelar' : 'Nuevo Impuesto'}
           </Button>
@@ -163,7 +176,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingImpuesto}
           isEditing={!!editingImpuesto}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -173,7 +186,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={isReadOnly ? undefined : handleOpenEditForm}
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );

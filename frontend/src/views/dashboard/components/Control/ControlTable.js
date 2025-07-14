@@ -40,7 +40,6 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
           <TableCell>Encargado</TableCell>
           <TableCell>Estado</TableCell>
           <TableCell>Hoja de Trámite</TableCell>
-          <TableCell>Fecha Ingreso</TableCell>
           <TableCell align="right">Acciones</TableCell>
         </TableRow>
       </TableHead>
@@ -53,7 +52,6 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
             <TableCell>{control.encargado}</TableCell>
             <TableCell>{control.estado}</TableCell>
             <TableCell>{control.hoja_tramite}</TableCell>
-            <TableCell>{control.fecha_ingreso}</TableCell>
             <TableCell align="right">
               {!isReadOnly && (
                 <>
@@ -89,7 +87,6 @@ ControlTable.propTypes = {
     encargado: PropTypes.string,
     estado: PropTypes.string,
     hoja_tramite: PropTypes.string,
-    fecha_ingreso: PropTypes.string.isRequired,
     observacion: PropTypes.string, // aún se valida, solo no se muestra
   })).isRequired,
   maquinariaPlaca: PropTypes.string.isRequired,

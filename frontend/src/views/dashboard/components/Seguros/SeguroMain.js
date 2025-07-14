@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import SeguroForm from './SeguroForm';
 import SeguroTable from './SeguroTable';
-import { useIsReadOnly } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
 const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [seguros, setSeguros] = useState([]);
@@ -17,13 +17,22 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingSeguro, setEditingSeguro] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosSeguros = user?.permisos?.Seguros || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosSeguros.eliminar;
+  const canEdit = isAdminOrEncargado || permisosSeguros.editar;
+  const isReadOnly = !canEdit && permisosSeguros.ver;
 
   const fetchSeguros = useCallback(async () => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`);
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`, {
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
       if (!response.ok) throw new Error('Error al cargar seguros');
       const data = await response.json();
       setSeguros(Array.isArray(data) ? data : []);
@@ -33,7 +42,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
     } finally {
       setLoading(false);
     }
-  }, [maquinariaId]);
+  }, [maquinariaId, user.Email]);
 
   useEffect(() => {
     fetchSeguros();
@@ -67,6 +76,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'X-User-Email': user.Email
         },
         body: JSON.stringify(payload),
       });
@@ -98,6 +108,9 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'Seguro eliminado exitosamente!', severity: 'success' });
@@ -106,6 +119,10 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a Seguros</Typography>;
+  }
 
   return (
     <Box>
@@ -143,7 +160,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={isReadOnly}
+            disabled={!canEdit}
           >
             {showForm ? 'Cancelar' : 'Nuevo Seguro'}
           </Button>
@@ -162,7 +179,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingSeguro}
           isEditing={!!editingSeguro}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -172,7 +189,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={isReadOnly ? undefined : handleOpenEditForm}
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );

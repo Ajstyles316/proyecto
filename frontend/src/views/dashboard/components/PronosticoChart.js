@@ -9,12 +9,7 @@ const PronosticoChart = () => {
   const [chartData, setChartData] = useState({ series: [], labels: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // chart color
   const theme = useTheme();
-  const errorColor = theme.palette.error.main;
-  const warning = theme.palette.warning.main;
-  const success = theme.palette.success.main;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,7 +83,7 @@ const PronosticoChart = () => {
   };
 
   return (
-    <DashboardCard title="Tipos de Mantenimiento">
+    <DashboardCard title="Tipos de Mantenimiento de Maquinaria">
       {loading ? (
         <Box display="flex" justifyContent="center" alignItems="center" height="300px">
           <CircularProgress />

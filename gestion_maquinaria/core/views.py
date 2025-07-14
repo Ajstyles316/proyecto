@@ -10,7 +10,7 @@ from datetime import datetime, date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from nbconvert.preprocessors import ExecutePreprocessor
-from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico
+from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento
 from .serializers import (
     MaquinariaSerializer,
     RegistroSerializer,
@@ -29,7 +29,7 @@ from .serializers import (
 from django.conf import settings
 from .mongo_connection import get_collection, get_collection_from_activos_db # Asegúrate de importar la nueva función
 import bcrypt
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,20 @@ class MaquinariaListView(APIView):
                 validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
                 result = maquinaria_collection.insert_one(validated_data)
                 new_maquinaria = maquinaria_collection.find_one({"_id": result.inserted_id})
+                # --- REGISTRO DE ACTIVIDAD ---
+                try:
+                    actor_email = request.headers.get('X-User-Email')
+                    mensaje = f"Creó maquinaria con placa {validated_data.get('placa', '')}"
+                    registrar_actividad(
+                        actor_email,
+                        'crear_maquinaria',
+                        'Maquinaria',
+                        mensaje,
+                        {'datos': serialize_doc(new_maquinaria)}
+                    )
+                except Exception as e:
+                    logger.error(f"Error al registrar actividad de creación de maquinaria: {str(e)}")
+                # --- FIN REGISTRO DE ACTIVIDAD ---
                 return Response(serialize_doc(new_maquinaria), status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -182,16 +196,23 @@ class MaquinariaDetailView(APIView):
         maquinaria_collection = get_collection(Maquinaria)
         if not ObjectId.is_valid(id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
-        
         try:
-            logger.info(f"Datos recibidos en PUT: {request.data}")
+            data = request.data.copy()
+            # --- RESTRICCIÓN DE CAMPOS POR ROL ---
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            cargo = user.get('Cargo', '').lower() if user else ''
+            if cargo != 'encargado':
+                data.pop('validado_por', None)
+                data.pop('autorizado_por', None)
+            logger.info(f"Datos recibidos en PUT: {data}")
             
             existing_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
             if not existing_maquinaria:
                 return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
 
             # Validar con el serializer
-            serializer = MaquinariaSerializer(data=request.data, partial=True)
+            serializer = MaquinariaSerializer(data=data, partial=True)
             if not serializer.is_valid():
                 logger.error(f"Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -217,6 +238,20 @@ class MaquinariaDetailView(APIView):
             
             # Obtener y devolver el registro actualizado
             updated_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó maquinaria con placa {existing_maquinaria.get('placa', id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_maquinaria',
+                    'Maquinaria',
+                    mensaje,
+                    {'antes': serialize_doc(existing_maquinaria), 'despues': serialize_doc(updated_maquinaria)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de maquinaria: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_maquinaria))
 
         except Exception as e:
@@ -243,6 +278,20 @@ class MaquinariaDetailView(APIView):
             get_collection(SOAT).delete_many({'maquinaria': ObjectId(id)})
             get_collection(Impuesto).delete_many({'maquinaria': ObjectId(id)})
 
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Eliminó maquinaria con placa {maquinaria_doc.get('placa', id) if maquinaria_doc else id}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_maquinaria',
+                    'Maquinaria',
+                    mensaje,
+                    {'datos': serialize_doc(maquinaria_doc) if maquinaria_doc else {}}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación de maquinaria: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             logger.error(f"Error al eliminar maquinaria y sus registros asociados: {str(e)}")
@@ -326,6 +375,13 @@ class BaseSectionAPIView(APIView):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         data = request.data.copy()
+        # --- RESTRICCIÓN DE CAMPOS POR ROL ---
+        actor_email = request.headers.get('X-User-Email')
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        cargo = user.get('Cargo', '').lower() if user else ''
+        if cargo != 'encargado':
+            data.pop('validado_por', None)
+            data.pop('autorizado_por', None)
         data['maquinaria'] = str(maquinaria_id)
         serializer = self.serializer_class(data=data)
         if serializer.is_valid():
@@ -357,12 +413,18 @@ class BaseSectionDetailAPIView(APIView):
     def put(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        # --- RESTRICCIÓN DE CAMPOS POR ROL ---
+        actor_email = request.headers.get('X-User-Email')
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        cargo = user.get('Cargo', '').lower() if user else ''
+        if cargo != 'encargado':
+            data.pop('validado_por', None)
+            data.pop('autorizado_por', None)
         collection = get_collection(self.collection_class)
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": f"{self.collection_class.__name__} no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        data = request.data.copy()
-        data['maquinaria'] = str(maquinaria_id)
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
             validated_data = serializer.validated_data
@@ -371,6 +433,20 @@ class BaseSectionDetailAPIView(APIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)}, self.projection or None)
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó {self.collection_class.__name__} con ID {record_id}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_' + self.collection_class.__name__.lower(),
+                    self.collection_class.__name__,
+                    mensaje,
+                    {'antes': serialize_doc(existing_record), 'despues': serialize_doc(updated_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de {self.collection_class.__name__}: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -461,6 +537,25 @@ class HistorialControlListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_control',
+                    'HistorialControl',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'control_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de control: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -519,6 +614,26 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_control',
+                    'HistorialControl',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'control_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de control: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -587,6 +702,25 @@ class ActaAsignacionListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_asignacion',
+                    'ActaAsignacion',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'asignacion_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de asignación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -644,6 +778,26 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_asignacion',
+                    'ActaAsignacion',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'asignacion_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de asignación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -696,6 +850,25 @@ class MantenimientoListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_mantenimiento',
+                    'Mantenimiento',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'mantenimiento_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de mantenimiento: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -738,6 +911,26 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_mantenimiento',
+                    'Mantenimiento',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'mantenimiento_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de mantenimiento: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -790,6 +983,25 @@ class SeguroListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_seguro',
+                    'Seguro',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'seguro_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de seguro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -832,6 +1044,26 @@ class SeguroDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_seguro',
+                    'Seguro',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'seguro_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de seguro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -884,6 +1116,25 @@ class ITVListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó ITV para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_itv',
+                    'ITV',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'itv_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de ITV: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -926,6 +1177,26 @@ class ITVDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó ITV para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_itv',
+                    'ITV',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'itv_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de ITV: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -978,6 +1249,25 @@ class SOATListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó SOAT para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_soat',
+                    'SOAT',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'soat_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de SOAT: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -1020,6 +1310,26 @@ class SOATDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó SOAT para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_soat',
+                    'SOAT',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'soat_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de SOAT: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1072,6 +1382,25 @@ class ImpuestoListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_impuesto',
+                    'Impuesto',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'impuesto_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de impuesto: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -1114,6 +1443,26 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_impuesto',
+                    'Impuesto',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'impuesto_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de impuesto: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1201,23 +1550,15 @@ class DepreciacionesListView(APIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
-        
-        # Obtener datos de la maquinaria para determinar bien de uso y vida útil
         maquinaria_collection = get_collection(Maquinaria)
         maquinaria_doc = maquinaria_collection.find_one({"_id": ObjectId(maquinaria_id)})
         tipo_maquinaria = maquinaria_doc.get('tipo', '') if maquinaria_doc else ''
         detalle_maquinaria = maquinaria_doc.get('detalle', '') if maquinaria_doc else ''
-        # Usar la lógica del backend para determinar bien de uso y vida útil
         bien_uso, vida_util = DepreciacionesGeneralView().determinar_bien_uso_y_vida_util(tipo_maquinaria, detalle_maquinaria)
         data['bien_uso'] = bien_uso
         data['vida_util'] = vida_util
-        
-        # Eliminar duplicados: dejar solo la que se va a insertar
         collection = get_collection('depreciaciones')
         collection.delete_many({'maquinaria': ObjectId(maquinaria_id)})
-        
-        # logger.info(f"Datos recibidos en POST depreciación: {data}")
-        
         serializer = DepreciacionSerializer(data=data)
         if serializer.is_valid():
             validated_data = serializer.validated_data
@@ -1226,11 +1567,28 @@ class DepreciacionesListView(APIView):
             validated_data['fecha_actualizacion'] = datetime.now()
             validated_data['bien_uso'] = bien_uso
             validated_data['vida_util'] = vida_util
-            
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_depreciacion',
+                    'Depreciaciones',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'depreciacion_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de depreciación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
-        
         logger.error(f"Errores de validación en depreciación: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1261,6 +1619,26 @@ class DepreciacionesDetailView(APIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_depreciacion',
+                    'Depreciaciones',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'depreciacion_id': str(record_id),
+                        'antes': serialize_doc(existing_record),
+                        'despues': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de depreciación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1268,9 +1646,29 @@ class DepreciacionesDetailView(APIView):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
         collection = get_collection('depreciaciones')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if result.deleted_count == 0:
             return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_depreciacion',
+                'Depreciaciones',
+                mensaje,
+                {
+                    'maquinaria_id': str(maquinaria_id),
+                    'placa': maquinaria_doc.get('placa'),
+                    'depreciacion_id': str(record_id),
+                    'datos': serialize_doc(existing_record)
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de depreciación: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 # --- Views de Autenticación y Dashboard (ya son APIView) ---
@@ -1315,6 +1713,25 @@ class RegistroView(APIView):
             result_db = collection.insert_one(data)
             inserted = collection.find_one({"_id": result_db.inserted_id})
 
+            # --- REGISTRO DE AUDITORÍA ---
+            try:
+                # El usuario que realiza el registro puede venir en el header (X-User-Email), si no, usar el email registrado
+                actor_email = request.headers.get('X-User-Email') or data.get('Email')
+                registrar_actividad(
+                    actor_email,
+                    'registro_usuario',
+                    'Usuarios',
+                    {
+                        'nombre': data.get('Nombre'),
+                        'email': data.get('Email'),
+                        'cargo': data.get('Cargo'),
+                        'unidad': data.get('Unidad')
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de registro de usuario: {str(e)}")
+            # --- FIN REGISTRO DE AUDITORÍA ---
+
             return Response(json.loads(json_util.dumps(serialize_doc(inserted))), status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -1324,6 +1741,18 @@ class RegistroView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+def registrar_actividad(email, accion, modulo, mensaje, detalle=None):
+    collection = get_collection(Seguimiento)
+    doc = {
+        'usuario_email': email,
+        'accion': accion,
+        'modulo': modulo,
+        'mensaje': mensaje,
+        'detalle': detalle or '',
+        'fecha_hora': datetime.now()
+    }
+    collection.insert_one(doc)
+
 class LoginView(APIView):
     serializer_class = LoginSerializer  
 
@@ -1331,26 +1760,21 @@ class LoginView(APIView):
         try:
             data = request.data
             print("Datos recibidos:", data)
-
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
                 print("Errores del serializador:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
             collection = get_collection(Usuario)
             user = collection.find_one({"Email": data["Email"]})
             if not user:
                 return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
             if not bcrypt.checkpw(data["Password"].encode("utf-8"), user["Password"].encode("utf-8")):
                 return Response({"error": "Contraseña inválida"}, status=status.HTTP_401_UNAUTHORIZED)
-
-            # Si el usuario tiene permiso Denegado, no puede acceder
             if user.get("Permiso", "Editor").lower() == "denegado":
                 return Response({"error": "Acceso denegado por el administrador"}, status=status.HTTP_403_FORBIDDEN)
-
+            # Registrar actividad de login
+            registrar_actividad(user["Email"], "login", "Autenticación", "Inicio de sesión exitoso", "Inicio de sesión exitoso")
             return Response(json.loads(json_util.dumps(serialize_doc(user))), status=status.HTTP_200_OK)
-
         except Exception as e:
             logger.error(f"Error interno en LoginView: {str(e)}")
             return Response(
@@ -1611,7 +2035,7 @@ class UsuarioListView(APIView):
         user = collection.find_one({"Email": email})
         if not user or user.get('Cargo', '').lower() != 'encargado':
             return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
-        usuarios = list(collection.find({}, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1}))
+        usuarios = list(collection.find({}, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1, "permisos": 1}))
         return Response([serialize_doc(u) for u in usuarios], status=status.HTTP_200_OK)
 
 class UsuarioCargoUpdateView(APIView):
@@ -1795,3 +2219,51 @@ class MaquinariaConDepreciacionBuscarView(APIView):
             maquinaria_serializada['vida_util'] = dep_serializada.get('vida_util', '')
             maquinaria_serializada['costo_activo'] = dep_serializada.get('costo_activo', 0)
         return Response(maquinaria_serializada, status=200)
+
+class UsuarioPermisosUpdateView(APIView):
+    """Solo el admin o encargado puede cambiar los permisos granulares de otros usuarios."""
+    def put(self, request, id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        cargo = user.get('Cargo', '').lower() if user else ''
+        if cargo not in ['admin', 'encargado']:
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if str(user.get('_id')) == id:
+            return Response({'error': 'No puedes cambiar tus propios permisos'}, status=status.HTTP_400_BAD_REQUEST)
+        nuevos_permisos = request.data.get('permisos')
+        if not isinstance(nuevos_permisos, dict):
+            return Response({'error': 'Permisos inválidos'}, status=status.HTTP_400_BAD_REQUEST)
+        result = collection.update_one({'_id': ObjectId(id)}, {'$set': {'permisos': nuevos_permisos}})
+        if result.matched_count == 0:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        usuario_actualizado = collection.find_one({'_id': ObjectId(id)})
+        # Registrar auditoría de cambio de permisos
+        try:
+            detalle = {
+                'usuario_afectado_email': usuario_actualizado.get('Email'),
+                'usuario_afectado_nombre': usuario_actualizado.get('Nombre'),
+                'usuario_afectado_cargo': usuario_actualizado.get('Cargo'),
+                'usuario_afectado_unidad': usuario_actualizado.get('Unidad'),
+            }
+            registrar_actividad(email, "cambio_permisos", "Usuarios", detalle)
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de cambio de permisos: {str(e)}")
+        return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
+
+class SeguimientoListView(APIView):
+    """Solo admin o encargado puede ver el registro de actividad."""
+    def get(self, request):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        cargo = user.get('Cargo', '').lower() if user else ''
+        if cargo not in ['admin', 'encargado']:
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        seguimiento_col = get_collection(Seguimiento)
+        registros = list(seguimiento_col.find({}, {'_id': 0}).sort('fecha_hora', -1))
+        return Response(registros, status=status.HTTP_200_OK)

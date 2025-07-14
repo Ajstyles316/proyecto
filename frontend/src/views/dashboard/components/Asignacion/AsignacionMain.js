@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import AsignacionForm from './AsignacionForm';
 import AsignacionTable from './AsignacionTable';
-import { useIsReadOnly } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
 
 const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [asignaciones, setAsignaciones] = useState([]);
@@ -17,12 +17,21 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingAsignacion, setEditingAsignacion] = useState(null);
-  const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const permisosAsignacion = user?.permisos?.['Asignación'] || {};
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isDenied = !isAdminOrEncargado && permisosAsignacion.eliminar;
+  const canEdit = isAdminOrEncargado || permisosAsignacion.editar;
+  const isReadOnly = !canEdit && permisosAsignacion.ver;
 
   const fetchAsignaciones = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/`);
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/`, {
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
       if (!response.ok) throw new Error('Error al cargar asignaciones');
       const data = await response.json();
       setAsignaciones(Array.isArray(data) ? data : []);
@@ -32,7 +41,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
     } finally {
       setLoading(false);
     }
-  }, [maquinariaId]);
+  }, [maquinariaId, user.Email]);
 
   useEffect(() => {
     if (maquinariaId) {
@@ -71,6 +80,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'X-User-Email': user.Email
         },
         body: JSON.stringify(payload),
       });
@@ -102,6 +112,9 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${id}/`, {
         method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
       });
       if (!response.ok) throw new Error('Error al eliminar');
       setSnackbar({ open: true, message: 'Asignación eliminada exitosamente!', severity: 'success' });
@@ -110,6 +123,10 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     }
   };
+
+  if (isDenied) {
+    return <Typography variant="h6" color="error">Acceso denegado a Asignación</Typography>;
+  }
 
   return (
     <Box>
@@ -147,7 +164,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={isReadOnly}
+            disabled={!canEdit}
           >
             {showForm ? 'Cancelar' : 'Nueva Asignación'}
           </Button>
@@ -160,7 +177,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingAsignacion}
           isEditing={!!editingAsignacion}
-          isReadOnly={isReadOnly}
+          isReadOnly={isReadOnly || !canEdit}
         />
       )}
 
@@ -170,7 +187,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly}
+        isReadOnly={isReadOnly || !canEdit}
       />
     </Box>
   );
