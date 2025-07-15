@@ -66,6 +66,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
       maquinaria: maquinariaId,
       importe_2023: Number(formData.importe_2023) || 0,
       importe_2024: Number(formData.importe_2024) || 0,
+      ...(editingImpuesto ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
     try {

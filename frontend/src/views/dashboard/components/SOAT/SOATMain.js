@@ -64,6 +64,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       maquinaria: maquinariaId,
       importe_2024: Number(formData.importe_2024) || 0,
       importe_2025: Number(formData.importe_2025) || 0,
+      ...(editingSoat ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
     
     try {

@@ -69,6 +69,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
       ...formData,
       maquinaria: maquinariaId,
       importe: Number(formData.importe) || 0,
+      ...(editingSeguro ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
     try {

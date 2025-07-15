@@ -262,40 +262,29 @@ class MaquinariaDetailView(APIView):
         maquinaria_collection = get_collection(Maquinaria)
         if not ObjectId.is_valid(id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            # Eliminar maquinaria principal
-            result = maquinaria_collection.delete_one({"_id": ObjectId(id)})
-            if result.deleted_count == 0:
+            existing_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
+            if not existing_maquinaria:
                 return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-
-            # Eliminar registros asociados en todas las colecciones de sub-secciones
-            get_collection(HistorialControl).delete_many({'maquinaria': ObjectId(id)})
-            get_collection(ActaAsignacion).delete_many({'maquinaria': ObjectId(id)})
-            get_collection(Mantenimiento).delete_many({'maquinaria': ObjectId(id)})
-            get_collection(Seguro).delete_many({'maquinaria': ObjectId(id)})
-            get_collection(ITV).delete_many({'maquinaria': ObjectId(id)})
-            get_collection(SOAT).delete_many({'maquinaria': ObjectId(id)})
-            get_collection(Impuesto).delete_many({'maquinaria': ObjectId(id)})
-
+            maquinaria_collection.delete_one({"_id": ObjectId(id)})
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Eliminó maquinaria con placa {maquinaria_doc.get('placa', id) if maquinaria_doc else id}"
+                mensaje = f"Eliminó maquinaria con placa {existing_maquinaria.get('placa', id)}"
                 registrar_actividad(
                     actor_email,
                     'eliminar_maquinaria',
                     'Maquinaria',
                     mensaje,
-                    {'datos': serialize_doc(maquinaria_doc) if maquinaria_doc else {}}
+                    {'datos': serialize_doc(existing_maquinaria)}
                 )
             except Exception as e:
                 logger.error(f"Error al registrar actividad de eliminación de maquinaria: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response({"success": True})
         except Exception as e:
-            logger.error(f"Error al eliminar maquinaria y sus registros asociados: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error al eliminar maquinaria: {str(e)}")
+            return Response({"error": f"Error al eliminar registro: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MaquinariaOptionsView(APIView):
     def get(self, request):
@@ -454,10 +443,25 @@ class BaseSectionDetailAPIView(APIView):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
         collection = get_collection(self.collection_class)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": f"{self.collection_class.__name__} no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó {self.collection_class.__name__} con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_' + self.collection_class.__name__.lower(),
+                self.collection_class.__name__,
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de {self.collection_class.__name__}: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 # --- Vistas Específicas para cada Sección ---
 
@@ -640,12 +644,26 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
-        
         collection = get_collection('historial_control')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "Control no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó control con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_control',
+                'HistorialControl',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de control: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 class ActaAsignacionListView(BaseSectionAPIView):
     collection_class = ActaAsignacion
@@ -804,12 +822,26 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
-        
         collection = get_collection('acta_asignacion')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó asignación con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_asignacion',
+                'ActaAsignacion',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de asignación: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 class MantenimientoListView(BaseSectionAPIView):
     collection_class = Mantenimiento
@@ -937,12 +969,26 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
-        
         collection = get_collection('mantenimiento')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "Mantenimiento no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó mantenimiento con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_mantenimiento',
+                'Mantenimiento',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de mantenimiento: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 class SeguroListView(BaseSectionAPIView):
     collection_class = Seguro
@@ -1070,12 +1116,26 @@ class SeguroDetailView(BaseSectionDetailAPIView):
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
-        
         collection = get_collection('seguro')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó seguro con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_seguro',
+                'Seguro',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de seguro: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 class ITVListView(BaseSectionAPIView):
     collection_class = ITV
@@ -1203,12 +1263,26 @@ class ITVDetailView(BaseSectionDetailAPIView):
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
-        
         collection = get_collection('itv')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó ITV con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_itv',
+                'ITV',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de ITV: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 class SOATListView(BaseSectionAPIView):
     collection_class = SOAT
@@ -1469,12 +1543,26 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
-        
         collection = get_collection('impuesto')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            mensaje = f"Eliminó impuesto con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            registrar_actividad(
+                actor_email,
+                'eliminar_impuesto',
+                'Impuesto',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de eliminación de impuesto: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
 
 # Agregar función auxiliar para formatear el método como oración
 def format_metodo_oracion(metodo):
@@ -1647,13 +1735,13 @@ class DepreciacionesDetailView(APIView):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
         collection = get_collection('depreciaciones')
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        if not existing_record:
             return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+            mensaje = f"Eliminó depreciación para maquinaria {existing_record.get('maquinaria', maquinaria_id)}"
             registrar_actividad(
                 actor_email,
                 'eliminar_depreciacion',
@@ -1661,7 +1749,6 @@ class DepreciacionesDetailView(APIView):
                 mensaje,
                 {
                     'maquinaria_id': str(maquinaria_id),
-                    'placa': maquinaria_doc.get('placa'),
                     'depreciacion_id': str(record_id),
                     'datos': serialize_doc(existing_record)
                 }
@@ -1669,7 +1756,7 @@ class DepreciacionesDetailView(APIView):
         except Exception as e:
             logger.error(f"Error al registrar actividad de eliminación de depreciación: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"success": True})
 
 # --- Views de Autenticación y Dashboard (ya son APIView) ---
 

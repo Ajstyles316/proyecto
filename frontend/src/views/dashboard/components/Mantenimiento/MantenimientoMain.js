@@ -69,6 +69,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
       ...formData,
       maquinaria: maquinariaId,
       cantidad: Number(formData.cantidad) || 0,
+      ...(editingMantenimiento ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
     try {

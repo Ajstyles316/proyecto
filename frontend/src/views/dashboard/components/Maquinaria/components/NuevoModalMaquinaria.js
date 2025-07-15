@@ -3,6 +3,7 @@ import {
 } from '@mui/material';
 import PropTypes from 'prop-types';
 import { fieldLabels } from '../utils/fieldLabels';
+import { useUser } from '../../../../../components/UserContext';
 
 const NuevoModalMaquinaria = ({
   open,
@@ -15,6 +16,8 @@ const NuevoModalMaquinaria = ({
   handleFileChange,
   unidadesUnicas
 }) => {
+  const { user } = useUser();
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   return (
     <Modal open={open} onClose={onClose}>
       <Paper sx={{
@@ -31,7 +34,9 @@ const NuevoModalMaquinaria = ({
         <Typography variant="h6" sx={{ mb: 2 }}>Crear Nueva Maquinaria</Typography>
 
         <Grid container spacing={2}>
-          {fieldLabels.Maquinaria.map((field) => (
+          {fieldLabels.Maquinaria.filter(field => 
+            !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)
+          ).map((field) => (
             <Grid item xs={12} sm={6} key={field.name}>
               {field.name === 'imagen' ? (
                 <Box>

@@ -9,7 +9,7 @@ import ITVMain from '../../ITV/ITVMain';
 import SOATMain from '../../SOAT/SOATMain';
 import ImpuestoMain from '../../Impuestos/ImpuestoMain';
 import { fieldLabels } from '../utils/fieldLabels';
-import { useIsReadOnly } from '../../../../../components/UserContext';
+import { useIsReadOnly, useUser } from '../../../../../components/UserContext';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -32,6 +32,10 @@ const MaquinariaDetalle = ({
   const maquinariaId = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
   const maquinariaPlaca = sectionForm.Maquinaria?.placa;
   const isReadOnly = useIsReadOnly();
+  const { user } = useUser();
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
+  const canEditAuthFields = isEncargado || isAdmin;
 
   const renderSectionForm = () => {
     switch (activeSection) {
@@ -131,7 +135,13 @@ const MaquinariaDetalle = ({
                     error={!!newMaquinariaErrors[field.name]}
                     helperText={newMaquinariaErrors[field.name] || ''}
                     InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
-                    disabled={isReadOnly || (field.name === 'placa' && activeSection !== 'Maquinaria')}
+                    disabled={
+                      isReadOnly || 
+                      (field.name === 'placa' && activeSection !== 'Maquinaria') ||
+                      (field.name === 'registrado_por') ||
+                      (field.name === 'validado_por' && !canEditAuthFields) ||
+                      (field.name === 'autorizado_por' && !canEditAuthFields)
+                    }
                   />
                 )}
               </Grid>

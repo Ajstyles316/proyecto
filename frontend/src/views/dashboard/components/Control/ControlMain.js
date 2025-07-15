@@ -69,6 +69,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
       ...formData,
       maquinaria: maquinariaId,
       fecha_ingreso: formData.fecha_ingreso ? new Date(formData.fecha_ingreso).toISOString().split('T')[0] : null,
+      ...(editingControl ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
     try {
