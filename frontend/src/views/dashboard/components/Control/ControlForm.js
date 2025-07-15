@@ -8,10 +8,15 @@ import {
   Grid,
 } from '@mui/material';
 import { useState, useEffect } from 'react';
+import { useUser } from '../../../../components/UserContext';
 
 const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
+  const { user } = useUser();
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
+  const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
     { name: 'ubicacion', label: 'Ubicación', required: true },
@@ -20,6 +25,9 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
     { name: 'estado', label: 'Estado' },
     { name: 'hoja_tramite', label: 'Hoja de Trámite' },
     { name: 'fecha_ingreso', label: 'Fecha de Ingreso', type: 'date', required: true },
+    { name: 'registrado_por', label: 'Registrado por', readonly: true },
+    { name: 'validado_por', label: 'Validado por', readonly: true },
+    { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
   ];
 
   useEffect(() => {
@@ -55,7 +63,9 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
       </Typography>
 
       <Grid container spacing={2}>
-        {fieldLabels.map((field) => (
+        {fieldLabels.filter(field => 
+          isEditing || !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)
+        ).map((field) => (
           <Grid item xs={12} sm={6} key={field.name}>
             <TextField
               fullWidth
@@ -68,7 +78,12 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
-              disabled={isReadOnly}
+              disabled={
+                isReadOnly || 
+                (field.name === 'registrado_por') ||
+                (field.name === 'validado_por' && !canEditAuthFields) ||
+                (field.name === 'autorizado_por' && !canEditAuthFields)
+              }
             />
           </Grid>
         ))}

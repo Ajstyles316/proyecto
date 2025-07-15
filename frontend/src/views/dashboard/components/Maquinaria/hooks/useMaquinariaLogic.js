@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fieldLabels } from "../utils/fieldLabels";
+import { useUser } from "../../../../../components/UserContext";
 
 const useMaquinariaLogic = () => {
   const [maquinarias, setMaquinarias] = useState([]);
@@ -18,6 +19,7 @@ const useMaquinariaLogic = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [unidadFilter, setUnidadFilter] = useState('');
+  const { user } = useUser();
 
   useEffect(() => {
     fetchMaquinarias();
@@ -98,7 +100,8 @@ const useMaquinariaLogic = () => {
         method: 'PUT',
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          "Accept": "application/json",
+          "X-User-Email": user?.Email || ''
         },
         body: JSON.stringify(maquinariaData)
       });
@@ -126,7 +129,7 @@ const useMaquinariaLogic = () => {
   const handleNewMaquinariaSubmit = async () => {
   const errors = {};
   fieldLabels.Maquinaria.forEach(field => {
-    if (field.name !== 'imagen') {
+    if (field.name !== 'imagen' && !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)) {
       const value = newMaquinariaForm[field.name];
       if (!value || (typeof value === 'string' && !value.trim())) {
         errors[field.name] = 'Este campo es obligatorio';
@@ -140,6 +143,7 @@ const useMaquinariaLogic = () => {
   try {
     const formattedData = {
       ...newMaquinariaForm,
+      registrado_por: user?.Nombre || user?.Email || 'Usuario',
       fecha_registro: newMaquinariaForm.fecha_registro
         ? new Date(newMaquinariaForm.fecha_registro).toISOString().split('T')[0]
         : undefined, // Evita enviar "" si no hay fecha
@@ -164,7 +168,8 @@ const useMaquinariaLogic = () => {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Accept": "application/json",
+        "X-User-Email": user?.Email || ''
       },
       body: JSON.stringify(cleanedData)
     });
@@ -218,6 +223,9 @@ const useMaquinariaLogic = () => {
   try {
     const response = await fetch(`http://localhost:8000/api/maquinaria/${id}/`, {
       method: 'DELETE',
+      headers: {
+        "X-User-Email": user?.Email || ''
+      }
     });
 
     if (!response.ok) throw new Error('Error al eliminar la maquinaria');

@@ -36,14 +36,10 @@ MODULOS.forEach(mod => {
 });
 
 const MODULOS_SEGUIMIENTO = [
+  'Usuarios',
+  'Autenticación',
   'Maquinaria',
-  'Control',
-  'Asignación',
-  'Mantenimiento',
-  'Seguros',
-  'ITV',
-  'Impuestos',
-  'SOAT',
+  'Depreciaciones',
   'Pronóstico',
   'Reportes',
 ];
@@ -56,11 +52,50 @@ const getUsuarioLabel = (email, usuarios) => {
 };
 // Helper para resaltar acciones
 const getAccionChip = (accion) => {
-  if (accion === 'cambio_permisos') return <Chip icon={<SecurityIcon />} label="Cambio de permisos" color="warning" size="small" sx={{ fontWeight: 600 }} />;
-  if (accion === 'registro_usuario') return <Chip icon={<PersonAddIcon />} label="Registro de usuario" color="success" size="small" sx={{ fontWeight: 600 }} />;
-  if (accion === 'eliminar_usuario') return <Chip icon={<DeleteIcon />} label="Eliminación de usuario" color="error" size="small" sx={{ fontWeight: 600 }} />;
-  if (accion === 'login') return <Chip label="Login" color="info" size="small" sx={{ fontWeight: 600 }} />;
-  return <Chip label={accion} size="small" sx={{ fontWeight: 600, bgcolor: '#e0e0e0' }} />;
+  // Acciones legibles
+  const map = {
+    login: { label: 'Login', color: 'info' },
+    crear_maquinaria: { label: 'Crear Maquinaria', color: 'success' },
+    editar_maquinaria: { label: 'Editar Maquinaria', color: 'default' },
+    eliminar_maquinaria: { label: 'Eliminar Maquinaria', color: 'error' },
+    crear_control: { label: 'Crear Control', color: 'success' },
+    editar_control: { label: 'Editar Control', color: 'default' },
+    eliminar_control: { label: 'Eliminar Control', color: 'error' },
+    crear_asignacion: { label: 'Crear Asignación', color: 'success' },
+    editar_asignacion: { label: 'Editar Asignación', color: 'default' },
+    eliminar_asignacion: { label: 'Eliminar Asignación', color: 'error' },
+    crear_mantenimiento: { label: 'Crear Mantenimiento', color: 'success' },
+    editar_mantenimiento: { label: 'Editar Mantenimiento', color: 'default' },
+    eliminar_mantenimiento: { label: 'Eliminar Mantenimiento', color: 'error' },
+    crear_soat: { label: 'Crear SOAT', color: 'success' },
+    editar_soat: { label: 'Editar SOAT', color: 'default' },
+    eliminar_soat: { label: 'Eliminar SOAT', color: 'error' },
+    crear_impuesto: { label: 'Crear Impuesto', color: 'success' },
+    editar_impuesto: { label: 'Editar Impuesto', color: 'default' },
+    eliminar_impuesto: { label: 'Eliminar Impuesto', color: 'error' },
+    crear_seguros: { label: 'Crear Seguro', color: 'success' },
+    editar_seguros: { label: 'Editar Seguro', color: 'default' },
+    eliminar_seguros: { label: 'Eliminar Seguro', color: 'error' },
+    crear_itv: { label: 'Crear ITV', color: 'success' },
+    editar_itv: { label: 'Editar ITV', color: 'default' },
+    eliminar_itv: { label: 'Eliminar ITV', color: 'error' },
+    crear_pronostico: { label: 'Crear Pronóstico', color: 'success' },
+    editar_pronostico: { label: 'Editar Pronóstico', color: 'default' },
+    eliminar_pronostico: { label: 'Eliminar Pronóstico', color: 'error' },
+    crear_depreciacion: { label: 'Crear Depreciación', color: 'success' },
+    editar_depreciacion: { label: 'Editar Depreciación', color: 'default' },
+    eliminar_depreciacion: { label: 'Eliminar Depreciación', color: 'error' },
+    validar: { label: 'Validar', color: 'primary' },
+    autorizar: { label: 'Autorizar', color: 'primary' },
+    cambio_permisos: { label: 'Cambio de permisos', color: 'warning', icon: <SecurityIcon /> },
+    registro_usuario: { label: 'Registro de usuario', color: 'success', icon: <PersonAddIcon /> },
+    eliminar_usuario: { label: 'Eliminación de usuario', color: 'error', icon: <DeleteIcon /> },
+  };
+  const found = map[accion?.toLowerCase()];
+  if (found) {
+    return <Chip icon={found.icon} label={found.label} color={found.color} size="small" sx={{ fontWeight: 600, textTransform: 'capitalize', letterSpacing: 0.2 }} />;
+  }
+  return <Chip label={accion} size="small" sx={{ fontWeight: 600, bgcolor: '#e0e0e0', textTransform: 'capitalize', letterSpacing: 0.2 }} />;
 };
 
 // Helper para mostrar solo el nombre del usuario
@@ -101,6 +136,12 @@ const UserManagement = () => {
     if (hasta) ok = ok && row.fecha_hora && new Date(row.fecha_hora) <= new Date(hasta + 'T23:59:59');
     return ok;
   });
+
+  // --- PAGINACIÓN EN EL MODAL DE SEGUIMIENTO ---
+  const [seguimientoPage, setSeguimientoPage] = useState(1);
+  const rowsPerPage = 10;
+  const paginatedSeguimiento = filteredSeguimiento.slice((seguimientoPage - 1) * rowsPerPage, seguimientoPage * rowsPerPage);
+  const totalSeguimientoPages = Math.ceil(filteredSeguimiento.length / rowsPerPage);
 
   useEffect(() => {
     if (!user || user.Cargo.toLowerCase() !== 'encargado') return;
@@ -540,7 +581,7 @@ const UserManagement = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSeguimiento.map((row, idx) => {
+                {paginatedSeguimiento.map((row, idx) => {
                   // Mostrar solo el mensaje principal
                   return (
                     <TableRow key={idx} hover>
@@ -551,7 +592,7 @@ const UserManagement = () => {
                             const u = seguimientoUsuarios.find(x => x.email === row.usuario_email);
                             if (u && u.nombre) return u.nombre;
                             if (row.usuario_email) return row.usuario_email;
-                            return '-';
+                            return 'Usuario desconocido';
                           })()}</span>
                         </Tooltip>
                       </TableCell>
@@ -575,6 +616,30 @@ const UserManagement = () => {
           )}
         </DialogContent>
         <DialogActions>
+          {totalSeguimientoPages > 1 && (
+            <Box display="flex" justifyContent="center" mt={2}>
+              <Button
+                onClick={() => setSeguimientoPage(p => Math.max(1, p - 1))}
+                disabled={seguimientoPage === 1}
+                sx={{ mr: 1 }}
+              >Anterior</Button>
+              {[...Array(totalSeguimientoPages)].map((_, i) => (
+                <Button
+                  key={i}
+                  variant={seguimientoPage === i + 1 ? 'contained' : 'outlined'}
+                  color="primary"
+                  size="small"
+                  onClick={() => setSeguimientoPage(i + 1)}
+                  sx={{ mx: 0.5, minWidth: 36 }}
+                >{i + 1}</Button>
+              ))}
+              <Button
+                onClick={() => setSeguimientoPage(p => Math.min(totalSeguimientoPages, p + 1))}
+                disabled={seguimientoPage === totalSeguimientoPages}
+                sx={{ ml: 1 }}
+              >Siguiente</Button>
+            </Box>
+          )}
           <Button onClick={handleCloseSeguimiento} variant="contained" color="primary" sx={{ borderRadius: 2, fontWeight: 600 }}>Cerrar</Button>
         </DialogActions>
       </Dialog>

@@ -8,16 +8,24 @@ import {
   Paper,
   Grid,
 } from '@mui/material';
+import { useUser } from '../../../../components/UserContext';
 
 const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
+  const { user } = useUser();
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
+  const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
     { name: 'tipo', label: 'Tipo', required: true },
     { name: 'cantidad', label: 'Cantidad', type: 'number', required: true },
     { name: 'gestion', label: 'Gestión', required: true },
     { name: 'ubicacion', label: 'Ubicación', required: true },
+    { name: 'registrado_por', label: 'Registrado por', readonly: true },
+    { name: 'validado_por', label: 'Validado por', readonly: true },
+    { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
   ];
 
   const validateForm = () => {
@@ -42,7 +50,9 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => 
         {isEditing ? 'Editar Mantenimiento' : 'Nuevo Registro'}
       </Typography>
       <Grid container spacing={2}>
-        {fieldLabels.map((field) => (
+        {fieldLabels.filter(field => 
+          isEditing || !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)
+        ).map((field) => (
           <Grid item xs={12} sm={6} key={field.name}>
             <TextField
               fullWidth
@@ -54,7 +64,12 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => 
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
-              disabled={isReadOnly}
+              disabled={
+                isReadOnly || 
+                (field.name === 'registrado_por') ||
+                (field.name === 'validado_por' && !canEditAuthFields) ||
+                (field.name === 'autorizado_por' && !canEditAuthFields)
+              }
             />
           </Grid>
         ))}

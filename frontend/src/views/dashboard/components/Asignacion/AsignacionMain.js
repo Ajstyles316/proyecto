@@ -73,6 +73,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
       fecha_liberacion: formData.fecha_liberacion ? new Date(formData.fecha_liberacion).toISOString().split('T')[0] : null,
       recorrido_km: Number(formData.recorrido_km) || 0,
       recorrido_entregado: Number(formData.recorrido_entregado) || 0,
+      ...(editingAsignacion ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
     try {

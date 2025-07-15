@@ -17,6 +17,9 @@ export const fieldLabels = {
     { name: 'nro_motor', label: 'Nro Motor' },
     { name: 'nro_chasis', label: 'Nro. Chasis' },
     { name: 'fecha_registro', label: 'Fecha Registro', type: 'date' },
+    { name: 'registrado_por', label: 'Registrado por', readonly: true },
+    { name: 'validado_por', label: 'Validado por', readonly: true },
+    { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
     { name: 'imagen', label: 'Imagen', type: 'file' },
   ],
   Control: [
