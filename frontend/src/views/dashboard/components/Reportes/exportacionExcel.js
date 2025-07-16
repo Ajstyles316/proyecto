@@ -1,63 +1,91 @@
 import * as XLSX from 'xlsx';
-import { maquinariaFields} from './fields';
+import { maquinariaFields } from './fields';
 import { formatDateOnly, cleanRow, formatHeader, formatCurrency, calcularDepreciacionAnual } from './exportHelpers';
 
-function exportXLS({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos }) {
-  const maqRows = maquinariaFields.map(f => [f.label, maquinaria[f.key] || 'No se encontraron datos']);
-  const maqSheet = XLSX.utils.aoa_to_sheet([
-    ['Campo', 'Valor'],
-    ...maqRows
-  ]);
-  function sectionSheet(title, data, fields = null, opts = {}) {
-    if (!data || data.length === 0) {
-      return XLSX.utils.aoa_to_sheet([[title], ['No se encontraron datos']]);
-    }
-    let rows = data.map(cleanRow);
-    let keys = fields ? fields.map(f => f.key).filter(k => !k.endsWith('_id') && k !== 'maquinaria' && k !== 'fecha_ingreso') : Object.keys(rows[0] || {});
-    // Excluir campos no deseados en todas las tablas relevantes
-    if ([
-      'control', 'asignación', 'asignacion', 'mantenimiento', 'soat', 'seguros', 'itv', 'impuestos',
-      'depreciacion', 'depreciación'
-    ].some(tabla => title.toLowerCase().includes(tabla))) {
-      keys = keys.filter(k => !['bien_uso', 'bien_de_uso', 'vida_util', 'costo_activo'].includes(k.toLowerCase()));
-    }
-    if (opts.skipDates) {
-      keys = keys.filter(k => !k.toLowerCase().includes('creacion') && !k.toLowerCase().includes('actualizacion'));
-    }
+function exportXLS(data, filename = 'reporte') {
+  const wb = XLSX.utils.book_new();
+
+  // Helper para crear hoja horizontal
+  function horizontalSheet(title, rows, fields = null) {
+    if (!rows || rows.length === 0) return null;
+    let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
     const header = fields ? fields.map(f => f.label) : keys.map(formatHeader);
-    const body = rows.map(r => keys.map(k => r[k] ?? 'No se encontraron datos'));
+    const body = rows.map(r => keys.map(k => r[k] ?? ''));
     return XLSX.utils.aoa_to_sheet([
-      [title],
       header,
       ...body
     ]);
   }
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('Control', control), 'Control');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('Asignación', asignacion), 'Asignación');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('Mantenimiento', mantenimiento), 'Mantenimiento');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('SOAT', soat), 'SOAT');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('Seguros', seguros), 'Seguros');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('ITV', itv), 'ITV');
-  XLSX.utils.book_append_sheet(wb, sectionSheet('Impuestos', impuestos), 'Impuestos');
-  // Depreciación anual
-  let depAnual = null;
-  if (depreciaciones && depreciaciones.length > 0 && depreciaciones[0].depreciacion_por_anio && Array.isArray(depreciaciones[0].depreciacion_por_anio) && depreciaciones[0].depreciacion_por_anio.length > 0) {
-    depAnual = depreciaciones[0].depreciacion_por_anio;
-  } else if (depreciaciones && depreciaciones.length > 0) {
-    // Fallback: calcular en frontend
-    const dep = depreciaciones[0];
-    depAnual = calcularDepreciacionAnual({
-      costo_activo: Number(dep.costo_activo) || 0,
-      vida_util: Number(dep.vida_util) || 1,
-      metodo: dep.metodo || dep.metodo_depreciacion || 'linea_recta',
-      fecha_compra: dep.fecha_compra || dep.fecha_registro,
-      valor_residual: Number(dep.valor_residual) || 0,
-      coeficiente: dep.coeficiente ? Number(dep.coeficiente) : null
-    });
+
+  // Maquinaria
+  if (data.maquinaria && data.maquinaria.length > 0) {
+    const maqSheet = horizontalSheet('Maquinaria', data.maquinaria, maquinariaFields);
+    if (maqSheet) XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
   }
-  if (depAnual && depAnual.length > 0) {
+
+  // Otras tablas
+  const tablas = [
+    { key: 'control', label: 'Control' },
+    { key: 'asignacion', label: 'Asignación' },
+    { key: 'mantenimiento', label: 'Mantenimiento' },
+    { key: 'soat', label: 'SOAT' },
+    { key: 'seguros', label: 'Seguros' },
+    { key: 'itv', label: 'ITV' },
+    { key: 'impuestos', label: 'Impuestos' },
+    { key: 'depreciaciones', label: 'Depreciación' },
+    { key: 'pronosticos', label: 'Pronóstico' },
+  ];
+  for (const t of tablas) {
+    if (data[t.key] && data[t.key].length > 0) {
+      // Solo incluir placa y detalle, más los campos propios de la tabla (excluyendo campos de maquinaria e IDs)
+      const allKeys = Array.from(
+        data[t.key].reduce((set, row) => {
+          Object.keys(row).forEach(k => {
+            if (
+              k === 'placa' ||
+              k === 'detalle' ||
+              (k !== 'id' &&
+                k !== '_id' &&
+                k !== 'maquinaria' &&
+                k !== 'maquinaria_id' &&
+                k !== 'bien_de_uso' &&
+                k !== 'bien_uso' &&
+                k !== 'vida_util' &&
+                k !== 'costo_activo' &&
+                k !== 'unidad' &&
+                k !== 'codigo' &&
+                k !== 'tipo' &&
+                k !== 'marca' &&
+                k !== 'modelo' &&
+                k !== 'color' &&
+                k !== 'nro_motor' &&
+                k !== 'nro_chasis' &&
+                k !== 'gestion' &&
+                k !== 'adqui')
+            ) {
+              set.add(k);
+            }
+          });
+          return set;
+        }, new Set())
+      );
+      // Asegurar que placa y detalle estén al inicio
+      let keys = allKeys;
+      if (keys.includes('placa')) keys = ['placa', ...keys.filter(k => k !== 'placa')];
+      if (keys.includes('detalle')) keys = ['detalle', ...keys.filter(k => k !== 'detalle')];
+      const header = keys.map(formatHeader);
+      const body = data[t.key].map(r => keys.map(k => r[k] ?? ''));
+      const sheet = XLSX.utils.aoa_to_sheet([
+        header,
+        ...body
+      ]);
+      XLSX.utils.book_append_sheet(wb, sheet, t.label);
+    }
+  }
+
+  // Depreciación anual (si existe y no está vacía)
+  if (data.depreciaciones && data.depreciaciones.length > 0 && data.depreciaciones[0].depreciacion_por_anio && Array.isArray(data.depreciaciones[0].depreciacion_por_anio) && data.depreciaciones[0].depreciacion_por_anio.length > 0) {
+    const depAnual = data.depreciaciones[0].depreciacion_por_anio;
     const depSheet = XLSX.utils.aoa_to_sheet([
       ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'],
       ...depAnual.map(row => [
@@ -68,56 +96,9 @@ function exportXLS({ maquinaria, depreciaciones, pronosticos, control, asignacio
       ])
     ]);
     XLSX.utils.book_append_sheet(wb, depSheet, 'Depreciación Anual');
-  } else {
-    const depSheet = XLSX.utils.aoa_to_sheet([
-      ['Depreciación Anual'],
-      ['No se encontraron datos']
-    ]);
-    XLSX.utils.book_append_sheet(wb, depSheet, 'Depreciación Anual');
   }
-  // Pronósticos
-  const pronosticosSinFecha = pronosticos.map(p => {
-    const { fecha_creacion, creado_en, ...rest } = p;
-    return rest;
-  });
-  function pronosticoSheet(title, data) {
-    if (!data || data.length === 0) {
-      return XLSX.utils.aoa_to_sheet([[title], ['No se encontraron datos']]);
-    }
-    const cleanedData = data.map(item => {
-      const cleaned = {};
-      Object.entries(item).forEach(([key, value]) => {
-        if (key === 'fecha_creacion' || key === 'creado_en') return;
-        if (key === 'id' || key === '_id' || key.endsWith('_id')) return;
-        if (key === 'recomendaciones') {
-          if (Array.isArray(value)) {
-            cleaned[key] = value.slice(0, 3).map(rec => `- ${rec}`).join('\n');
-          } else if (typeof value === 'string') {
-            cleaned[key] = value.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
-          } else {
-            cleaned[key] = '-';
-          }
-        } else if (key.toLowerCase().includes('fecha') && value) {
-          cleaned[key] = formatDateOnly(value);
-        } else {
-          cleaned[key] = value || '-';
-        }
-      });
-      return cleaned;
-    });
-    let keys = Object.keys(cleanedData[0] || {});
-    keys = keys.filter(k => k !== 'id' && k !== '_id' && !k.endsWith('_id'));
-    const header = keys.map(formatHeader);
-    const body = cleanedData.map(r => keys.map(k => r[k]));
-    return XLSX.utils.aoa_to_sheet([
-      [title],
-      header,
-      ...body
-    ]);
-  }
-  XLSX.utils.book_append_sheet(wb, pronosticoSheet('Pronósticos', pronosticosSinFecha), 'Pronósticos');
-  const filename = `reporte_${maquinaria.placa || maquinaria.codigo || 'maquinaria'}.xlsx`;
-  XLSX.writeFile(wb, filename);
+
+  XLSX.writeFile(wb, `${filename}.xlsx`);
 }
 
 export default exportXLS; 

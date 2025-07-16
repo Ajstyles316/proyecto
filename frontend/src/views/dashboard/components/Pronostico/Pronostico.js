@@ -142,8 +142,8 @@ const Pronostico = () => {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           openModal={canEdit ? (maq) => {
-            setSelectedMaquinaria(maq);
-            setModalOpen(true);
+              setSelectedMaquinaria(maq);
+              setModalOpen(true);
           } : () => {}}
           isReadOnly={!canEdit}
         />

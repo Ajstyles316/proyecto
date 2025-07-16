@@ -14,9 +14,6 @@ class HistorialControlSerializer(serializers.Serializer):
     estado = serializers.CharField(max_length=100, allow_blank=True, required=False)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
 
     def validate_maquinaria(self, value):
         try:
@@ -42,9 +39,6 @@ class ActaAsignacionSerializer(serializers.Serializer):
     encargado = serializers.CharField(max_length=100, allow_blank=True, required=False)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
 
     def validate_maquinaria(self, value):
         try:
@@ -75,9 +69,6 @@ class MantenimientoSerializer(serializers.Serializer):
     cantidad = serializers.IntegerField(allow_null=True)  # Nuevo campo
     gestion = serializers.CharField(max_length=100)
     ubicacion = serializers.CharField(max_length=200)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
 
     def validate_maquinaria(self, value):
         try:
@@ -91,9 +82,6 @@ class SeguroSerializer(serializers.Serializer):
     numero_2024 = serializers.IntegerField(required=False)  # Nuevo nombre
     importe = serializers.FloatField(allow_null=True, required=False)
     detalle = serializers.CharField(max_length=200, allow_blank=True, required=False)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
 
     def validate_maquinaria(self, value):
         try:
@@ -106,9 +94,6 @@ class ITVSerializer(serializers.Serializer):
     maquinaria = serializers.CharField(write_only=True, required=True)
     detalle = serializers.CharField(max_length=200, allow_blank=True, required=False)
     importe = serializers.FloatField(allow_null=True, required=False)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
 
     def validate_maquinaria(self, value):
         try:
@@ -121,9 +106,6 @@ class SOATSerializer(serializers.Serializer):
     maquinaria = serializers.CharField(write_only=True, required=True)
     importe_2024 = serializers.FloatField(required=True)
     importe_2025 = serializers.FloatField(required=True)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
     def validate_maquinaria(self, value):
         try:
             return ObjectId(value)
@@ -135,9 +117,6 @@ class ImpuestoSerializer(serializers.Serializer):
     maquinaria = serializers.CharField(write_only=True, required=True)
     importe_2023 = serializers.FloatField(required=True)
     importe_2024 = serializers.FloatField(required=True)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
 
     def validate_maquinaria(self, value):
         try:
@@ -165,9 +144,6 @@ class MaquinariaSerializer(serializers.Serializer):
     nro_chasis = serializers.CharField(max_length=50, allow_blank=True, required=False)
     fecha_registro = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
     imagen = serializers.CharField(allow_blank=True, required=False)
-    registrado_por = serializers.CharField(allow_blank=True, required=False)
-    validado_por = serializers.CharField(allow_blank=True, required=False)
-    autorizado_por = serializers.CharField(allow_blank=True, required=False)
     
     def validate_fecha_registro(self, value):
         if isinstance(value, str):

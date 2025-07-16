@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@date-io/date-fns": "^3.2.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@mdi/js": "^7.4.47",
@@ -20,10 +21,12 @@
     "@mui/material": "6.4.7",
     "@mui/system": "^6.4.3",
     "@mui/x-data-grid": "^8.5.3",
+    "@mui/x-date-pickers": "^8.8.0",
     "@svgr/rollup": "^8.1.0",
     "@tabler/icons-react": "^2.35.0",
     "apexcharts": "^4.4.0",
     "chart.js": "^4.4.9",
+    "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
