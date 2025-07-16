@@ -344,4 +344,100 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   doc.save(`reporte_${maquinaria.placa || maquinaria.codigo || 'maquinaria'}.pdf`);
 }
 
-export default exportPDF; 
+// NUEVA FUNCIÓN PARA EXPORTACIÓN MASIVA HORIZONTAL
+function exportPDFMasivo(data, filename = 'reporte') {
+  const doc = new jsPDF({ orientation: 'landscape' });
+  let page = 0;
+
+  // Helper para crear tabla horizontal
+  function addTable(title, rows, fields = null, tablaKey = '') {
+    if (!rows || rows.length === 0) return;
+    if (page > 0) doc.addPage();
+    page++;
+    doc.setFontSize(13);
+    doc.setTextColor(30, 77, 183);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 14, 18);
+    let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
+    // Para tablas que no son maquinaria, omitir ids y mostrar placa/detalle
+    if (tablaKey && tablaKey !== 'maquinaria') {
+      keys = keys.filter(k =>
+        k === 'placa' ||
+        k === 'detalle' ||
+        (k !== 'id' &&
+          k !== '_id' &&
+          k !== 'maquinaria' &&
+          k !== 'maquinaria_id' &&
+          k !== 'bien_de_uso' &&
+          k !== 'bien_uso' &&
+          k !== 'vida_util' &&
+          k !== 'costo_activo' &&
+          k !== 'unidad' &&
+          k !== 'codigo' &&
+          k !== 'tipo' &&
+          k !== 'marca' &&
+          k !== 'modelo' &&
+          k !== 'color' &&
+          k !== 'nro_motor' &&
+          k !== 'nro_chasis' &&
+          k !== 'gestion' &&
+          k !== 'adqui')
+      );
+      // Asegurar que placa y detalle estén presentes y al inicio
+      if (keys.includes('placa')) {
+        keys = ['placa', ...keys.filter(k => k !== 'placa')];
+      }
+      if (keys.includes('detalle')) {
+        keys = ['detalle', ...keys.filter(k => k !== 'detalle')];
+      }
+    }
+    const header = fields ? fields.map(f => f.label) : keys.map(formatHeader);
+    const body = rows.map(r => keys.map(k => r[k] ?? ''));
+    autoTable(doc, {
+      startY: 24,
+      head: [header],
+      body,
+      styles: { fontSize: 8, cellPadding: 1 },
+      headStyles: { fillColor: [30, 77, 183], textColor: 255 },
+      bodyStyles: { textColor: 33 },
+      margin: { left: 10, right: 10 },
+      tableLineColor: [30, 77, 183],
+      tableLineWidth: 0.2,
+      pageBreak: 'auto',
+      theme: 'grid',
+      didDrawCell: (data) => {
+        if (data.section === 'head' && data.cell.width < 30) {
+          data.cell.width = 30;
+        }
+      },
+    });
+  }
+
+  // Maquinaria
+  if (data.maquinaria && data.maquinaria.length > 0) {
+    addTable('Maquinaria', data.maquinaria, maquinariaFields, 'maquinaria');
+  }
+
+  // Otras tablas
+  const tablas = [
+    { key: 'control', label: 'Control' },
+    { key: 'asignacion', label: 'Asignación' },
+    { key: 'mantenimiento', label: 'Mantenimiento' },
+    { key: 'soat', label: 'SOAT' },
+    { key: 'seguros', label: 'Seguros' },
+    { key: 'itv', label: 'ITV' },
+    { key: 'impuestos', label: 'Impuestos' },
+    { key: 'depreciaciones', label: 'Depreciación' },
+    { key: 'pronosticos', label: 'Pronóstico' },
+  ];
+  for (const t of tablas) {
+    if (data[t.key] && data[t.key].length > 0) {
+      addTable(t.label, data[t.key], null, t.key);
+    }
+  }
+
+  doc.save(`${filename}.pdf`);
+}
+
+export default exportPDF;
+export { exportPDFMasivo }; 

@@ -54,7 +54,7 @@ const getUsuarioLabel = (email, usuarios) => {
 const getAccionChip = (accion) => {
   // Acciones legibles
   const map = {
-    login: { label: 'Login', color: 'info' },
+    login: { label: 'Inicio de sesión', color: 'info' },
     crear_maquinaria: { label: 'Crear Maquinaria', color: 'success' },
     editar_maquinaria: { label: 'Editar Maquinaria', color: 'default' },
     eliminar_maquinaria: { label: 'Eliminar Maquinaria', color: 'error' },

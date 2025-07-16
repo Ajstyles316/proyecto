@@ -4,6 +4,7 @@ import DashboardCard from 'src/components/shared/DashboardCard';
 import BusquedaForm from './BusquedaForm';
 import TablaGenerica from './TablaGenerica';
 import TablaGenericaAvanzada from './TablaGenerica.jsx';
+import ExportarReportes from './ExportarReportes';
 import {
   fetchMaquinarias,
   fetchDepreciaciones,
@@ -19,7 +20,7 @@ import {
 import { maquinariaFields, depFields, proFields } from './fields';
 import exportPDF from './exportacionPDF';
 import exportXLS from './exportacionExcel';
-import { CircularProgress, Typography, Box } from '@mui/material';
+import { CircularProgress, Typography, Box, Stack } from '@mui/material';
 
 const ReportesMain = () => {
   const [maquinaria, setMaquinaria] = useState(null);
@@ -102,14 +103,20 @@ const ReportesMain = () => {
 
   return (
     <PageContainer title="Reportes" description="Busca una maquinaria por placa, código o detalle y exporta sus datos">
-      <DashboardCard title="Reportes">
-        <BusquedaForm
-          onBuscar={handleBuscar}
-          onExportPDF={() => exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
-          onExportXLS={() => exportXLS({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
-          maquinaria={maquinaria}
-          loading={loading}
-        />
+      <DashboardCard>
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+          <Typography variant="h5" fontWeight={600}>Reportes</Typography>
+        </Box>
+        <Box display="flex" justifyContent="flex-end" mb={2}>
+          <BusquedaForm
+            onBuscar={handleBuscar}
+            onExportPDF={() => exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
+            onExportXLS={() => exportXLS({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
+            maquinaria={maquinaria}
+            loading={loading}
+          />
+        </Box>
+        <ExportarReportes />
         {loading && <Box p={3} textAlign="center"><CircularProgress /></Box>}
         {error && <Typography color="error" mb={2}>{error}</Typography>}
         {maquinaria && (

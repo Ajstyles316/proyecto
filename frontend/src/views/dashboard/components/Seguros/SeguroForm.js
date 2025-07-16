@@ -66,7 +66,7 @@ const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
         {isEditing ? 'Editar Seguro' : 'Nuevo Seguro'}
       </Typography>
       <form onSubmit={handleSubmit}>
-                <Grid container spacing={2}>
+        <Grid container spacing={2}>
           {fieldLabels.filter(field => 
             isEditing || !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)
           ).map((field) => (
