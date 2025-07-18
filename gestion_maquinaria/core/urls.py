@@ -17,6 +17,7 @@ from .views import (
     MaquinariaConDepreciacionBuscarView,
     UsuarioPermisosUpdateView,  # <-- importar la nueva vista
     SeguimientoListView,  # <-- importar la nueva vista
+    UsuarioUpdateView,  # <-- importar la vista para /usuarios/me/
 )
 
 router = DefaultRouter()
@@ -30,6 +31,7 @@ urlpatterns = [
     path('pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
     path('usuarios/', UsuarioListView.as_view(), name='usuarios-list'),
     path('sugerir_bien_uso/', sugerir_bien_uso, name='sugerir_bien_uso'),
+    path('usuarios/me/', UsuarioUpdateView.as_view(), name='usuario-self-update'),
     path('usuarios/<str:id>/cargo/', UsuarioCargoUpdateView.as_view(), name='usuario-cargo-update'),
     path('usuarios/<str:id>/permiso/', UsuarioPermisoUpdateView.as_view(), name='usuario-permiso-update'),
     path('usuarios/<str:id>/permisos/', UsuarioPermisosUpdateView.as_view(), name='usuario-permisos-update'),

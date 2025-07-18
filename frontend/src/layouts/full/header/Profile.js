@@ -12,13 +12,15 @@ import {
   Divider
 } from '@mui/material';
 
-import { IconMail, IconUser } from '@tabler/icons-react';
+import { IconUser } from '@tabler/icons-react';
 
-import ProfileImg from 'src/assets/images/profile/user-1.jpg';
+import DefaultAvatar from 'src/assets/images/profile/image.png';
+import { useUser } from 'src/components/UserContext';
 
 const Profile = () => {
   const [anchorEl2, setAnchorEl2] = useState(null);
   const navigate = useNavigate();
+  const { user } = useUser();
 
   const handleClick2 = (event) => {
     setAnchorEl2(event.currentTarget);
@@ -49,8 +51,8 @@ const Profile = () => {
         onClick={handleClick2}
       >
         <Avatar
-          src={ProfileImg}
-          alt={ProfileImg}
+          src={user?.imagen || DefaultAvatar}
+          alt={user?.Nombre || 'Usuario'}
           sx={{
             width: 35,
             height: 35,
@@ -74,17 +76,11 @@ const Profile = () => {
           },
         }}
       >
-        <MenuItem component={Link} to="/profile">
+        <MenuItem component={Link} to="/perfil">
           <ListItemIcon>
             <IconUser width={20} color='black' />
           </ListItemIcon>
           <ListItemText>Mi Perfil</ListItemText>
-        </MenuItem>
-        <MenuItem component={Link} to="/account">
-          <ListItemIcon>
-            <IconMail width={20} color='black'/>
-          </ListItemIcon>
-          <ListItemText>Mi Cuenta</ListItemText>
         </MenuItem>
         <Box mt={1} py={1} px={2}>
           <Button onClick={handleLogout} variant="outlined" color="primary" fullWidth>

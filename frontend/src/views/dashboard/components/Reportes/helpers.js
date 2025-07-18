@@ -29,3 +29,9 @@ export function cleanRow(row) {
 export function formatHeader(key) {
   return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
+
+export function formatMethod(method) {
+  if (!method) return '-';
+  // Capitaliza y reemplaza guiones bajos por espacios
+  return method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
