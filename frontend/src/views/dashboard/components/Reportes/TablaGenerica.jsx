@@ -3,13 +3,6 @@ import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead
 import { formatDateOnly } from './helpers';
 import { formatMethod } from './helpers';
 
-function capitalizeMethod(str) {
-  if (!str) return '';
-  // Corrige específicamente 'linea_recta' a 'Línea Recta'
-  if (str.toLowerCase() === 'linea_recta') return 'Línea Recta';
-  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
 const TablaGenericaAvanzada = ({
   title,
   data,
@@ -76,11 +69,11 @@ const TablaGenericaAvanzada = ({
 TablaGenericaAvanzada.propTypes = {
   title: PropTypes.string,
   data: PropTypes.array.isRequired,
-  fields: PropTypes.array, // [{key, label}]
+  fields: PropTypes.array, 
   emptyMessage: PropTypes.string,
   customCellRender: PropTypes.func,
-  ocultarCampos: PropTypes.array, // Ej: ['bien_de_uso', 'vida_util']
-  reemplazos: PropTypes.object,   // Ej: {'Numero 2024': 'N° 2024', 'Ubicacion': 'Ubicación'}
+  ocultarCampos: PropTypes.array, 
+  reemplazos: PropTypes.object,  
 };
 
 export default TablaGenericaAvanzada;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Button, Grid, Checkbox, FormControlLabel, FormGroup, FormControl, FormLabel, TextField, MenuItem, Typography, Modal } from '@mui/material';
 import exportXLS from './exportacionExcel';
 import exportPDF, { exportPDFMasivo } from './exportacionPDF';
