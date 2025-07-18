@@ -74,6 +74,7 @@ const getAccionChip = (accion) => {
     cambio_permisos: { label: 'Cambio de permisos', color: 'warning', icon: <SecurityIcon /> },
     registro_usuario: { label: 'Registro de usuario', color: 'success', icon: <PersonAddIcon /> },
     eliminar_usuario: { label: 'Eliminación de usuario', color: 'error', icon: <DeleteIcon /> },
+    editar_perfil: { label: 'Editar Perfil', color: 'default' },
   };
   const found = map[accion?.toLowerCase()];
   if (found) {
@@ -517,9 +518,9 @@ const UserManagement = () => {
                           {typeof row.mensaje === 'object' && row.mensaje !== null
                             ? (row.accion === 'cambio_permisos' && row.mensaje.usuario_afectado_email
                                 ? `Usuario: ${row.mensaje.usuario_afectado_nombre || ''} (${row.mensaje.usuario_afectado_email || ''})\nCargo: ${row.mensaje.usuario_afectado_cargo || ''}\nUnidad: ${row.mensaje.usuario_afectado_unidad || ''}`
-                                : Object.entries(row.mensaje).map(([k, v]) => `${k}: ${v}`).join('\n')
+                                : Object.entries(row.mensaje).map(([k, v]) => `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`).join('\n')
                               )
-                            : (row.mensaje || '-')}
+                            : (capitalizeWords(row.mensaje) || '-')}
                         </Box>
                       </TableCell>
                     </TableRow>
