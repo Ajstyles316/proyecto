@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { formatDateOnly } from './helpers';
+import { formatMethod } from './helpers';
 
 function capitalizeMethod(str) {
   if (!str) return '';
@@ -55,12 +56,12 @@ const TablaGenericaAvanzada = ({
                     {customCellRender
                       ? customCellRender(k, row[k], row)
                       : Array.isArray(row[k])
-                        ? row[k].join('; ')
+                        ? row[k].map(v => typeof v === 'string' ? formatMethod(v) : v).join('; ')
                         : (k.toLowerCase().includes('fecha') && row[k])
                           ? formatDateOnly(row[k])
                           : (k.toLowerCase() === 'método' || k.toLowerCase() === 'metodo')
-                            ? capitalizeMethod(row[k])
-                            : (row[k] === 'linea_recta' ? 'Línea Recta' : (row[k] ?? '-'))}
+                            ? formatMethod(row[k])
+                            : (typeof row[k] === 'string' ? formatMethod(row[k]) : (row[k] === 'linea_recta' ? 'Línea Recta' : (row[k] ?? '-')))}
                   </TableCell>
                 ))}
               </TableRow>

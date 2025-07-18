@@ -1,8 +1,20 @@
 export function formatDateOnly(dateStr) {
   if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr.split('T')[0];
-  return d.toLocaleDateString('es-BO');
+  if (typeof dateStr === 'string') {
+    if (dateStr.includes('T')) return dateStr.split('T')[0];
+    // Si es string pero no es fecha ISO, intentar parsear
+    const d = new Date(dateStr);
+    if (!isNaN(d)) return d.toLocaleDateString('es-BO');
+    return dateStr;
+  }
+  if (dateStr instanceof Date && !isNaN(dateStr)) {
+    return dateStr.toLocaleDateString('es-BO');
+  }
+  // Si es un objeto tipo { $date: ... }
+  if (typeof dateStr === 'object' && dateStr.$date) {
+    return dateStr.$date.split('T')[0];
+  }
+  return '-';
 }
 
 export function cleanRow(row, section = '') {

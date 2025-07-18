@@ -18,9 +18,38 @@ function exportXLS(data, filename = 'reporte') {
   }
 
   // Maquinaria
-  if (data.maquinaria && data.maquinaria.length > 0) {
-    const maqSheet = horizontalSheet('Maquinaria', data.maquinaria, maquinariaFields);
-    if (maqSheet) XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
+  if (data.maquinaria && Array.isArray(data.maquinaria) && data.maquinaria.length > 0) {
+    if (data.maquinaria.length === 1) {
+      // Hoja vertical tipo ficha para una sola maquinaria
+      const maq = data.maquinaria[0];
+      const ficha = maquinariaFields.map(f => [f.label, maq[f.key] ?? '']);
+      const fichaSheet = XLSX.utils.aoa_to_sheet([
+        ['Campo', 'Valor'],
+        ...ficha
+      ]);
+      XLSX.utils.book_append_sheet(wb, fichaSheet, 'Datos de la Maquinaria');
+    } else {
+      // Capitalizar método y otros campos string para varias maquinarias
+      const maquis = data.maquinaria.map(row => {
+        const obj = { ...row };
+        Object.keys(obj).forEach(k => {
+          if ((k === 'metodo' || k === 'método') && typeof obj[k] === 'string') {
+            obj[k] = (obj[k].toLowerCase() === 'linea_recta') ? 'Línea Recta' : obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          } else if (typeof obj[k] === 'string') {
+            obj[k] = obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          }
+        });
+        return obj;
+      });
+      const maqSheet = horizontalSheet('Maquinaria', maquis, maquinariaFields);
+      if (maqSheet) XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
+    }
+  } else if (!data.maquinaria || (Array.isArray(data.maquinaria) && data.maquinaria.length === 0)) {
+    // Solo si realmente no hay datos, agrega la hoja vacía
+    const maqSheet = XLSX.utils.aoa_to_sheet([
+      ['No hay datos de maquinaria para exportar']
+    ]);
+    XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
   }
 
   // Otras tablas

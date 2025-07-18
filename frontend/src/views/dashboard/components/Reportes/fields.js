@@ -16,7 +16,6 @@ export const maquinariaFields = [
 export const depFields = [
   { key: 'costo_activo', label: 'Costo activo' },
   { key: 'fecha_compra', label: 'Fecha compra' },
-  { key: 'metodo', label: 'Método' },
   { key: 'vida_util', label: 'Vida útil' },
   { key: 'bien_uso', label: 'Bien de Uso' },
 ];
