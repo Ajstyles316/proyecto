@@ -20,7 +20,7 @@ import {
 import { maquinariaFields, depFields, proFields } from './fields';
 import exportPDF from './exportacionPDF';
 import exportXLS from './exportacionExcel';
-import { CircularProgress, Typography, Box, Stack } from '@mui/material';
+import { CircularProgress, Typography, Box} from '@mui/material';
 
 const ReportesMain = () => {
   const [maquinaria, setMaquinaria] = useState(null);

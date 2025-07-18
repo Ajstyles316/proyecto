@@ -1,5 +1,13 @@
 import PropTypes from 'prop-types';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { formatDateOnly } from './helpers';
+
+function capitalizeMethod(str) {
+  if (!str) return '';
+  // Corrige específicamente 'linea_recta' a 'Línea Recta'
+  if (str.toLowerCase() === 'linea_recta') return 'Línea Recta';
+  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
 
 const TablaGenericaAvanzada = ({
   title,
@@ -48,7 +56,11 @@ const TablaGenericaAvanzada = ({
                       ? customCellRender(k, row[k], row)
                       : Array.isArray(row[k])
                         ? row[k].join('; ')
-                        : (row[k] ?? '-')}
+                        : (k.toLowerCase().includes('fecha') && row[k])
+                          ? formatDateOnly(row[k])
+                          : (k.toLowerCase() === 'método' || k.toLowerCase() === 'metodo')
+                            ? capitalizeMethod(row[k])
+                            : (row[k] === 'linea_recta' ? 'Línea Recta' : (row[k] ?? '-'))}
                   </TableCell>
                 ))}
               </TableRow>

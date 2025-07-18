@@ -120,6 +120,10 @@ class MaquinariaListView(APIView):
                     validated_data['fecha_registro'] = datetime.combine(validated_data['fecha_registro'], datetime.min.time())
                 if 'imagen' in data:
                     validated_data['imagen'] = data['imagen']
+                # Agregar el campo registrado_por con el nombre del usuario
+                actor_email = request.headers.get('X-User-Email')
+                user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+                validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
                 validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
                 result = maquinaria_collection.insert_one(validated_data)
                 new_maquinaria = maquinaria_collection.find_one({"_id": result.inserted_id})
@@ -228,6 +232,9 @@ class MaquinariaDetailView(APIView):
             if 'imagen' in request.data:
                 validated_data['imagen'] = request.data['imagen']
                 logger.info(f"Imagen incluida en la actualización: {len(request.data['imagen'])} caracteres")
+
+            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             # Actualizar en MongoDB
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
@@ -541,6 +548,7 @@ class HistorialControlListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
@@ -605,15 +613,13 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
-
-            # Convertir fechas a datetime
-            validated_data = self.convert_date_to_datetime(validated_data)
 
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
@@ -701,6 +707,7 @@ class ActaAsignacionListView(BaseSectionAPIView):
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
@@ -784,6 +791,7 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
@@ -866,6 +874,7 @@ class MantenimientoListView(BaseSectionAPIView):
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
@@ -933,6 +942,7 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
@@ -1013,6 +1023,7 @@ class SeguroListView(BaseSectionAPIView):
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
@@ -1080,6 +1091,7 @@ class SeguroDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
@@ -1160,6 +1172,7 @@ class ITVListView(BaseSectionAPIView):
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
@@ -1227,6 +1240,7 @@ class ITVDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
@@ -1307,6 +1321,7 @@ class SOATListView(BaseSectionAPIView):
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
@@ -1374,6 +1389,7 @@ class SOATDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
@@ -1440,6 +1456,7 @@ class ImpuestoListView(BaseSectionAPIView):
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
@@ -1507,6 +1524,7 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
@@ -1700,6 +1718,7 @@ class DepreciacionesDetailView(APIView):
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
         serializer = DepreciacionSerializer(existing_record, data=data, partial=True)
+        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         if serializer.is_valid():
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
@@ -2354,3 +2373,45 @@ class SeguimientoListView(APIView):
         seguimiento_col = get_collection(Seguimiento)
         registros = list(seguimiento_col.find({}, {'_id': 0}).sort('fecha_hora', -1))
         return Response(registros, status=status.HTTP_200_OK)
+
+class UsuarioUpdateView(APIView):
+    def put(self, request):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not user:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        data = request.data.copy()
+        update_fields = {}
+        # Solo permitir actualizar ciertos campos
+        for field in ["Nombre", "Unidad", "Email", "Cargo", "imagen"]:
+            if field in data:
+                if field == "imagen" and (data[field] == '' or data[field] is None):
+                    # Eliminar el campo imagen si llega vacío
+                    update_fields["imagen"] = None  # Marcador para eliminar luego
+                elif data[field]:
+                    update_fields[field] = data[field]
+        # Cambio de contraseña
+        if "Password" in data and data["Password"]:
+            import bcrypt
+            hashed = bcrypt.hashpw(data["Password"].encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            update_fields["Password"] = hashed
+        if not update_fields:
+            return Response({'error': 'No hay datos para actualizar'}, status=status.HTTP_400_BAD_REQUEST)
+        # Eliminar campo imagen si corresponde
+        if "imagen" in update_fields and update_fields["imagen"] is None:
+            collection.update_one({'_id': user['_id']}, {'$unset': {'imagen': ""}})
+            update_fields.pop("imagen")
+        if update_fields:
+            result = collection.update_one({'_id': user['_id']}, {'$set': update_fields})
+            if result.matched_count == 0:
+                return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        usuario_actualizado = collection.find_one({'_id': user['_id']})
+        # Registrar actividad
+        try:
+            registrar_actividad(email, "editar_perfil", "Usuarios", f"Actualizó sus datos de perfil", {k: update_fields[k] for k in update_fields if k != 'Password'})
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de edición de perfil: {str(e)}")
+        return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)

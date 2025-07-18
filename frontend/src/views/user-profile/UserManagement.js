@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '../../components/UserContext';
-import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, FormControlLabel, Radio, RadioGroup, Chip, Tooltip } from '@mui/material';
+import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import HistoryIcon from '@mui/icons-material/History';
 import CircularProgress from '@mui/material/CircularProgress';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
-import { useTheme } from '@mui/material/styles';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 const cargos = ["Encargado", "Tecnico"];
-const permisos = ["Editor", "Lector", "Denegado"];
-
 const MODULOS = [
   'Dashboard',
   'Maquinaria',
@@ -28,13 +25,6 @@ const MODULOS = [
   'Pronóstico',
   'Reportes'
 ];
-const ACCIONES = ['ver', 'editar', 'eliminar'];
-
-const defaultPermisos = {};
-MODULOS.forEach(mod => {
-  defaultPermisos[mod] = { ver: false, editar: false, eliminar: false };
-});
-
 const MODULOS_SEGUIMIENTO = [
   'Usuarios',
   'Autenticación',
@@ -45,12 +35,6 @@ const MODULOS_SEGUIMIENTO = [
 ];
 
 // Helper para mostrar usuario bonito
-const getUsuarioLabel = (email, usuarios) => {
-  const u = usuarios.find(x => x.email === email);
-  if (u) return `${u.nombre} (${u.email})${u.cargo ? ' - ' + u.cargo : ''}${u.unidad ? ', ' + u.unidad : ''}`;
-  return email || '-';
-};
-// Helper para resaltar acciones
 const getAccionChip = (accion) => {
   // Acciones legibles
   const map = {
@@ -98,21 +82,16 @@ const getAccionChip = (accion) => {
   return <Chip label={accion} size="small" sx={{ fontWeight: 600, bgcolor: '#e0e0e0', textTransform: 'capitalize', letterSpacing: 0.2 }} />;
 };
 
-// Helper para mostrar solo el nombre del usuario
-const getUsuarioNombre = (email, usuarios) => {
-  const u = usuarios.find(x => x.email === email);
-  return u ? u.nombre : (email || '-');
-};
+function capitalizeWords(str) {
+  if (!str) return '';
+  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
 
 const UserManagement = () => {
   const { user } = useUser();
   const [usuarios, setUsuarios] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [modalPermisos, setModalPermisos] = useState({ open: false, usuario: null, permisos: defaultPermisos });
-  const theme = useTheme();
-
-  // Estado para usuarios registrados (para filtro de auditoría)
+  const [modalPermisos, setModalPermisos] = useState({ open: false, usuario: null, permisos: {} });
   const [usuariosRegistrados, setUsuariosRegistrados] = useState([]);
 
   // Auditoría
@@ -124,7 +103,6 @@ const UserManagement = () => {
 
   // Filtros únicos para selects
   const seguimientoUsuarios = usuariosRegistrados.map(u => ({ nombre: u.Nombre, email: u.Email, cargo: u.Cargo, unidad: u.Unidad }));
-  const seguimientoModulos = Array.from(new Set(seguimientoData.map(a => a.modulo).filter(Boolean)));
 
   // Filtrado de auditoría
   const filteredSeguimiento = seguimientoData.filter(row => {
@@ -151,11 +129,9 @@ const UserManagement = () => {
       .then(res => res.json())
       .then(data => {
         setUsuarios(data);
-        setLoading(false);
       })
       .catch(() => {
         setSnackbar({ open: true, message: 'Error al cargar usuarios', severity: 'error' });
-        setLoading(false);
       });
   }, [user]);
 
@@ -174,23 +150,6 @@ const UserManagement = () => {
         setSnackbar({ open: true, message: 'Cargo actualizado', severity: 'success' });
       })
       .catch(() => setSnackbar({ open: true, message: 'Error al actualizar cargo', severity: 'error' }));
-  };
-
-  const handlePermisoChange = (id, newPermiso) => {
-    fetch(`http://localhost:8000/api/usuarios/${id}/permiso/`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Email': user.Email
-      },
-      body: JSON.stringify({ Permiso: newPermiso })
-    })
-      .then(res => res.json())
-      .then(data => {
-        setUsuarios(usuarios => usuarios.map(u => (u._id?.$oid || u._id) === id ? data : u));
-        setSnackbar({ open: true, message: 'Permiso actualizado', severity: 'success' });
-      })
-      .catch(() => setSnackbar({ open: true, message: 'Error al actualizar permiso', severity: 'error' }));
   };
 
   const handleEliminarUsuario = (id) => {
@@ -215,59 +174,14 @@ const UserManagement = () => {
     setModalPermisos({
       open: true,
       usuario,
-      permisos: { ...defaultPermisos, ...usuario.permisos },
+      permisos: { ...{}, ...usuario.permisos },
     });
   };
-  const handleClosePermisos = () => setModalPermisos({ open: false, usuario: null, permisos: defaultPermisos });
-  const handlePermisoSwitch = (modulo, accion) => (e) => {
-    setModalPermisos((prev) => {
-      // Si se activa eliminar, denegar todo (ver y editar en false, eliminar en true)
-      if (accion === 'eliminar' && e.target.checked) {
-        return {
-          ...prev,
-          permisos: {
-            ...prev.permisos,
-            [modulo]: { ver: false, editar: false, eliminar: true },
-          },
-        };
-      }
-      // Si se desactiva eliminar, restaurar switches a lo que estaban (no forzar nada)
-      if (accion === 'eliminar' && !e.target.checked) {
-        return {
-          ...prev,
-          permisos: {
-            ...prev.permisos,
-            [modulo]: { ...prev.permisos[modulo], eliminar: false },
-          },
-        };
-      }
-      // Si se activa ver o editar, desactiva eliminar si estaba activo
-      if ((accion === 'ver' || accion === 'editar') && e.target.checked && prev.permisos[modulo].eliminar) {
-        return {
-          ...prev,
-          permisos: {
-            ...prev.permisos,
-            [modulo]: { ...prev.permisos[modulo], [accion]: true, eliminar: false },
-          },
-        };
-      }
-      // Cambio normal
-      return {
-        ...prev,
-        permisos: {
-          ...prev.permisos,
-          [modulo]: {
-            ...prev.permisos[modulo],
-            [accion]: e.target.checked,
-          },
-        },
-      };
-    });
-  };
+  const handleClosePermisos = () => setModalPermisos({ open: false, usuario: null, permisos: {} });
   const handleGuardarPermisos = () => {
     const id = modalPermisos.usuario._id?.$oid || modalPermisos.usuario._id || modalPermisos.usuario.Email;
     // Fusionar defaultPermisos con los permisos actuales para asegurar que todos los módulos estén presentes
-    const permisosAEnviar = { ...defaultPermisos, ...modalPermisos.permisos };
+    const permisosAEnviar = { ...{}, ...modalPermisos.permisos };
     fetch(`http://localhost:8000/api/usuarios/${id}/permisos/`, {
       method: 'PUT',
       headers: {
@@ -277,7 +191,7 @@ const UserManagement = () => {
       body: JSON.stringify({ permisos: permisosAEnviar }),
     })
       .then(res => res.json())
-      .then(data => {
+      .then(() => {
         setUsuarios(usuarios => usuarios.map(u => (u._id?.$oid || u._id) === id ? { ...u, permisos: permisosAEnviar } : u));
         setSnackbar({ open: true, message: 'Permisos actualizados', severity: 'success' });
         handleClosePermisos();
@@ -597,7 +511,7 @@ const UserManagement = () => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>{getAccionChip(row.accion)}</TableCell>
-                      <TableCell>{row.modulo || '-'}</TableCell>
+                      <TableCell>{capitalizeWords(row.accion)}</TableCell>
                       <TableCell>
                         <Box sx={{ whiteSpace: 'pre-line', fontSize: 14, color: 'text.secondary', maxWidth: 320, overflowWrap: 'break-word' }}>
                           {typeof row.mensaje === 'object' && row.mensaje !== null
