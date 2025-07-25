@@ -10,9 +10,27 @@ import {
 } from '@tabler/icons-react';
 
 // Función para cerrar sesión
-const handleLogout = () => {
-  localStorage.removeItem("user");
-  window.location.href = "/login";
+const handleLogout = async () => {
+  try {
+    // Obtener el usuario actual del localStorage
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user && user.Email) {
+      // Llamar al endpoint de logout
+      await fetch("http://localhost:8000/api/logout/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Email": user.Email
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error al registrar logout:", error);
+  } finally {
+    // Limpiar localStorage y redirigir
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  }
 };
 
 const baseMenuItems = [

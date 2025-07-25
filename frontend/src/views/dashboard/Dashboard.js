@@ -3,7 +3,9 @@ import PageContainer from "src/components/container/PageContainer";
 import { useEffect, useState } from "react";
 import PronosticoChart from './components/PronosticoChart';
 import StatCard from "./components/StatCard";
+import RegistroActividadMain from "./components/RegistroActividad/RegistroActividadMain";
 import ActivosMain from "./components/Activos/ActivosMain";
+import { useUser } from "src/components/UserContext";
 
 // Mapeo de iconos más representativos
 const iconMap = {
@@ -14,9 +16,14 @@ const iconMap = {
 };
 
 const Dashboard = () => {
+  const { user } = useUser();
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Determinar si el usuario es admin/encargado o técnico
+  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'encargado' || user?.Cargo?.toLowerCase() === 'admin';
+  const isTecnico = user?.Cargo?.toLowerCase() === 'técnico' || user?.Cargo?.toLowerCase() === 'tecnico';
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -83,7 +90,15 @@ const Dashboard = () => {
             <PronosticoChart />
           </Grid>
           <Grid item xs={12} lg={7}>
-            <ActivosMain />
+            {/* Mostrar contenido diferente según el cargo */}
+            {isAdminOrEncargado ? (
+              <RegistroActividadMain />
+            ) : isTecnico ? (
+              <ActivosMain />
+            ) : (
+              // Fallback para otros cargos o usuarios sin cargo definido
+              <ActivosMain />
+            )}
           </Grid>
         </Grid>
       </Box>

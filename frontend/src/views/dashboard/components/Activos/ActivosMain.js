@@ -1,6 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, CircularProgress, Paper } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { 
+  Box, 
+  Typography, 
+  CircularProgress, 
+  Paper, 
+  Divider
+} from '@mui/material';
 import ActivosTabla from './ActivosTabla';
+import ActivosDashboard from './ActivosDashboard';
 import { fetchActivos } from './utils/api';
 
 const ActivosMain = () => {
@@ -23,17 +30,46 @@ const ActivosMain = () => {
   }, []);
 
   return (
-    <Paper sx={{ p: 3, borderRadius: 3 }}>
-      <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-        Activos
-      </Typography>
+    <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
+      {/* Header con título */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+          Gestión de Activos
+        </Typography>
+      </Box>
+
+      {/* Dashboard */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
           <CircularProgress />
         </Box>
       ) : (
-        <ActivosTabla activos={activos} />
+        <ActivosDashboard activos={activos} />
       )}
+
+      {/* Divider */}
+      <Divider sx={{ my: 4 }} />
+
+      {/* Tabla de Activos */}
+      <Box>
+        <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: 'primary.main' }}>
+          Tabla de Activos
+        </Typography>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <ActivosTabla activos={activos} />
+        )}
+      </Box>
     </Paper>
   );
 };

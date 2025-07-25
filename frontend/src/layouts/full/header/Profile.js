@@ -29,9 +29,25 @@ const Profile = () => {
     setAnchorEl2(null);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      // Llamar al endpoint de logout
+      if (user && user.Email) {
+        await fetch("http://localhost:8000/api/logout/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Email": user.Email
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error al registrar logout:", error);
+    } finally {
+      // Limpiar localStorage y redirigir
+      localStorage.removeItem('user');
+      navigate('/login');
+    }
   };
 
   return (

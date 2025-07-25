@@ -10,6 +10,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Divider
 } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
@@ -17,6 +18,7 @@ import TablaPronostico from "./TablaPronostico";
 import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
+import PronosticoDashboard from "./PronosticoDashboard";
 import { useUser } from 'src/components/UserContext.jsx';
 
 const Pronostico = () => {
@@ -130,23 +132,32 @@ const Pronostico = () => {
   }
 
   return (
-    <Paper elevation={3} sx={{ p: 3, maxWidth: 1100, margin: '0 auto', mt: 3 }}>
+    <Paper elevation={3} sx={{ p: 3, maxWidth: 1200, margin: '0 auto', mt: 3 }}>
       <Tabs value={mainTab} onChange={(e, v) => setMainTab(v)} sx={{ mb: 2 }}>
         <Tab label="Pronóstico de Mantenimiento" />
-        <Tab label="Ver Pronóstico" />
+        <Tab label="Dashboard y Análisis" />
       </Tabs>
 
       {mainTab === 0 && (
-        <TablaPronostico
-          maquinarias={maquinarias}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          openModal={canEdit ? (maq) => {
-              setSelectedMaquinaria(maq);
-              setModalOpen(true);
-          } : () => {}}
-          isReadOnly={!canEdit}
-        />
+        <>
+          {/* Dashboard para la primera pestaña */}
+          <PronosticoDashboard pronosticos={pronosticos} maquinarias={maquinarias} />
+          
+          <Divider sx={{ my: 4 }} />
+          
+          {/* Tabla de pronósticos */}
+          <TablaPronostico
+            maquinarias={maquinarias}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            openModal={canEdit ? (maq) => {
+                setSelectedMaquinaria(maq);
+                setModalOpen(true);
+            } : () => {}}
+            isReadOnly={!canEdit}
+            pronosticos={pronosticos}
+          />
+        </>
       )}
 
       {mainTab === 1 && (

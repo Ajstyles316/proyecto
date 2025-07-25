@@ -4,6 +4,7 @@ from .views import (
     DashboardStatsView,
     RegistroView,
     LoginView,
+    LogoutView,  # <-- agregar importación
     PronosticoSummaryView,
     UsuarioListView,
     UsuarioCargoUpdateView,
@@ -18,6 +19,8 @@ from .views import (
     UsuarioPermisosUpdateView,  # <-- importar la nueva vista
     SeguimientoListView,  # <-- importar la nueva vista
     UsuarioUpdateView,  # <-- importar la vista para /usuarios/me/
+    UsuarioOpcionesView,  # <-- importar la nueva vista de opciones
+    validar_password_usuario,  # <-- importar la nueva vista
 )
 
 router = DefaultRouter()
@@ -26,10 +29,12 @@ urlpatterns = [
     path('', include(router.urls)),
     
     path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),  # <-- agregar URL
     path('registro/', RegistroView.as_view(), name='registro'),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
     path('pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
     path('usuarios/', UsuarioListView.as_view(), name='usuarios-list'),
+    path('usuarios/opciones/', UsuarioOpcionesView.as_view(), name='usuarios-opciones'),
     path('sugerir_bien_uso/', sugerir_bien_uso, name='sugerir_bien_uso'),
     path('usuarios/me/', UsuarioUpdateView.as_view(), name='usuario-self-update'),
     path('usuarios/<str:id>/cargo/', UsuarioCargoUpdateView.as_view(), name='usuario-cargo-update'),
@@ -42,4 +47,5 @@ urlpatterns = [
     path('api/maquinarias_con_depreciacion/', MaquinariasConDepreciacionView.as_view(), name='maquinarias-con-depreciacion'),
     path('api/maquinarias_con_depreciacion/buscar/', MaquinariaConDepreciacionBuscarView.as_view(), name='maquinarias-con-depreciacion-buscar'),
     path('seguimiento/', SeguimientoListView.as_view(), name='seguimiento-list'),
+    path('api/usuarios/validar_password/', validar_password_usuario, name='usuarios-validar-password'),
 ]

@@ -8,7 +8,7 @@ import json, requests, logging, nbformat, os, traceback
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from nbconvert.preprocessors import ExecutePreprocessor
 from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento
 from .serializers import (
@@ -1847,7 +1847,7 @@ class RegistroView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-def registrar_actividad(email, accion, modulo, mensaje, detalle=None):
+def registrar_actividad(email, accion, modulo, mensaje, detalle=None, fecha_login=None, fecha_logout=None):
     collection = get_collection(Seguimiento)
     doc = {
         'usuario_email': email,
@@ -1857,6 +1857,13 @@ def registrar_actividad(email, accion, modulo, mensaje, detalle=None):
         'detalle': detalle or '',
         'fecha_hora': datetime.now()
     }
+    
+    # Agregar fechas de login/logout si están disponibles
+    if fecha_login:
+        doc['fecha_login'] = fecha_login
+    if fecha_logout:
+        doc['fecha_logout'] = fecha_logout
+    
     collection.insert_one(doc)
 
 class LoginView(APIView):
@@ -1878,8 +1885,18 @@ class LoginView(APIView):
                 return Response({"error": "Contraseña inválida"}, status=status.HTTP_401_UNAUTHORIZED)
             if user.get("Permiso", "Editor").lower() == "denegado":
                 return Response({"error": "Acceso denegado por el administrador"}, status=status.HTTP_403_FORBIDDEN)
-            # Registrar actividad de login
-            registrar_actividad(user["Email"], "login", "Autenticación", "Inicio de sesión exitoso", "Inicio de sesión exitoso")
+            
+            # Registrar actividad de login con fecha de login
+            fecha_login = datetime.now()
+            registrar_actividad(
+                user["Email"], 
+                "login", 
+                "Autenticación", 
+                "Inicio de sesión exitoso", 
+                "Inicio de sesión exitoso",
+                fecha_login=fecha_login
+            )
+            
             return Response(json.loads(json_util.dumps(serialize_doc(user))), status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error interno en LoginView: {str(e)}")
@@ -1887,7 +1904,48 @@ class LoginView(APIView):
                 {"error": f"Error al iniciar sesión: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class LogoutView(APIView):
+    def post(self, request):
+        try:
+            email = request.headers.get('X-User-Email')
+            if not email:
+                return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
             
+            # Buscar el último login del usuario para actualizarlo con la fecha de logout
+            seguimiento_collection = get_collection(Seguimiento)
+            ultimo_login = seguimiento_collection.find_one(
+                {"usuario_email": email, "accion": "login"},
+                sort=[("fecha_hora", -1)]
+            )
+            
+            fecha_logout = datetime.now()
+            
+            # Registrar actividad de logout
+            registrar_actividad(
+                email, 
+                "logout", 
+                "Autenticación", 
+                "Cierre de sesión exitoso", 
+                "Cierre de sesión exitoso",
+                fecha_logout=fecha_logout
+            )
+            
+            # Si encontramos el último login, actualizar su fecha de logout
+            if ultimo_login:
+                seguimiento_collection.update_one(
+                    {"_id": ultimo_login["_id"]},
+                    {"$set": {"fecha_logout": fecha_logout}}
+                )
+            
+            return Response({"message": "Logout exitoso"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error interno en LogoutView: {str(e)}")
+            return Response(
+                {"error": f"Error al cerrar sesión: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class DashboardStatsView(APIView):
     def get(self, request):
         try:
@@ -2415,3 +2473,47 @@ class UsuarioUpdateView(APIView):
         except Exception as e:
             logger.error(f"Error al registrar actividad de edición de perfil: {str(e)}")
         return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
+
+class UsuarioOpcionesView(APIView):
+    """Devuelve los cargos únicos de usuarios y las unidades únicas de maquinaria (normalizadas)."""
+    def get(self, request):
+        # Cargos desde usuarios
+        collection = get_collection(Usuario)
+        usuarios = list(collection.find({}, {"Cargo": 1}))
+        cargos = set()
+        for u in usuarios:
+            if u.get("Cargo"):
+                cargos.add(str(u["Cargo"]).strip())
+        # Unidades desde maquinaria
+        maquinaria_collection = get_collection(Maquinaria)
+        maquinarias = list(maquinaria_collection.find({}, {"unidad": 1}))
+        unidades = set()
+        for m in maquinarias:
+            unidad = m.get("unidad", "").strip().upper()
+            if not unidad:
+                continue
+            if "OF." in unidad:
+                unidades.add("OFICINA CENTRAL")
+            else:
+                unidades.add(unidad)
+        unidades = sorted(unidades)
+        return Response({
+            "cargos": sorted(cargos),
+            "unidades": unidades
+        }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def validar_password_usuario(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+    if not email or not password:
+        return Response({'valid': False, 'error': 'Email y contraseña requeridos'}, status=400)
+    collection = get_collection(Usuario)
+    user = collection.find_one({"Email": email})
+    if not user:
+        return Response({'valid': False, 'error': 'Usuario no encontrado'}, status=404)
+    import bcrypt
+    if bcrypt.checkpw(password.encode('utf-8'), user["Password"].encode('utf-8')):
+        return Response({'valid': True})
+    else:
+        return Response({'valid': False, 'error': 'Contraseña incorrecta'}, status=401)

@@ -1,11 +1,15 @@
-import { useState } from 'react';
-import { TextField, Button, Box, Alert, Stack, Grid, Avatar, IconButton } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { TextField, Button, Box, Alert, Stack, Grid, Avatar, IconButton, MenuItem, Tooltip } from '@mui/material';
 import PageContainer from 'src/components/container/PageContainer';
 import DashboardCard from '../../components/shared/DashboardCard';
 import { useUser } from '../../components/UserContext';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DefaultAvatar from 'src/assets/images/profile/image.png';
+import { HelpOutline } from '@mui/icons-material';
+
+const EMAIL_REGEX = /^[\w.-]+@(gmail\.com|enc\.cof\.gob\.bo|tec\.cof\.gob\.bo)$/i;
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 const ProfilePage = () => {
   const { user, setUser } = useUser();
@@ -22,6 +26,28 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [opciones, setOpciones] = useState({ cargos: [], unidades: [] });
+  const [loadingOpciones, setLoadingOpciones] = useState(true);
+
+  useEffect(() => {
+    // Obtener opciones de cargos y unidades
+    const fetchOpciones = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
+        if (!res.ok) throw new Error("No se pudieron cargar las opciones");
+        const data = await res.json();
+        setOpciones({
+          cargos: data.cargos || [],
+          unidades: data.unidades || [],
+        });
+      } catch (e) {
+        setOpciones({ cargos: [], unidades: [] });
+      } finally {
+        setLoadingOpciones(false);
+      }
+    };
+    fetchOpciones();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -51,10 +77,23 @@ const ProfilePage = () => {
     setLoading(true);
     setError('');
     setSuccess('');
-    if (form.Password && form.Password !== form.confirmPassword) {
-      setError('Las contraseñas no coinciden');
+    // Validaciones
+    if (!EMAIL_REGEX.test(form.Email)) {
+      setError('Correo inválido. Solo se permiten @gmail.com, @enc.cof.gob.bo o @tec.cof.gob.bo');
       setLoading(false);
       return;
+    }
+    if (form.Password) {
+      if (!PASSWORD_REGEX.test(form.Password)) {
+        setError('La nueva contraseña debe tener mínimo 8 caracteres, una mayúscula, un número y un carácter especial.');
+        setLoading(false);
+        return;
+      }
+      if (form.Password !== form.confirmPassword) {
+        setError('Las contraseñas no coinciden');
+        setLoading(false);
+        return;
+      }
     }
     try {
       // Solo enviar los campos que se quieren actualizar
@@ -85,6 +124,9 @@ const ProfilePage = () => {
       setLoading(false);
     }
   };
+
+  // Helper para mostrar errores en negro
+  const errorHelper = (msg) => msg ? <span style={{ color: 'black' }}>{msg}</span> : '';
 
   return (
     <PageContainer title="Perfil de Usuario" description="Gestiona tus datos personales y de cuenta">
@@ -126,23 +168,40 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   fullWidth
                   required
+                  helperText={errorHelper(error && error.toLowerCase().includes('nombre') ? error : '')}
                 />
                 <TextField
+                  select
                   label="Cargo"
                   name="Cargo"
                   value={form.Cargo}
                   onChange={handleChange}
                   fullWidth
                   required
-                />
+                  helperText={errorHelper(error && error.toLowerCase().includes('cargo') ? error : '')}
+                >
+                  {opciones.cargos.map((cargo) => (
+                    <MenuItem key={cargo} value={cargo === 'Tecnico' ? 'Técnico' : cargo}>
+                      {cargo === 'Tecnico' ? 'Técnico' : cargo}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <TextField
+                  select
                   label="Unidad"
                   name="Unidad"
                   value={form.Unidad}
                   onChange={handleChange}
                   fullWidth
                   required
-                />
+                  helperText={errorHelper(error && error.toLowerCase().includes('unidad') ? error : '')}
+                >
+                  {opciones.unidades.map((unidad) => (
+                    <MenuItem key={unidad} value={unidad}>
+                      {unidad}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Stack>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -155,6 +214,20 @@ const ProfilePage = () => {
                   fullWidth
                   required
                   type="email"
+                  helperText={errorHelper(error && error.toLowerCase().includes('correo') ? error : '')}
+                  InputProps={{
+                    endAdornment: (
+                      <Tooltip
+                        title="Ejemplo: usuario@gmail.com, usuario@enc.cof.gob.bo, usuario@tec.cof.gob.bo"
+                        placement="right"
+                        sx={{ color: 'black' }}
+                      >
+                        <IconButton size="small">
+                          <HelpOutline fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    ),
+                  }}
                 />
                 <TextField
                   label="Nueva contraseña"
@@ -163,6 +236,20 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   fullWidth
                   type="password"
+                  helperText={errorHelper(error && error.toLowerCase().includes('nueva') ? error : '')}
+                  InputProps={{
+                    endAdornment: (
+                      <Tooltip
+                        title="Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!"
+                        placement="right"
+                        sx={{ color: 'black' }}
+                      >
+                        <IconButton size="small">
+                          <HelpOutline fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    ),
+                  }}
                 />
                 <TextField
                   label="Confirmar nueva contraseña"
@@ -171,6 +258,7 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   fullWidth
                   type="password"
+                  helperText={errorHelper(error && error.toLowerCase().includes('coinciden') ? error : '')}
                 />
               </Stack>
             </Grid>
@@ -182,7 +270,7 @@ const ProfilePage = () => {
           </Box>
           <Box mt={2}>
             {success && <Alert severity="success">{success}</Alert>}
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && <Alert severity="error" sx={{ color: 'black', background: 'none' }}>{error}</Alert>}
           </Box>
         </Box>
       </DashboardCard>
