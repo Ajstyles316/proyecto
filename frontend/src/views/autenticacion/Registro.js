@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -7,14 +7,19 @@ import {
   Stack,
   InputAdornment,
   IconButton,
+  MenuItem,
+  Tooltip,
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { Visibility, VisibilityOff, HelpOutline } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 
 import logo from "../../../src/assets/images/logos/logo_login.png";
 
-const SITE_KEY = "6LeCz1orAAAAAGxMyOuZp9h4JXox2JwBCM4fgunu"; 
+const SITE_KEY = "6LeCz1orAAAAAGxMyOuZp9h4JXox2JwBCM4fgunu";
+
+const EMAIL_REGEX = /^[\w.-]+@(gmail\.com|enc\.cof\.gob\.bo|tec\.cof\.gob\.bo)$/i;
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -39,6 +44,28 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [opciones, setOpciones] = useState({ cargos: [], unidades: [] });
+  const [loadingOpciones, setLoadingOpciones] = useState(true);
+
+  useEffect(() => {
+    // Obtener opciones de cargos y unidades
+    const fetchOpciones = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
+        if (!res.ok) throw new Error("No se pudieron cargar las opciones");
+        const data = await res.json();
+        setOpciones({
+          cargos: data.cargos || [],
+          unidades: data.unidades || [],
+        });
+      } catch (e) {
+        setOpciones({ cargos: [], unidades: [] });
+      } finally {
+        setLoadingOpciones(false);
+      }
+    };
+    fetchOpciones();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,7 +84,13 @@ const Register = () => {
     if (!formData.Cargo.trim()) newErrors.Cargo = "El cargo es obligatorio";
     if (!formData.Unidad.trim()) newErrors.Unidad = "La unidad es obligatoria";
     if (!formData.Email.trim()) newErrors.Email = "El correo es obligatorio";
+    else if (!EMAIL_REGEX.test(formData.Email))
+      newErrors.Email =
+        "Solo se permiten correos @gmail.com, @enc.cof.gob.bo o @tec.cof.gob.bo. Ej: usuario@gmail.com";
     if (!formData.Password.trim()) newErrors.Password = "La contraseña es obligatoria";
+    else if (!PASSWORD_REGEX.test(formData.Password))
+      newErrors.Password =
+        "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!";
     if (formData.Password !== formData.confirmPassword)
       newErrors.confirmPassword = "Las contraseñas no coinciden";
     if (!captchaToken) newErrors.captcha = "Por favor, completa el CAPTCHA";
@@ -106,6 +139,16 @@ const Register = () => {
     }
   };
 
+  // Helper texts
+  const helperTexts = {
+    Nombre: "Ejemplo: Juan Pérez",
+    Cargo: "Selecciona tu cargo",
+    Unidad: "Selecciona tu unidad. Si ves 'OFICINA CENTRAL', equivale a cualquier unidad que contenga 'OF.' en maquinaria.",
+    Email: "Ejemplo: usuario@gmail.com, usuario@enc.cof.gob.bo, usuario@tec.cof.gob.bo",
+    Password: "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!",
+    confirmPassword: "Repite la contraseña",
+  };
+
   return (
     <Box
       sx={{
@@ -132,7 +175,6 @@ const Register = () => {
           Registro
         </Typography>
 
-        
         <Box mb={2}>
           <img
             src={logo}
@@ -145,7 +187,8 @@ const Register = () => {
         </Box>
 
         <form onSubmit={handleSubmit}>
-          <Stack spacing={2} mb={2}> 
+          <Stack spacing={2} mb={2}>
+            {/* Nombre */}
             <TextField
               label="Nombre completo"
               name="Nombre"
@@ -153,59 +196,106 @@ const Register = () => {
               onChange={handleChange}
               fullWidth
               error={!!errors.Nombre}
-              helperText={errors.Nombre}
+              helperText={<span style={{ color: 'black' }}>{errors.Nombre}</span>}
             />
 
+            {/* Cargo */}
             <TextField
+              select
               label="Cargo"
               name="Cargo"
               value={formData.Cargo}
               onChange={handleChange}
               fullWidth
               error={!!errors.Cargo}
-              helperText={errors.Cargo}
-            />
+              helperText={
+                errors.Cargo ||
+                (loadingOpciones
+                  ? "Cargando opciones..."
+                  : opciones.cargos.length
+                  ? null
+                  : "No hay cargos disponibles")
+              }
+            >
+              {opciones.cargos.map((cargo) => (
+                <MenuItem key={cargo} value={cargo === 'Tecnico' ? 'Técnico' : cargo}>
+                  {cargo === 'Tecnico' ? 'Técnico' : cargo}
+                </MenuItem>
+              ))}
+            </TextField>
 
+            {/* Unidad */}
             <TextField
+              select
               label="Unidad"
               name="Unidad"
               value={formData.Unidad}
               onChange={handleChange}
               fullWidth
               error={!!errors.Unidad}
-              helperText={errors.Unidad}
-            />
+              helperText={
+                errors.Unidad ||
+                (loadingOpciones
+                  ? "Cargando opciones..."
+                  : opciones.unidades.length
+                  ? null
+                  : "No hay unidades disponibles")
+              }
+            >
+              {opciones.unidades.map((unidad) => (
+                <MenuItem key={unidad} value={unidad}>
+                  {unidad}
+                </MenuItem>
+              ))}
+            </TextField>
 
-            <TextField
-              label="Correo electrónico"
-              name="Email"
-              value={formData.Email}
-              onChange={handleChange}
-              fullWidth
-              error={!!errors.Email}
-              helperText={errors.Email}
-            />
+            {/* Email */}
+            <Box display="flex" alignItems="center">
+              <TextField
+                label="Correo electrónico"
+                name="Email"
+                value={formData.Email}
+                onChange={handleChange}
+                fullWidth
+                error={!!errors.Email}
+                helperText={errors.Email}
+              />
+              <Tooltip title={helperTexts.Email} placement="right">
+                <IconButton size="small" sx={{ ml: 1 }}>
+                  <HelpOutline fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
 
-            <TextField
-              label="Contraseña"
-              name="Password"
-              type={showPassword ? "text" : "password"}
-              value={formData.Password}
-              onChange={handleChange}
-              fullWidth
-              error={!!errors.Password}
-              helperText={errors.Password}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)}>
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+            {/* Password */}
+            <Box display="flex" alignItems="center">
+              <TextField
+                label="Contraseña"
+                name="Password"
+                type={showPassword ? "text" : "password"}
+                value={formData.Password}
+                onChange={handleChange}
+                fullWidth
+                error={!!errors.Password}
+                helperText={errors.Password}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <Tooltip title={helperTexts.Password} placement="right">
+                <IconButton size="small" sx={{ ml: 1 }}>
+                  <HelpOutline fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
 
+            {/* Confirm Password */}
             <TextField
               label="Confirmar contraseña"
               name="confirmPassword"
@@ -226,13 +316,14 @@ const Register = () => {
               }}
             />
 
+            {/* Captcha y errores */}
             <ReCAPTCHA
               sitekey={SITE_KEY}
               onChange={onCaptchaChange}
               hl="es"
               theme="light"
               size="normal"
-              position="center" 
+              position="center"
             />
             {errors.captcha && (
               <Typography color="error" variant="body2" mt={1}>
@@ -246,7 +337,7 @@ const Register = () => {
             color="primary"
             type="submit"
             fullWidth
-            sx={{ py: 1.5 }} 
+            sx={{ py: 1.5 }}
           >
             Registrarse
           </Button>

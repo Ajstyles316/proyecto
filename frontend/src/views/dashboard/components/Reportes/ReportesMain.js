@@ -54,11 +54,11 @@ const ReportesMain = () => {
 
     try {
       const maqs = await fetchMaquinarias();
-      const q = search.toLowerCase().trim().replace(/\s+/g, '');
+      const q = search.toLowerCase();
       const maq = maqs.find(m =>
-        m.placa?.toLowerCase().trim().replace(/\s+/g, '') === q ||
-        m.codigo?.toLowerCase().trim().replace(/\s+/g, '') === q ||
-        m.detalle?.toLowerCase().trim().replace(/\s+/g, '') === q
+        m.placa?.toLowerCase() === q ||
+        m.codigo?.toLowerCase() === q ||
+        m.detalle?.toLowerCase() === q
       );
       if (!maq) {
         setError('No se encontró ninguna maquinaria con ese dato.');
@@ -111,7 +111,7 @@ const ReportesMain = () => {
           <BusquedaForm
             onBuscar={handleBuscar}
             onExportPDF={() => exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
-            onExportXLS={() => exportXLS({ maquinaria: maquinaria ? [maquinaria] : [], depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
+            onExportXLS={() => exportXLS({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
             maquinaria={maquinaria}
             loading={loading}
           />

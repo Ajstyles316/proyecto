@@ -9,7 +9,7 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
-const cargos = ["Encargado", "Tecnico"];
+const cargos = ["Encargado", "Técnico"];
 const MODULOS = [
   'Dashboard',
   'Maquinaria',
@@ -152,7 +152,6 @@ const UserManagement = () => {
       })
       .catch(() => setSnackbar({ open: true, message: 'Error al actualizar cargo', severity: 'error' }));
   };
-
   const handleEliminarUsuario = (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este usuario?')) return;
     fetch(`http://localhost:8000/api/usuarios/${id}/`, {
