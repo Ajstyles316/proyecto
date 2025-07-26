@@ -35,6 +35,18 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
     }
     
     if (!window.confirm(`¿Estás seguro de que quieres reactivar este ${tipo.toLowerCase()}?`)) return;
+    
+    // Verificar que recordId y maquinariaId existan
+    if (!recordId) {
+      alert('Error: No se encontró el ID del registro');
+      return;
+    }
+    
+    if (!maquinariaId && tipo !== 'Usuario') {
+      alert('Error: No se encontró la información de la maquinaria asociada');
+      return;
+    }
+    
     await onReactivar(tipo, recordId, maquinariaId);
   };
 
@@ -72,69 +84,88 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
       return value;
     };
     
+    // Función para obtener valor de campo con múltiples posibles nombres
+    const getFieldValue = (record, possibleNames) => {
+      for (const name of possibleNames) {
+        if (record[name] !== undefined && record[name] !== null && record[name] !== '') {
+          return formatValue(record[name]);
+        }
+      }
+      return '—';
+    };
+    
     switch (tipo) {
       case 'Control':
         return {
           title: 'Control',
           fields: [
-            { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
-            { label: 'Estado', value: formatValue(record['Estado'] || record['estado']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'Detalle', value: getFieldValue(record, ['Detalle', 'detalle', 'observacion', 'Observacion']) },
+            { label: 'Estado', value: getFieldValue(record, ['Estado', 'estado']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) },
+            { label: 'Ubicación', value: getFieldValue(record, ['Ubicación', 'ubicacion']) },
+            { label: 'Gerente', value: getFieldValue(record, ['Gerente', 'gerente']) },
+            { label: 'Encargado', value: getFieldValue(record, ['Encargado', 'encargado']) }
           ]
         };
       case 'Asignación':
         return {
           title: 'Asignación',
           fields: [
-            { label: 'Encargado', value: formatValue(record['Encargado'] || record['encargado']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'Encargado', value: getFieldValue(record, ['Encargado', 'encargado']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) },
+            { label: 'Fecha Asignación', value: getFieldValue(record, ['Fecha de Asignación', 'fecha_asignacion']) },
+            { label: 'Fecha Liberación', value: getFieldValue(record, ['Fecha de Liberación', 'fecha_liberacion']) },
+            { label: 'Recorrido (Km)', value: getFieldValue(record, ['Recorrido (Km)', 'recorrido_km']) },
+            { label: 'Recorrido Entregado', value: getFieldValue(record, ['Recorrido Entregado', 'recorrido_entregado']) }
           ]
         };
       case 'Mantenimiento':
         return {
           title: 'Mantenimiento',
           fields: [
-            { label: 'Tipo', value: formatValue(record['Tipo'] || record['tipo']) },
-            { label: 'Cantidad', value: record['Cantidad'] || record['cantidad'] || '—' },
-            { label: 'Ubicación', value: formatValue(record['Ubicación'] || record['ubicacion']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'Tipo', value: getFieldValue(record, ['Tipo', 'tipo']) },
+            { label: 'Cantidad', value: getFieldValue(record, ['Cantidad', 'cantidad']) },
+            { label: 'Ubicación', value: getFieldValue(record, ['Ubicación', 'ubicacion']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) },
+            { label: 'Detalle', value: getFieldValue(record, ['Detalle', 'detalle']) },
+            { label: 'Costo', value: getFieldValue(record, ['Costo', 'costo']) }
           ]
         };
       case 'Seguro':
         return {
           title: 'Seguro',
           fields: [
-            { label: 'N° 2024', value: record['N° 2024'] || record['numero_2024'] || '—' },
-            { label: 'Importe', value: record['Importe'] || record['importe'] || '—' },
-            { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'N° 2024', value: getFieldValue(record, ['N° 2024', 'numero_2024']) },
+            { label: 'Importe', value: getFieldValue(record, ['Importe', 'importe']) },
+            { label: 'Detalle', value: getFieldValue(record, ['Detalle', 'detalle']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) }
           ]
         };
       case 'ITV':
         return {
           title: 'ITV',
           fields: [
-            { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
-            { label: 'Importe', value: record['Importe'] || record['importe'] || '—' },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'Detalle', value: getFieldValue(record, ['Detalle', 'detalle']) },
+            { label: 'Importe', value: getFieldValue(record, ['Importe', 'importe']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) }
           ]
         };
       case 'SOAT':
         return {
           title: 'SOAT',
           fields: [
-            { label: 'Importe 2024', value: record['Importe 2024'] || record['importe_2024'] || '—' },
-            { label: 'Importe 2025', value: record['Importe 2025'] || record['importe_2025'] || '—' },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'Importe 2024', value: getFieldValue(record, ['Importe 2024', 'importe_2024']) },
+            { label: 'Importe 2025', value: getFieldValue(record, ['Importe 2025', 'importe_2025']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) }
           ]
         };
       case 'Impuesto':
         return {
           title: 'Impuesto',
           fields: [
-            { label: 'Importe 2023', value: record['Importe 2023'] || record['importe_2023'] || '—' },
-            { label: 'Importe 2024', value: record['Importe 2024'] || record['importe_2024'] || '—' },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
+            { label: 'Importe 2023', value: getFieldValue(record, ['Importe 2023', 'importe_2023']) },
+            { label: 'Importe 2024', value: getFieldValue(record, ['Importe 2024', 'importe_2024']) },
+            { label: 'Maquinaria', value: getFieldValue(record, ['Maquinaria', 'maquinaria', 'placa']) }
           ]
         };
       case 'Depreciación':
@@ -152,7 +183,7 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
           title: tipo,
           fields: camposDisponibles.map(key => ({
             label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            value: formatValue(record[key])
+            value: getFieldValue(record, [key])
           }))
         };
     }

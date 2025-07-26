@@ -891,7 +891,7 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
             mensaje = f"Desactivó {descripcion} para maquinaria {placa_maquinaria}"
             registrar_actividad(
                 actor_email,
-                'desactivar_control',
+                'Desactivar control',
                 'HistorialControl',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
@@ -2768,15 +2768,15 @@ class TodosRegistrosDesactivadosView(APIView):
                             del doc['Password']
                         
                         # Quitar campos que no queremos mostrar (pero mantener _id y maquinaria_id para reactivación)
-                        campos_a_quitar = ['maquinaria', 'activo']
+                        campos_a_quitar = ['activo']
                         for campo in campos_a_quitar:
                             if campo in doc:
                                 del doc[campo]
                         
-                        # Convertir maquinaria a maquinaria_id si existe
+                        # Convertir maquinaria a maquinaria_id si existe y mantener maquinaria para referencia
                         if 'maquinaria' in doc:
                             doc['maquinaria_id'] = str(doc['maquinaria'])
-                            # NO eliminar maquinaria, lo necesitamos para reactivación
+                            # Mantener maquinaria para referencia en el frontend
                         
                         # --- Asegurar maquinaria_id como string si existe ---
                         if 'maquinaria_id' in doc:
@@ -2800,13 +2800,17 @@ class TodosRegistrosDesactivadosView(APIView):
                             'fecha_registro': 'Fecha de Registro',
                             'fecha_asignacion': 'Fecha de Asignación',
                             'fecha_liberacion': 'Fecha de Liberación',
+                            'fecha_ingreso': 'Fecha de Ingreso',
                             'detalle': 'Detalle',
                             'estado': 'Estado',
+                            'observacion': 'Observación',
                             'costo': 'Costo',
                             'tipo': 'Tipo',
                             'cantidad': 'Cantidad',
                             'ubicacion': 'Ubicación',
                             'encargado': 'Encargado',
+                            'gerente': 'Gerente',
+                            'hoja_tramite': 'Hoja de Trámite',
                             'numero_2024': 'N° 2024',
                             'importe': 'Importe',
                             'importe_2023': 'Importe 2023',
@@ -2814,7 +2818,9 @@ class TodosRegistrosDesactivadosView(APIView):
                             'importe_2025': 'Importe 2025',
                             'bien_uso': 'Bien de Uso',
                             'vida_util': 'Vida Útil',
-                            'metodo': 'Método'
+                            'metodo': 'Método',
+                            'recorrido_km': 'Recorrido (Km)',
+                            'recorrido_entregado': 'Recorrido Entregado'
                         }
                         
                         # Aplicar mapeo de campos

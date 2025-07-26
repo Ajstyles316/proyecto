@@ -44,11 +44,13 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
-  // Filtrar solo las tarjetas con valor distinto de 0 o '0'
+  // Filtrar solo las tarjetas con valor distinto de 0 o '0' y quitar 'Total de Seguros' y 'Unidades en Control'
   const filteredStats = stats.filter(
     (stat) => {
       // Considera 0, '0', '0.00', '0,00', etc. como cero
       const value = typeof stat.value === 'string' ? stat.value.replace(/[,]/g, '') : stat.value;
+      // Quitar tarjetas específicas
+      if (stat.title === 'Total de Seguros' || stat.title === 'Unidades en Control') return false;
       return !(value === 0 || value === '0' || value === '0.00' || value === '0,00');
     }
   );
