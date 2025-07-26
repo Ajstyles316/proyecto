@@ -20,6 +20,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosSeguros = user?.permisos?.Seguros || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosSeguros.eliminar;
   const canEdit = isAdminOrEncargado || permisosSeguros.editar;
   const isReadOnly = !canEdit && permisosSeguros.ver;
@@ -105,7 +106,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este seguro?')) return;
+    if (!window.confirm('¿Estás seguro de que quieres desactivar este seguro?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${id}/`, {
         method: 'DELETE',
@@ -113,8 +114,8 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'Seguro eliminado exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'Seguro desactivado exitosamente!', severity: 'success' });
       fetchSeguros();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -191,6 +192,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

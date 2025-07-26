@@ -11,9 +11,9 @@ import {
   CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 
-const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
+const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -30,6 +30,12 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
     );
   }
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES');
+  };
+
   return (
     <Table>
       <TableHead>
@@ -40,6 +46,7 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
           <TableCell>Encargado</TableCell>
           <TableCell>Estado</TableCell>
           <TableCell>Hoja de Trámite</TableCell>
+          <TableCell>Fecha de Ingreso</TableCell>
           <TableCell align="right">Acciones</TableCell>
         </TableRow>
       </TableHead>
@@ -52,6 +59,7 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
             <TableCell>{control.encargado}</TableCell>
             <TableCell>{control.estado}</TableCell>
             <TableCell>{control.hoja_tramite}</TableCell>
+            <TableCell>{formatDate(control.fecha)}</TableCell>
             <TableCell align="right">
               {!isReadOnly && (
                 <>
@@ -67,7 +75,7 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
                     color="error"
                     onClick={() => onDelete(control._id)}
                   >
-                    <DeleteIcon sx={{ color: '#f44336' }} />
+                    <BlockIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}
@@ -94,6 +102,7 @@ ControlTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool.isRequired,
+  isEncargado: PropTypes.bool,
 };
 
 export default ControlTable;

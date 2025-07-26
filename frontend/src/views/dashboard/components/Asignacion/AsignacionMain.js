@@ -20,6 +20,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosAsignacion = user?.permisos?.['Asignación'] || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosAsignacion.eliminar;
   const canEdit = isAdminOrEncargado || permisosAsignacion.editar;
   const isReadOnly = !canEdit && permisosAsignacion.ver;
@@ -69,8 +70,8 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
     const payload = {
       ...formData,
       maquinaria: maquinariaId,
-      fecha_asignacion: formData.fecha_asignacion ? new Date(formData.fecha_asignacion).toISOString().split('T')[0] : null,
-      fecha_liberacion: formData.fecha_liberacion ? new Date(formData.fecha_liberacion).toISOString().split('T')[0] : null,
+      fechaAsignacion: formData.fechaAsignacion ? new Date(formData.fechaAsignacion).toISOString().split('T')[0] : null,
+      fechaLiberacion: formData.fechaLiberacion ? new Date(formData.fechaLiberacion).toISOString().split('T')[0] : null,
       recorrido_km: Number(formData.recorrido_km) || 0,
       recorrido_entregado: Number(formData.recorrido_entregado) || 0,
       ...(editingAsignacion ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
@@ -109,7 +110,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
+    if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${id}/`, {
         method: 'DELETE',
@@ -117,8 +118,8 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'Asignación eliminada exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'Asignación desactivada exitosamente!', severity: 'success' });
       fetchAsignaciones();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -189,6 +190,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

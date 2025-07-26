@@ -125,20 +125,24 @@ const ActivosTabla = ({ activos, loading }) => {
 
   const getVidaUtilText = (vidaUtil) => {
     const vida = parseInt(vidaUtil) || 0;
-    if (vida <= 5) return 'Óptima';
-    if (vida <= 8) return 'Normal';
+    if (vida <= 5) return 'Bajo';
+    if (vida <= 8) return 'Medio';
     return 'Alta';
   };
 
   return (
-    <Paper sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 2 }}>
-      {/* Header con controles */}
+    <Paper sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 3, background: 'linear-gradient(135deg, #fff 0%, #f8f9fa 100%)' }}>
+      {/* Header con controles mejorado */}
       <Box sx={{ 
         p: 3, 
-        bgcolor: 'primary.50', 
+        background: 'linear-gradient(135deg)',
+        color: 'white',
         borderBottom: '1px solid',
         borderColor: 'primary.100'
       }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'black' }}>
+          Gestión de Activos
+        </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
           <TextField
             label="Buscar activos"
@@ -148,18 +152,13 @@ const ActivosTabla = ({ activos, loading }) => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon color="primary" />
+                  <SearchIcon sx={{ color: 'black' }} />
                 </InputAdornment>
               ),
             }}
             sx={{ 
               minWidth: 250,
-              '& .MuiOutlinedInput-root': {
-                bgcolor: 'white',
-                '&:hover': {
-                  bgcolor: 'grey.50'
-                }
-              }
+              
             }}
           />
           <TextField
@@ -170,9 +169,6 @@ const ActivosTabla = ({ activos, loading }) => {
             onChange={e => { setPageSize(e.target.value); setCurrentPage(1); }}
             sx={{ 
               minWidth: 150,
-              '& .MuiOutlinedInput-root': {
-                bgcolor: 'white'
-              }
             }}
           >
             {PAGE_SIZE_OPTIONS.map(opt => (
@@ -221,14 +217,12 @@ const ActivosTabla = ({ activos, loading }) => {
                 <TableRow sx={{ bgcolor: 'primary.main' }}>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    color: 'white',
                     fontSize: '0.9rem'
                   }}>
                     Bienes de Uso
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    color: 'white',
                     fontSize: '0.9rem'
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -250,15 +244,13 @@ const ActivosTabla = ({ activos, loading }) => {
                     </Box>
                   </TableCell>
                   <TableCell sx={{ 
-                    fontWeight: 600, 
-                    color: 'white',
+                    fontWeight: 600,
                     fontSize: '0.9rem'
                   }}>
                     Coeficiente
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    color: 'white',
                     fontSize: '0.9rem'
                   }}>
                     Estado
@@ -270,12 +262,15 @@ const ActivosTabla = ({ activos, loading }) => {
                   <TableRow 
                     key={idx}
                     sx={{ 
-                      '&:nth-of-type(odd)': { bgcolor: 'grey.50' },
-                      '&:hover': { bgcolor: 'primary.50' },
-                      transition: 'background-color 0.2s ease'
+                      '&:nth-of-type(odd)': { bgcolor: 'rgba(25, 118, 210, 0.02)' },
+                      '&:hover': { 
+                        bgcolor: 'rgba(25, 118, 210, 0.08)',
+                        transform: 'scale(1.01)',
+                        transition: 'all 0.2s ease'
+                      }
                     }}
                   >
-                    <TableCell sx={{ fontWeight: 500 }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#1976d2' }}>
                       {row.bien_uso || '—'}
                     </TableCell>
                     <TableCell>
@@ -304,11 +299,14 @@ const ActivosTabla = ({ activos, loading }) => {
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={sortOrder === 'ascendente' ? 'Ascendente' : 'Descendente'}
+                        label={getVidaUtilText(row.vida_util)}
                         size="small"
-                        color="info"
-                        variant="outlined"
-                        sx={{ fontSize: '0.7rem' }}
+                        color={getVidaUtilColor(row.vida_util)}
+                        sx={{ 
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          minWidth: 80
+                        }}
                       />
                     </TableCell>
                   </TableRow>
@@ -317,20 +315,29 @@ const ActivosTabla = ({ activos, loading }) => {
             </Table>
           </TableContainer>
 
-          {/* Paginación */}
+          {/* Paginación mejorada */}
           {filteredAndSortedActivos.length > 0 && (
             <Box sx={{ 
-              p: 2, 
+              p: 3, 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center',
-              bgcolor: 'grey.50',
-              borderTop: '1px solid',
-              borderColor: 'grey.200'
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+              borderTop: '2px solid',
+              borderColor: '#1976d2'
             }}>
-              <Typography variant="body2" color="text.secondary">
-                Mostrando {((currentPage - 1) * parseInt(pageSize, 10)) + 1} - {Math.min(currentPage * parseInt(pageSize, 10), filteredAndSortedActivos.length)} de {filteredAndSortedActivos.length} activos
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+                  Mostrando {((currentPage - 1) * parseInt(pageSize, 10)) + 1} - {Math.min(currentPage * parseInt(pageSize, 10), filteredAndSortedActivos.length)} de {filteredAndSortedActivos.length} activos
+                </Typography>
+                <Chip 
+                  label={`Página ${currentPage} de ${totalPages}`} 
+                  color="primary" 
+                  variant="outlined" 
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Box>
               <Pagination
                 count={totalPages}
                 page={currentPage}
@@ -339,7 +346,16 @@ const ActivosTabla = ({ activos, loading }) => {
                 showFirstButton
                 showLastButton
                 color="primary"
-                size="small"
+                size="medium"
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    fontWeight: 600,
+                    '&.Mui-selected': {
+                      background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                      color: 'white'
+                    }
+                  }
+                }}
               />
             </Box>
           )}

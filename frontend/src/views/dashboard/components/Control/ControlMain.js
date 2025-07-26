@@ -20,6 +20,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosControl = user?.permisos?.Control || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosControl.eliminar;
   const canEdit = isAdminOrEncargado || permisosControl.editar;
   const isReadOnly = !canEdit && permisosControl.ver;
@@ -68,9 +69,11 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
     const payload = {
       ...formData,
       maquinaria: maquinariaId,
-      fecha_ingreso: formData.fecha_ingreso ? new Date(formData.fecha_ingreso).toISOString().split('T')[0] : null,
+      fecha: formData.fecha ? new Date(formData.fecha).toISOString().split('T')[0] : null,
       ...(editingControl ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
+
+
 
     try {
       const response = await fetch(url, {
@@ -105,7 +108,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
+    if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/${id}/`, {
         method: 'DELETE',
@@ -113,8 +116,8 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'Control eliminado exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'Control desactivado exitosamente!', severity: 'success' });
       fetchControls();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -185,6 +188,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

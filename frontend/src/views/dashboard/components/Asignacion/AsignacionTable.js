@@ -10,10 +10,10 @@ import {
   Box,
   CircularProgress
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 
-const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
+const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -53,11 +53,11 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
         {asignaciones.map((asignacion) => (
           <TableRow key={asignacion._id}>
             <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{formatDate(asignacion.fecha_asignacion)}</TableCell>
-            <TableCell>{formatDate(asignacion.fecha_liberacion)}</TableCell>
-            <TableCell>{asignacion.recorrido_km || ''}</TableCell>
-            <TableCell>{asignacion.recorrido_entregado || ''}</TableCell>
-            <TableCell>{asignacion.encargado || ''}</TableCell>
+            <TableCell>{formatDate(asignacion.fechaAsignacion)}</TableCell>
+            <TableCell>{formatDate(asignacion.fechaLiberacion)}</TableCell>
+            <TableCell>{asignacion.recorrido_km}</TableCell>
+            <TableCell>{asignacion.recorrido_entregado}</TableCell>
+            <TableCell>{asignacion.encargado}</TableCell>
             <TableCell align="right">
               {!isReadOnly && (
                 <>
@@ -73,7 +73,7 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
                     color="error"
                     onClick={() => onDelete(asignacion._id)}
                   >
-                    <DeleteIcon sx={{ color: '#f44336' }} />
+                    <BlockIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}
@@ -92,6 +92,7 @@ AsignacionTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool.isRequired,
+  isEncargado: PropTypes.bool,
 };
 
 export default AsignacionTable; 

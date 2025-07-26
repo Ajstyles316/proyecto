@@ -10,10 +10,16 @@ import {
   Box,
   CircularProgress
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 
-const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
+const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES');
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -44,8 +50,8 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
         {soats.map((soat) => (
           <TableRow key={soat._id}>
             <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{soat.importe_2024 || ''}</TableCell>
-            <TableCell>{soat.importe_2025 || ''}</TableCell>
+            <TableCell>{soat.importe_2024}</TableCell>
+            <TableCell>{soat.importe_2025}</TableCell>
             <TableCell align="right">
               {!isReadOnly && (
                 <>
@@ -61,7 +67,7 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
                     color="error"
                     onClick={() => onDelete && onDelete(soat._id)}
                   >
-                    <DeleteIcon sx={{ color: '#f44336' }} />
+                    <BlockIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}
@@ -80,6 +86,7 @@ SOATTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool,
+  isEncargado: PropTypes.bool,
 };
 
 export default SOATTable; 

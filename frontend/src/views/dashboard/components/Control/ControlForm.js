@@ -24,7 +24,7 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
     { name: 'encargado', label: 'Encargado de Activos' },
     { name: 'estado', label: 'Estado' },
     { name: 'hoja_tramite', label: 'Hoja de Trámite' },
-    { name: 'fecha_ingreso', label: 'Fecha de Ingreso', type: 'date', required: true },
+    { name: 'fecha', label: 'Fecha de Ingreso', type: 'date', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -95,11 +95,11 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
             multiline
             minRows={4}
             label="Observación"
-            name="observacion"
-            value={form.observacion || ''}
-            onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-            error={!!errors.observacion}
-            helperText={errors.observacion}
+            name="observaciones"
+            value={form.observaciones || ''}
+            onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
+            error={!!errors.observaciones}
+            helperText={errors.observaciones}
             disabled={isReadOnly}
           />
         </Grid>

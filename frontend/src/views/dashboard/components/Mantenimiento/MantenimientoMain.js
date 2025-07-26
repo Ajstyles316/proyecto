@@ -20,6 +20,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosMantenimiento = user?.permisos?.Mantenimiento || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosMantenimiento.eliminar;
   const canEdit = isAdminOrEncargado || permisosMantenimiento.editar;
   const isReadOnly = !canEdit && permisosMantenimiento.ver;
@@ -105,7 +106,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este mantenimiento?')) return;
+    if (!window.confirm('¿Desactivar este mantenimiento?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${id}/`, {
         method: 'DELETE',
@@ -113,8 +114,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'Mantenimiento eliminado exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'Mantenimiento desactivado exitosamente!', severity: 'success' });
       fetchMantenimientos();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -176,6 +177,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

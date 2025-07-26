@@ -228,11 +228,11 @@ const useMaquinariaLogic = () => {
       }
     });
 
-    if (!response.ok) throw new Error('Error al eliminar la maquinaria');
+    if (!response.ok) throw new Error('Error al desactivar la maquinaria');
 
     setSnackbar({
       open: true,
-      message: 'Maquinaria eliminada exitosamente',
+      message: 'Maquinaria desactivada exitosamente',
       severity: 'success',
     });
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Grid,
@@ -6,14 +7,12 @@ import {
   Typography,
   Card,
   CardContent,
-  Chip,
   Stack,
   LinearProgress
 } from '@mui/material';
 import {
   Warning,
   CheckCircle,
-  Schedule,
   Analytics
 } from '@mui/icons-material';
 import {
@@ -27,7 +26,77 @@ import {
   Legend
 } from 'recharts';
 
-const COLORS = ['#1976d2', '#2e7d32', '#ed6c02', '#d32f2f', '#9c27b0', '#0288d1'];
+// Componente StatCard definido fuera del componente principal
+const StatCard = ({ title, value, subtitle, color = 'primary.main', icon }) => (
+  <Card sx={{ 
+    height: '100%', 
+    background: `linear-gradient(135deg, ${color}08, ${color}15)`,
+    border: `1px solid ${color}20`,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: `0 8px 25px ${color}20`
+    }
+  }}>
+    <CardContent>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        {icon}
+        <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color, ml: 1 }}>
+          {value}
+        </Typography>
+      </Box>
+      <Typography variant="h6" color="text.secondary" sx={{ mb: 0.5 }}>
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography variant="body2" color="text.secondary">
+          {subtitle}
+        </Typography>
+      )}
+    </CardContent>
+  </Card>
+);
+
+// Componente RegresionCard definido fuera del componente principal
+const RegresionCard = ({ tipo, regresion, color }) => (
+  <Card sx={{ p: 2, height: '100%', border: `1px solid ${color}30` }}>
+    <Typography variant="h6" sx={{ mb: 2, color, fontWeight: 600 }}>
+      Regresión {tipo}
+    </Typography>
+    <Stack spacing={1}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="body2">Pendiente:</Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {regresion.pendiente.toFixed(3)}
+        </Typography>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="body2">Intercepto:</Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {regresion.intercepto.toFixed(1)}
+        </Typography>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="body2">R²:</Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          {(regresion.r2 * 100).toFixed(1)}%
+        </Typography>
+      </Box>
+      <LinearProgress 
+        variant="determinate" 
+        value={regresion.r2 * 100} 
+        sx={{ 
+          height: 8, 
+          borderRadius: 4,
+          bgcolor: `${color}20`,
+          '& .MuiLinearProgress-bar': {
+            bgcolor: color
+          }
+        }} 
+      />
+    </Stack>
+  </Card>
+);
 
 const PronosticoDashboard = ({ pronosticos, maquinarias }) => {
   const dashboardData = useMemo(() => {
@@ -67,7 +136,7 @@ const PronosticoDashboard = ({ pronosticos, maquinarias }) => {
       const sumY = datos.reduce((sum, d) => sum + (d.horas_op || 0), 0);
       const sumXY = datos.reduce((sum, d, i) => sum + (i * (d.horas_op || 0)), 0);
       const sumX2 = datos.reduce((sum, _, i) => sum + (i * i), 0);
-      const sumY2 = datos.reduce((sum, d) => sum + ((d.horas_op || 0) * (d.horas_op || 0)), 0);
+
 
       const pendiente = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
       const intercepto = (sumY - pendiente * sumX) / n;
@@ -150,77 +219,7 @@ const PronosticoDashboard = ({ pronosticos, maquinarias }) => {
         proximosMantenimientos
       }
     };
-  }, [pronosticos, maquinarias]);
-
-  const StatCard = ({ title, value, subtitle, color = 'primary.main', icon }) => (
-    <Card sx={{ 
-      height: '100%', 
-      background: `linear-gradient(135deg, ${color}08, ${color}15)`,
-      border: `1px solid ${color}20`,
-      transition: 'all 0.3s ease',
-      '&:hover': {
-        transform: 'translateY(-2px)',
-        boxShadow: `0 8px 25px ${color}20`
-      }
-    }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          {icon}
-          <Typography variant="h4" component="div" sx={{ fontWeight: 'bold', color, ml: 1 }}>
-            {value}
-          </Typography>
-        </Box>
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 0.5 }}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body2" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  const RegresionCard = ({ tipo, regresion, color }) => (
-    <Card sx={{ p: 2, height: '100%', border: `1px solid ${color}30` }}>
-      <Typography variant="h6" sx={{ mb: 2, color, fontWeight: 600 }}>
-        Regresión {tipo}
-      </Typography>
-      <Stack spacing={1}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2">Pendiente:</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {regresion.pendiente.toFixed(3)}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2">Intercepto:</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {regresion.intercepto.toFixed(1)}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2">R²:</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {(regresion.r2 * 100).toFixed(1)}%
-          </Typography>
-        </Box>
-        <LinearProgress 
-          variant="determinate" 
-          value={regresion.r2 * 100} 
-          sx={{ 
-            height: 8, 
-            borderRadius: 4,
-            bgcolor: `${color}20`,
-            '& .MuiLinearProgress-bar': {
-              bgcolor: color
-            }
-          }} 
-        />
-      </Stack>
-    </Card>
-  );
+  }, [pronosticos]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -377,6 +376,39 @@ const PronosticoDashboard = ({ pronosticos, maquinarias }) => {
       </Grid>
     </Box>
   );
+};
+
+// PropTypes para el componente principal
+PronosticoDashboard.propTypes = {
+  pronosticos: PropTypes.arrayOf(
+    PropTypes.shape({
+      resultado: PropTypes.string,
+      horas_op: PropTypes.number,
+      recorrido: PropTypes.number,
+      fecha_asig: PropTypes.string
+    })
+  ).isRequired,
+  maquinarias: PropTypes.array.isRequired
+};
+
+// PropTypes para el componente StatCard
+StatCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  subtitle: PropTypes.string,
+  color: PropTypes.string,
+  icon: PropTypes.element
+};
+
+// PropTypes para el componente RegresionCard
+RegresionCard.propTypes = {
+  tipo: PropTypes.string.isRequired,
+  regresion: PropTypes.shape({
+    pendiente: PropTypes.number.isRequired,
+    intercepto: PropTypes.number.isRequired,
+    r2: PropTypes.number.isRequired
+  }).isRequired,
+  color: PropTypes.string.isRequired
 };
 
 export default PronosticoDashboard; 

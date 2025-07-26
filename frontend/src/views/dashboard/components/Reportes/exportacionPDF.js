@@ -4,14 +4,123 @@ import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
 import { maquinariaFields, depFields} from './fields';
 import { formatDateOnly, cleanRow, formatHeader, formatCurrency, calcularDepreciacionAnual } from './exportHelpers';
 
+// Función para crear un sello/carimbo elegante
+function createElegantStamp(doc, x, y, width, height) {
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const radius = Math.min(width, height) / 2 - 2;
+  
+  // Círculo exterior del sello
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(0.5);
+  doc.circle(centerX, centerY, radius, 'S');
+  
+  // Círculo interior
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(0.2);
+  doc.circle(centerX, centerY, radius - 3, 'S');
+  
+  // Líneas decorativas internas
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(0.1);
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI) / 4;
+    const startX = centerX + Math.cos(angle) * (radius - 8);
+    const startY = centerY + Math.sin(angle) * (radius - 8);
+    const endX = centerX + Math.cos(angle) * (radius - 15);
+    const endY = centerY + Math.sin(angle) * (radius - 15);
+    doc.line(startX, startY, endX, endY);
+  }
+  
+  // Punto central
+  doc.setFillColor(30, 77, 183);
+  doc.circle(centerX, centerY, 1, 'F');
+}
+
+// Función para crear un dashboard visual simple
+function createSimpleDashboard(doc, x, y, width, height) {
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  
+  // Rectángulo principal
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(0.3);
+  doc.rect(x, y, width, height, 'S');
+  
+  // Líneas divisorias internas
+  doc.setLineWidth(0.1);
+  doc.line(x, centerY, x + width, centerY);
+  doc.line(centerX, y, centerX, y + height);
+  
+  // Puntos en las esquinas
+  doc.setFillColor(30, 77, 183);
+  doc.circle(x + 3, y + 3, 1, 'F');
+  doc.circle(x + width - 3, y + 3, 1, 'F');
+  doc.circle(x + 3, y + height - 3, 1, 'F');
+  doc.circle(x + width - 3, y + height - 3, 1, 'F');
+  
+  // Líneas decorativas
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(0.2);
+  doc.line(x + 8, y + 8, x + 12, y + 8);
+  doc.line(x + width - 12, y + 8, x + width - 8, y + 8);
+  doc.line(x + 8, y + height - 8, x + 12, y + height - 8);
+  doc.line(x + width - 12, y + height - 8, x + width - 8, y + height - 8);
+}
+
+// Función para obtener fecha y hora formateada
+function getFormattedDateTime() {
+  const now = new Date();
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  };
+  return now.toLocaleDateString('es-ES', options);
+}
+
+// Función para obtener solo la fecha
+function getFormattedDate() {
+  const now = new Date();
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  };
+  return now.toLocaleDateString('es-ES', options);
+}
+
+// Función para obtener solo la hora
+function getFormattedTime() {
+  const now = new Date();
+  const options = {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  };
+  return now.toLocaleTimeString('es-ES', options);
+}
+
 function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos }) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // === ENCABEZADO SIMPLE ===
   const logoWidth = 38, logoHeight = 24;
-  const logoY = 10, logoX = 18;
+  const logoY = 15, logoX = 18;
+  
+  // Logo
   const img = new Image();
   img.src = logoCofa;
   doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight);
+  
+  // Información institucional
   doc.setTextColor(80, 80, 80);
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
@@ -26,20 +135,32 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   const textMarginLeft = logoX + logoWidth + 10;
   const textMarginRight = 18;
   const textWidth = pageWidth - textMarginLeft - textMarginRight;
+  
   lines.forEach((line, i) => {
     doc.text(line, textMarginLeft + textWidth / 2, textY + i * lineHeight, { align: 'center' });
   });
-  let y = logoY + logoHeight + 12;
+  
+  // === LÍNEA SEPARADORA ===
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(0.5);
+  doc.line(18, logoY + logoHeight + 8, pageWidth - 18, logoY + logoHeight + 8);
+  
+  // === TÍTULO DEL REPORTE ===
+  let y = logoY + logoHeight + 20;
+  
+  // === SECCIÓN DE DATOS PRINCIPALES ===
   doc.setFontSize(14);
   doc.setTextColor(30, 77, 183);
   doc.setFont('helvetica', 'bold');
   doc.text('Datos de la Maquinaria', pageWidth / 2, y, { align: 'center' });
   y += 9;
+  
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(33, 33, 33);
   doc.text('A continuación se presentan los datos principales de la maquinaria seleccionada.', 40, y, { maxWidth: pageWidth - 80 });
   y += 9;
+  
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   const maqRows = maquinariaFields.map(f => [f.label, maquinaria[f.key] || 'No se encontraron datos']);
@@ -56,19 +177,22 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     pageBreak: 'avoid',
   });
   y = doc.lastAutoTable.finalY + 6;
-  doc.setFontSize(16);
-  doc.setTextColor(30, 77, 183);
-  doc.setFont('helvetica', 'bold');
+  
+  // === FUNCIÓN PARA RENDERIZAR SECCIONES ===
   function renderSection(title, data, opts = {}) {
     if (title === 'Mantenimiento') {
       doc.addPage();
       y = 20;
+      
+      // Repetir encabezado en nueva página
     }
+    
     doc.setFontSize(13);
     doc.setTextColor(30, 77, 183);
     doc.setFont('helvetica', 'bold');
     doc.text(title, pageWidth / 2, y, { align: 'center' });
     y += 9;
+    
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(33, 33, 33);
@@ -173,6 +297,8 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     autoTable(doc, tableOptions);
     y = doc.lastAutoTable.finalY + 6;
   }
+  
+  // Renderizar todas las secciones
   renderSection('Control', control);
   renderSection('Asignación', asignacion);
   renderSection('Mantenimiento', mantenimiento);
@@ -180,8 +306,17 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   renderSection('Seguros', seguros);
   renderSection('ITV', itv);
   renderSection('Impuestos', impuestos);
+  
+  // === SECCIÓN DE DEPRECIACIÓN ===
   doc.addPage();
   y = 20;
+  
+  // Repetir encabezado
+  doc.setFontSize(12);
+  doc.setTextColor(30, 77, 183);
+  doc.setFont('helvetica', 'bold');
+  doc.text('REPORTE DETALLADO DE MAQUINARIA', pageWidth / 2, 15, { align: 'center' });
+  
   doc.setFontSize(13);
   doc.setTextColor(30, 77, 183);
   doc.setFont('helvetica', 'bold');
@@ -268,8 +403,17 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       y = doc.lastAutoTable.finalY + 6;
     }
   }
+  
+  // === SECCIÓN DE PRONÓSTICOS ===
   doc.addPage();
   y = 20;
+  
+  // Repetir encabezado
+  doc.setFontSize(12);
+  doc.setTextColor(30, 77, 183);
+  doc.setFont('helvetica', 'bold');
+  doc.text('REPORTE DETALLADO DE MAQUINARIA', pageWidth / 2, 15, { align: 'center' });
+  
   doc.setFontSize(13);
   doc.setTextColor(30, 77, 183);
   doc.setFont('helvetica', 'bold');
@@ -341,6 +485,27 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     y = doc.lastAutoTable.finalY + 6;
   }
   renderPronosticoTable('Pronósticos', pronosticosSinFecha);
+  
+  // === PIE DE PÁGINA CON INFORMACIÓN ADICIONAL ===
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const pageY = doc.internal.pageSize.getHeight() - 10;
+    
+    // Línea separadora
+    doc.setDrawColor(30, 77, 183);
+    doc.setLineWidth(0.2);
+    doc.line(18, pageY - 5, pageWidth - 18, pageY - 5);
+    
+    // Información del pie de página
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageY, { align: 'center' });
+    doc.text(`Generado el: ${getFormattedDateTime()}`, 18, pageY);
+    doc.text(`Sistema de Gestión de Maquinaria`, pageWidth - 18, pageY, { align: 'right' });
+  }
+  
   doc.save(`reporte_${maquinaria.placa || maquinaria.codigo || 'maquinaria'}.pdf`);
 }
 
@@ -354,6 +519,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
     if (!rows || rows.length === 0) return;
     if (page > 0) doc.addPage();
     page++;
+    
     doc.setFontSize(13);
     doc.setTextColor(30, 77, 183);
     doc.setFont('helvetica', 'bold');
