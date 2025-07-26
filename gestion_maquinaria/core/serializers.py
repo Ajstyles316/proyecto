@@ -15,13 +15,15 @@ class HistorialControlSerializer(serializers.Serializer):
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
+
+
     def validate_maquinaria(self, value):
         try:
             return ObjectId(value)
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
 
-    def validate_fecha_ingreso(self, value):
+    def validate_fecha(self, value):
         if isinstance(value, str):
             try:
                 return datetime.strptime(value, '%Y-%m-%d').date()
@@ -46,7 +48,7 @@ class ActaAsignacionSerializer(serializers.Serializer):
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
 
-    def validate_fecha_asignacion(self, value):
+    def validate_fechaAsignacion(self, value):
         if isinstance(value, str):
             try:
                 return datetime.strptime(value, '%Y-%m-%d').date()
@@ -54,7 +56,7 @@ class ActaAsignacionSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
         return value
 
-    def validate_fecha_liberacion(self, value):
+    def validate_fechaLiberacion(self, value):
         if value and isinstance(value, str):
             try:
                 return datetime.strptime(value, '%Y-%m-%d').date()
@@ -68,7 +70,7 @@ class MantenimientoSerializer(serializers.Serializer):
     tipo = serializers.CharField(max_length=20)
     cantidad = serializers.IntegerField(allow_null=True)  # Nuevo campo
     gestion = serializers.CharField(max_length=100)
-    ubicacion = serializers.CharField(max_length=200)
+    ubicación = serializers.CharField(max_length=200)
 
     def validate_maquinaria(self, value):
         try:

@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
+import ResetPasswordModal from "../dashboard/components/ResetPasswordModal";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -25,6 +26,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const [denied, setDenied] = useState("");
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -158,14 +160,30 @@ const Login = () => {
         </form>
 
         <Box mt={2} textAlign="center">
-          <Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
             ¿No tienes cuenta?{" "}
             <Link to="/registro" style={{ textDecoration: "none", color: "primary.main" }}>
               Regístrate
             </Link>
           </Typography>
+          <Typography variant="body2">
+            ¿Olvidaste tu contraseña?{" "}
+            <Button 
+              variant="text" 
+              size="small" 
+              onClick={() => setShowResetModal(true)}
+              sx={{ p: 0, minWidth: 'auto', textTransform: 'none' }}
+            >
+              Restablecer contraseña
+            </Button>
+          </Typography>
         </Box>
       </Box>
+
+      <ResetPasswordModal 
+        open={showResetModal} 
+        onClose={() => setShowResetModal(false)} 
+      />
     </Box>
   );
 };

@@ -20,6 +20,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosSOAT = user?.permisos?.SOAT || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosSOAT.eliminar;
   const canEdit = isAdminOrEncargado || permisosSOAT.editar;
   const isReadOnly = !canEdit && permisosSOAT.ver;
@@ -100,7 +101,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este registro?')) return;
+    if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${id}/`, {
         method: 'DELETE',
@@ -108,8 +109,8 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'SOAT eliminado exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'SOAT desactivado exitosamente!', severity: 'success' });
       fetchSoats();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -186,6 +187,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

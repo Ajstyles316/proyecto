@@ -17,7 +17,9 @@ from core.views import (
     SOATListView, SOATDetailView,
     ImpuestoListView, ImpuestoDetailView,
     activos_list, PronosticoAPIView, DashboardStatsView, PronosticoSummaryView,
-    DepreciacionesDetailView,DepreciacionesGeneralView,DepreciacionesListView
+    DepreciacionesDetailView,DepreciacionesGeneralView,DepreciacionesListView,
+    # Agregar las nuevas vistas
+    TodosRegistrosDesactivadosView, test_api
 )
 
 router = DefaultRouter()
@@ -77,4 +79,8 @@ urlpatterns = [
     path("api/pronostico/", PronosticoAPIView.as_view(), name="api_pronostico"),
     path('api/dashboard/', DashboardStatsView.as_view(), name='dashboard'),
     path('api/pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
+    
+    # URLs para registros desactivados
+    path('api/registros-desactivados/', TodosRegistrosDesactivadosView.as_view(), name='todos-registros-desactivados'),
+    path('api/test/', test_api, name='test-api'),
 ]

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useUser } from '../../components/UserContext';
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import RegistrosDesactivadosButton from '../dashboard/components/RegistrosDesactivados/RegistrosDesactivadosButton';
+import BlockIcon from '@mui/icons-material/Block';
+import RestoreIcon from '@mui/icons-material/Restore';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import HistoryIcon from '@mui/icons-material/History';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -19,7 +21,7 @@ const MODULOS = [
   'SOAT',
   'Impuestos',
   'Seguros',
-  'ITV',
+  'Inspección Técnica Vehicular',
   'Depreciaciones',
   'Activos',
   'Pronóstico',
@@ -39,53 +41,198 @@ const getAccionChip = (accion) => {
   // Acciones legibles
   const map = {
     login: { label: 'Inicio de sesión', color: 'info' },
-    crear_maquinaria: { label: 'Crear Maquinaria', color: 'success' },
-    editar_maquinaria: { label: 'Editar Maquinaria', color: 'default' },
-    eliminar_maquinaria: { label: 'Eliminar Maquinaria', color: 'error' },
-    crear_control: { label: 'Crear Control', color: 'success' },
-    editar_control: { label: 'Editar Control', color: 'default' },
-    eliminar_control: { label: 'Eliminar Control', color: 'error' },
-    crear_asignacion: { label: 'Crear Asignación', color: 'success' },
-    editar_asignacion: { label: 'Editar Asignación', color: 'default' },
-    eliminar_asignacion: { label: 'Eliminar Asignación', color: 'error' },
-    crear_mantenimiento: { label: 'Crear Mantenimiento', color: 'success' },
-    editar_mantenimiento: { label: 'Editar Mantenimiento', color: 'default' },
-    eliminar_mantenimiento: { label: 'Eliminar Mantenimiento', color: 'error' },
+    logout: { label: 'Cierre de sesión', color: 'warning' },
+    crear_maquinaria: { label: 'Crear maquinaria', color: 'success' },
+    editar_maquinaria: { label: 'Editar maquinaria', color: 'default' },
+    eliminar_maquinaria: { label: 'Desactivar maquinaria', color: 'error' },
+    reactivar_maquinaria: { label: 'Reactivar maquinaria', color: 'success' },
+    crear_control: { label: 'Crear control', color: 'success' },
+    editar_control: { label: 'Editar control', color: 'default' },
+    eliminar_control: { label: 'Desactivar control', color: 'error' },
+    reactivar_control: { label: 'Reactivar control', color: 'success' },
+    crear_asignacion: { label: 'Crear asignación', color: 'success' },
+    editar_asignacion: { label: 'Editar asignación', color: 'default' },
+    eliminar_asignacion: { label: 'Desactivar asignación', color: 'error' },
+    crear_mantenimiento: { label: 'Crear mantenimiento', color: 'success' },
+    editar_mantenimiento: { label: 'Editar mantenimiento', color: 'default' },
+    eliminar_mantenimiento: { label: 'Desactivar mantenimiento', color: 'error' },
     crear_soat: { label: 'Crear SOAT', color: 'success' },
     editar_soat: { label: 'Editar SOAT', color: 'default' },
-    eliminar_soat: { label: 'Eliminar SOAT', color: 'error' },
-    crear_impuesto: { label: 'Crear Impuesto', color: 'success' },
-    editar_impuesto: { label: 'Editar Impuesto', color: 'default' },
-    eliminar_impuesto: { label: 'Eliminar Impuesto', color: 'error' },
-    crear_seguros: { label: 'Crear Seguro', color: 'success' },
-    editar_seguros: { label: 'Editar Seguro', color: 'default' },
-    eliminar_seguros: { label: 'Eliminar Seguro', color: 'error' },
+    eliminar_soat: { label: 'Desactivar SOAT', color: 'error' },
+    crear_impuesto: { label: 'Crear impuesto', color: 'success' },
+    editar_impuesto: { label: 'Editar impuesto', color: 'default' },
+    eliminar_impuesto: { label: 'Desactivar impuesto', color: 'error' },
+    crear_seguros: { label: 'Crear seguro', color: 'success' },
+    editar_seguros: { label: 'Editar seguro', color: 'default' },
+    eliminar_seguros: { label: 'Desactivar seguro', color: 'error' },
     crear_itv: { label: 'Crear ITV', color: 'success' },
     editar_itv: { label: 'Editar ITV', color: 'default' },
-    eliminar_itv: { label: 'Eliminar ITV', color: 'error' },
-    crear_pronostico: { label: 'Crear Pronóstico', color: 'success' },
-    editar_pronostico: { label: 'Editar Pronóstico', color: 'default' },
-    eliminar_pronostico: { label: 'Eliminar Pronóstico', color: 'error' },
-    crear_depreciacion: { label: 'Crear Depreciación', color: 'success' },
-    editar_depreciacion: { label: 'Editar Depreciación', color: 'default' },
-    eliminar_depreciacion: { label: 'Eliminar Depreciación', color: 'error' },
+    eliminar_itv: { label: 'Desactivar ITV', color: 'error' },
+    crear_pronostico: { label: 'Crear pronóstico', color: 'success' },
+    editar_pronostico: { label: 'Editar pronóstico', color: 'default' },
+    eliminar_pronostico: { label: 'Desactivar pronóstico', color: 'error' },
+    crear_depreciacion: { label: 'Crear depreciación', color: 'success' },
+    editar_depreciacion: { label: 'Editar depreciación', color: 'default' },
+    eliminar_depreciacion: { label: 'Desactivar depreciación', color: 'error' },
     validar: { label: 'Validar', color: 'primary' },
     autorizar: { label: 'Autorizar', color: 'primary' },
     cambio_permisos: { label: 'Cambio de permisos', color: 'warning', icon: <SecurityIcon /> },
     registro_usuario: { label: 'Registro de usuario', color: 'success', icon: <PersonAddIcon /> },
-    eliminar_usuario: { label: 'Eliminación de usuario', color: 'error', icon: <DeleteIcon /> },
-    editar_perfil: { label: 'Editar Perfil', color: 'default' },
+    eliminar_usuario: { label: 'Desactivación de usuario', color: 'error', icon: <BlockIcon /> },
+    reactivar_usuario: { label: 'Reactivación de usuario', color: 'success', icon: <RestoreIcon /> },
+    editar_perfil: { label: 'Editar perfil', color: 'default' },
   };
   const found = map[accion?.toLowerCase()];
   if (found) {
-    return <Chip icon={found.icon} label={found.label} color={found.color} size="small" sx={{ fontWeight: 600, textTransform: 'capitalize', letterSpacing: 0.2 }} />;
+    const isErrorAction = found.color === 'error';
+    return <Chip 
+      icon={found.icon} 
+      label={found.label} 
+      color={found.color} 
+      size="small" 
+      sx={{ 
+        fontWeight: 600, 
+        letterSpacing: 0.2,
+        ...(isErrorAction && {
+          bgcolor: '#d32f2f',
+          color: 'white',
+          '&:hover': {
+            bgcolor: '#b71c1c'
+          }
+        })
+      }} 
+    />;
   }
-  return <Chip label={accion} size="small" sx={{ fontWeight: 600, bgcolor: '#e0e0e0', textTransform: 'capitalize', letterSpacing: 0.2 }} />;
+  return <Chip label={accion} size="small" sx={{ fontWeight: 600, bgcolor: '#e0e0e0', letterSpacing: 0.2 }} />;
 };
 
 function capitalizeWords(str) {
   if (!str) return '';
   return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Función mejorada para capitalizar acciones y módulos
+function formatActivityText(text) {
+  if (!text) return '';
+  
+  // Mapeo específico para acciones
+  const actionMap = {
+    'crear_': 'Creó ',
+    'editar_': 'Editó ',
+    'eliminar_': 'Eliminó ',
+    'desactivar_': 'Desactivó ',
+    'reactivar_': 'Reactivó ',
+    'validar_': 'Validó ',
+    'autorizar_': 'Autorizó '
+  };
+  
+  // Mapeo específico para módulos
+  const moduleMap = {
+    'maquinaria': 'Maquinaria',
+    'control': 'Control',
+    'asignacion': 'Asignación',
+    'mantenimiento': 'Mantenimiento',
+    'seguro': 'Seguro',
+    'itv': 'ITV',
+    'soat': 'SOAT',
+    'impuesto': 'Impuesto',
+    'depreciacion': 'Depreciación',
+    'pronostico': 'Pronóstico',
+    'usuario': 'Usuario'
+  };
+  
+  let formatted = text;
+  
+  // Aplicar mapeo de acciones
+  Object.entries(actionMap).forEach(([key, value]) => {
+    if (formatted.startsWith(key)) {
+      formatted = formatted.replace(key, value);
+    }
+  });
+  
+  // Aplicar mapeo de módulos
+  Object.entries(moduleMap).forEach(([key, value]) => {
+    formatted = formatted.replace(new RegExp(key, 'gi'), value);
+  });
+  
+  // Capitalizar palabras restantes
+  formatted = formatted.replace(/\b\w/g, l => l.toUpperCase());
+  
+  return formatted;
+}
+
+// Función para procesar mensajes y reemplazar IDs con nombres reales
+function formatMessage(message, accion) {
+  if (!message) return '';
+  
+  // Si es un objeto, procesarlo
+  if (typeof message === 'object' && message !== null) {
+    if (accion === 'cambio_permisos' && message.usuario_afectado_email) {
+      return `Usuario: ${message.usuario_afectado_nombre || ''} (${message.usuario_afectado_email || ''})\nCargo: ${message.usuario_afectado_cargo || ''}\nUnidad: ${message.usuario_afectado_unidad || ''}`;
+    }
+    
+    // Para otros objetos, procesar cada campo
+    return Object.entries(message).map(([k, v]) => {
+      const key = capitalizeWords(k);
+      let value = String(v);
+      
+      // Reemplazar IDs con nombres más legibles
+      if (k === 'maquinaria_id' || k === 'maquinaria') {
+        value = 'Maquinaria'; // Aquí podrías hacer una llamada a la API para obtener la placa
+      } else if (k === 'control_id' || k === 'control') {
+        value = 'Control';
+      } else if (k === 'asignacion_id' || k === 'asignacion') {
+        value = 'Asignación';
+      } else if (k === 'mantenimiento_id' || k === 'mantenimiento') {
+        value = 'Mantenimiento';
+      } else if (k === 'seguro_id' || k === 'seguro') {
+        value = 'Seguro';
+      } else if (k === 'itv_id' || k === 'itv') {
+        value = 'ITV';
+      } else if (k === 'soat_id' || k === 'soat') {
+        value = 'SOAT';
+      } else if (k === 'impuesto_id' || k === 'impuesto') {
+        value = 'Impuesto';
+      } else if (k === 'depreciacion_id' || k === 'depreciacion') {
+        value = 'Depreciación';
+      } else if (k === 'pronostico_id' || k === 'pronostico') {
+        value = 'Pronóstico';
+      } else if (k === 'usuario_id' || k === 'usuario') {
+        value = 'Usuario';
+      }
+      
+      return `${key}: ${value}`;
+    }).join('\n');
+  }
+  
+  // Si es un string, procesarlo
+  let formatted = String(message);
+  
+  // Cambiar "Eliminó" por "Desactivó"
+  formatted = formatted.replace(/Eliminó/gi, 'Desactivó');
+  
+  // Eliminar completamente los IDs y patrones específicos
+  formatted = formatted.replace(/Con ID [a-f0-9]{24}/gi, '');
+  formatted = formatted.replace(/Para Maquinaria [a-f0-9]{24}/gi, '');
+  formatted = formatted.replace(/maquinaria [a-f0-9]{24}/gi, 'maquinaria');
+  formatted = formatted.replace(/control [a-f0-9]{24}/gi, 'control');
+  formatted = formatted.replace(/asignacion [a-f0-9]{24}/gi, 'asignación');
+  formatted = formatted.replace(/mantenimiento [a-f0-9]{24}/gi, 'mantenimiento');
+  formatted = formatted.replace(/seguro [a-f0-9]{24}/gi, 'seguro');
+  formatted = formatted.replace(/itv [a-f0-9]{24}/gi, 'ITV');
+  formatted = formatted.replace(/soat [a-f0-9]{24}/gi, 'SOAT');
+  formatted = formatted.replace(/impuesto [a-f0-9]{24}/gi, 'impuesto');
+  formatted = formatted.replace(/depreciacion [a-f0-9]{24}/gi, 'depreciación');
+  formatted = formatted.replace(/pronostico [a-f0-9]{24}/gi, 'pronóstico');
+  formatted = formatted.replace(/usuario [a-f0-9]{24}/gi, 'usuario');
+  
+  // Limpiar espacios extra y caracteres no deseados
+  formatted = formatted.replace(/\s+/g, ' ').trim();
+  formatted = formatted.replace(/^\s*,\s*/, ''); // Eliminar comas al inicio
+  formatted = formatted.replace(/\s*,\s*$/, ''); // Eliminar comas al final
+  
+  // Capitalizar y limpiar
+  return capitalizeWords(formatted);
 }
 
 const UserManagement = () => {
@@ -153,7 +300,7 @@ const UserManagement = () => {
       .catch(() => setSnackbar({ open: true, message: 'Error al actualizar cargo', severity: 'error' }));
   };
   const handleEliminarUsuario = (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este usuario?')) return;
+    if (!window.confirm('¿Seguro que deseas desactivar este usuario?')) return;
     fetch(`http://localhost:8000/api/usuarios/${id}/`, {
       method: 'DELETE',
       headers: { 'X-User-Email': user.Email }
@@ -163,10 +310,27 @@ const UserManagement = () => {
           setUsuarios(usuarios => usuarios.filter(u => (u._id?.$oid || u._id) !== id));
           setSnackbar({ open: true, message: 'Usuario eliminado', severity: 'success' });
         } else {
-          setSnackbar({ open: true, message: 'Error al eliminar usuario', severity: 'error' });
+          setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' });
         }
       })
-      .catch(() => setSnackbar({ open: true, message: 'Error al eliminar usuario', severity: 'error' }));
+              .catch(() => setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' }));
+  };
+
+  const handleReactivarUsuario = (id) => {
+    if (!window.confirm('¿Seguro que deseas reactivar este usuario?')) return;
+    fetch(`http://localhost:8000/api/usuarios/${id}/`, {
+      method: 'PATCH',
+      headers: { 'X-User-Email': user.Email }
+    })
+      .then(res => {
+        if (res.ok) {
+          setSnackbar({ open: true, message: 'Usuario reactivado exitosamente!', severity: 'success' });
+          fetchUsuarios();
+        } else {
+          setSnackbar({ open: true, message: 'Error al reactivar usuario', severity: 'error' });
+        }
+      })
+      .catch(() => setSnackbar({ open: true, message: 'Error al reactivar usuario', severity: 'error' }));
   };
 
   const handleOpenPermisos = (usuario) => {
@@ -246,15 +410,20 @@ const UserManagement = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" mb={2} fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
       {isAdmin && (
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<HistoryIcon />}
-          sx={{ mb: 2, borderRadius: 2, fontWeight: 600, boxShadow: 2, textTransform: 'none' }}
-          onClick={handleOpenSeguimiento}
-        >
-          Registro de Actividad
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<HistoryIcon />}
+            sx={{ borderRadius: 2, fontWeight: 600, boxShadow: 2, textTransform: 'none' }}
+            onClick={handleOpenSeguimiento}
+          >
+            Registro de Actividad
+          </Button>
+          
+          {/* Botón de Registros Desactivados (solo para encargados) */}
+          <RegistrosDesactivadosButton maquinariaId="all" isEncargado={isAdmin} />
+        </Box>
       )}
       <Paper sx={{ overflowX: 'auto', borderRadius: 3, boxShadow: 3 }}>
         <Table>
@@ -300,9 +469,16 @@ const UserManagement = () => {
                     {id === (user._id?.$oid || user._id) ? (
                       <Typography variant="caption" color="textSecondary">(Tú)</Typography>
                     ) : (
-                      <IconButton color="error" onClick={() => handleEliminarUsuario(id)}>
-                        <DeleteIcon sx={{ color: '#f44336' }} />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton color="error" onClick={() => handleEliminarUsuario(id)}>
+                          <BlockIcon sx={{ color: '#f44336' }} />
+                        </IconButton>
+                        {u.activo === false && (
+                          <IconButton color="success" onClick={() => handleReactivarUsuario(id)}>
+                            <RestoreIcon sx={{ color: '#4caf50' }} />
+                          </IconButton>
+                        )}
+                      </Box>
                     )}
                   </TableCell>
                 </TableRow>
@@ -511,15 +687,16 @@ const UserManagement = () => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>{getAccionChip(row.accion)}</TableCell>
-                      <TableCell>{capitalizeWords(row.accion)}</TableCell>
+                      <TableCell>{formatActivityText(row.modulo || row.accion)}</TableCell>
                       <TableCell>
-                        <Box sx={{ whiteSpace: 'pre-line', fontSize: 14, color: 'text.secondary', maxWidth: 320, overflowWrap: 'break-word' }}>
-                          {typeof row.mensaje === 'object' && row.mensaje !== null
-                            ? (row.accion === 'cambio_permisos' && row.mensaje.usuario_afectado_email
-                                ? `Usuario: ${row.mensaje.usuario_afectado_nombre || ''} (${row.mensaje.usuario_afectado_email || ''})\nCargo: ${row.mensaje.usuario_afectado_cargo || ''}\nUnidad: ${row.mensaje.usuario_afectado_unidad || ''}`
-                                : Object.entries(row.mensaje).map(([k, v]) => `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`).join('\n')
-                              )
-                            : (capitalizeWords(row.mensaje) || '-')}
+                        <Box sx={{ 
+                          whiteSpace: 'pre-line', 
+                          fontSize: 14, 
+                          color: 'text.secondary', 
+                          maxWidth: 320, 
+                          overflowWrap: 'break-word'
+                        }}>
+                          {formatMessage(row.mensaje, row.accion)}
                         </Box>
                       </TableCell>
                     </TableRow>

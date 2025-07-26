@@ -10,8 +10,9 @@ import SOATMain from '../../SOAT/SOATMain';
 import ImpuestoMain from '../../Impuestos/ImpuestoMain';
 import { fieldLabels } from '../utils/fieldLabels';
 import { useIsReadOnly, useUser } from '../../../../../components/UserContext';
-import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
+
 
 const maquinariaImage = 'https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=400&q=80';
 
@@ -177,8 +178,8 @@ const MaquinariaDetalle = ({
               onClick={handleDeleteMaquinaria}
               disabled={isReadOnly}
             >
-              <DeleteIcon sx={{ color: '#fff', mr: 1 }} />
-              Eliminar
+              <BlockIcon sx={{ color: '#fff', mr: 1 }} />
+              Desactivar
             </Button>
             <Button
               variant="contained"

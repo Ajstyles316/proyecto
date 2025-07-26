@@ -222,4 +222,3 @@ TablaPronostico.defaultProps = {
 };
 
 export default TablaPronostico;
-

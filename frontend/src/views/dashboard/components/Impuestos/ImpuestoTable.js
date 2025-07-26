@@ -11,9 +11,15 @@ import {
   CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 
-const ImpuestoTable = ({ impuestos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
+const ImpuestoTable = ({ impuestos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES');
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -61,7 +67,7 @@ const ImpuestoTable = ({ impuestos, maquinariaPlaca, onEdit, onDelete, loading, 
                     color="error"
                     onClick={() => onDelete && onDelete(impuesto._id)}
                   >
-                    <DeleteIcon sx={{ color: '#f44336' }} />
+                    <BlockIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}
@@ -84,6 +90,7 @@ ImpuestoTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool,
+  isEncargado: PropTypes.bool,
 };
 
 export default ImpuestoTable; 

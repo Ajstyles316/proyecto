@@ -21,6 +21,25 @@ from .views import (
     UsuarioUpdateView,  # <-- importar la vista para /usuarios/me/
     UsuarioOpcionesView,  # <-- importar la nueva vista de opciones
     validar_password_usuario,  # <-- importar la nueva vista
+    reset_password_usuario,  # <-- importar la vista de reset password
+    test_api,  # <-- importar la vista de prueba
+    RegistrosDesactivadosView,  # <-- importar la nueva vista
+    TodosRegistrosDesactivadosView,  # <-- importar la nueva vista
+    # Vistas de secciones
+    HistorialControlListView,
+    HistorialControlDetailView,
+    ActaAsignacionListView,
+    ActaAsignacionDetailView,
+    MantenimientoListView,
+    MantenimientoDetailView,
+    SeguroListView,
+    SeguroDetailView,
+    ITVListView,
+    ITVDetailView,
+    SOATListView,
+    SOATDetailView,
+    ImpuestoListView,
+    ImpuestoDetailView,
 )
 
 router = DefaultRouter()
@@ -48,4 +67,38 @@ urlpatterns = [
     path('api/maquinarias_con_depreciacion/buscar/', MaquinariaConDepreciacionBuscarView.as_view(), name='maquinarias-con-depreciacion-buscar'),
     path('seguimiento/', SeguimientoListView.as_view(), name='seguimiento-list'),
     path('api/usuarios/validar_password/', validar_password_usuario, name='usuarios-validar-password'),
+    path('api/usuarios/reset_password/', reset_password_usuario, name='usuarios-reset-password'),
+    path('api/maquinaria/<str:maquinaria_id>/desactivados/', RegistrosDesactivadosView.as_view(), name='registros-desactivados'),
+    path('api/registros-desactivados/', TodosRegistrosDesactivadosView.as_view(), name='todos-registros-desactivados'),
+    path('api/test/', test_api, name='test-api'),
+    
+    # URLs específicas para cada sección
+    path('api/maquinaria/<str:maquinaria_id>/control/', include([
+        path('', HistorialControlListView.as_view(), name='control-list'),
+        path('<str:record_id>/', HistorialControlDetailView.as_view(), name='control-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/asignacion/', include([
+        path('', ActaAsignacionListView.as_view(), name='asignacion-list'),
+        path('<str:record_id>/', ActaAsignacionDetailView.as_view(), name='asignacion-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/mantenimiento/', include([
+        path('', MantenimientoListView.as_view(), name='mantenimiento-list'),
+        path('<str:record_id>/', MantenimientoDetailView.as_view(), name='mantenimiento-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/seguros/', include([
+        path('', SeguroListView.as_view(), name='seguro-list'),
+        path('<str:record_id>/', SeguroDetailView.as_view(), name='seguro-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/itv/', include([
+        path('', ITVListView.as_view(), name='itv-list'),
+        path('<str:record_id>/', ITVDetailView.as_view(), name='itv-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/soat/', include([
+        path('', SOATListView.as_view(), name='soat-list'),
+        path('<str:record_id>/', SOATDetailView.as_view(), name='soat-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/impuestos/', include([
+        path('', ImpuestoListView.as_view(), name='impuesto-list'),
+        path('<str:record_id>/', ImpuestoDetailView.as_view(), name='impuesto-detail'),
+    ])),
 ]

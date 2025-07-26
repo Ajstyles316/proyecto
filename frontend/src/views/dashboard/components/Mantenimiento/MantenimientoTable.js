@@ -10,10 +10,16 @@ import {
   Box,
   CircularProgress
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 
-const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly }) => {
+const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES');
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -46,10 +52,10 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
         {mantenimientos.map((m) => (
           <TableRow key={m._id}>
             <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{m.tipo || ''}</TableCell>
-            <TableCell>{m.cantidad || ''}</TableCell>
-            <TableCell>{m.gestion || ''}</TableCell>
-            <TableCell>{m.ubicacion || ''}</TableCell>
+            <TableCell>{m.tipo}</TableCell>
+            <TableCell>{m.cantidad}</TableCell>
+            <TableCell>{m.gestion}</TableCell>
+            <TableCell>{m.ubicación}</TableCell>
             <TableCell align="right">
               {!isReadOnly && (
                 <>
@@ -65,7 +71,7 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
                     color="error"
                     onClick={() => onDelete(m._id)}
                   >
-                    <DeleteIcon sx={{ color: '#f44336' }} />
+                    <BlockIcon sx={{ color: '#f44336' }} />
                   </IconButton>
                 </>
               )}
@@ -84,6 +90,7 @@ MantenimientoTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool.isRequired,
+  isEncargado: PropTypes.bool,
 };
 
 export default MantenimientoTable; 

@@ -20,6 +20,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosITV = user?.permisos?.ITV || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosITV.eliminar;
   const canEdit = isAdminOrEncargado || permisosITV.editar;
   const isReadOnly = !canEdit && permisosITV.ver;
@@ -100,7 +101,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este ITV?')) return;
+    if (!window.confirm('¿Desactivar este ITV?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${id}/`, {
         method: 'DELETE',
@@ -108,8 +109,8 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'ITV eliminado exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'ITV desactivado exitosamente!', severity: 'success' });
       fetchItvs();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -137,7 +138,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">ITV</Typography>
+        <Typography variant="h6">Inspección Técnica Vehicular - ITV</Typography>
         <Box sx={{ 
           display: 'flex', 
           gap: 1, 
@@ -183,6 +184,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

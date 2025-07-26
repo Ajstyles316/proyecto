@@ -22,7 +22,7 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => 
     { name: 'tipo', label: 'Tipo', required: true },
     { name: 'cantidad', label: 'Cantidad', type: 'number', required: true },
     { name: 'gestion', label: 'Gestión', required: true },
-    { name: 'ubicacion', label: 'Ubicación', required: true },
+    { name: 'ubicación', label: 'Ubicación', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },

@@ -20,6 +20,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const { user } = useUser();
   const permisosImpuestos = user?.permisos?.Impuestos || {};
   const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isDenied = !isAdminOrEncargado && permisosImpuestos.eliminar;
   const canEdit = isAdminOrEncargado || permisosImpuestos.editar;
   const isReadOnly = !canEdit && permisosImpuestos.ver;
@@ -102,7 +103,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este impuesto?')) return;
+    if (!window.confirm('¿Estás seguro de que quieres desactivar este impuesto?')) return;
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${id}/`, {
         method: 'DELETE',
@@ -110,8 +111,8 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al eliminar');
-      setSnackbar({ open: true, message: 'Impuesto eliminado exitosamente!', severity: 'success' });
+      if (!response.ok) throw new Error('Error al desactivar');
+      setSnackbar({ open: true, message: 'Impuesto desactivado exitosamente!', severity: 'success' });
       fetchImpuestos();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
@@ -188,6 +189,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={isReadOnly ? undefined : handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || !canEdit}
+        isEncargado={isEncargado}
       />
     </Box>
   );

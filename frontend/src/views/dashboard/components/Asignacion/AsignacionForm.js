@@ -19,8 +19,8 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'fecha_asignacion', label: 'Fecha Asignación', type: 'date', required: true },
-    { name: 'fecha_liberacion', label: 'Fecha Liberación', type: 'date' },
+    { name: 'fechaAsignacion', label: 'Fecha Asignación', type: 'date', required: true },
+    { name: 'fechaLiberacion', label: 'Fecha Liberación', type: 'date' },
     { name: 'recorrido_km', label: 'Recorrido Asignado (Km)', type: 'number', required: true },
     { name: 'recorrido_entregado', label: 'Recorrido Entregado (Km)', type: 'number' },
     { name: 'encargado', label: 'Encargado', type: 'text', required: false },

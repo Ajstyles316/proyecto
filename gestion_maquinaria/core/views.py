@@ -45,7 +45,15 @@ def serialize_doc(doc):
         if isinstance(value, ObjectId):
             return str(value)
         elif isinstance(value, (datetime, date)):
-            return value.isoformat()
+            # Formato más legible: dd/mm/yyyy HH:MM:SS
+            if isinstance(value, datetime):
+                # Si es solo fecha sin hora específica, mostrar solo fecha
+                if value.hour == 0 and value.minute == 0 and value.second == 0:
+                    return value.strftime('%d/%m/%Y')
+                else:
+                    return value.strftime('%d/%m/%Y %H:%M:%S')
+            else:
+                return value.strftime('%d/%m/%Y')
         elif isinstance(value, dict):
             return {k: convert(v) for k, v in value.items()}
         elif isinstance(value, list):
@@ -53,12 +61,49 @@ def serialize_doc(doc):
         else:
             return value
     doc = convert(doc)
-    # --- Asegurar maquinaria_id como string si existe ---
+    
+    # Quitar la contraseña si existe
+    if 'Password' in doc:
+        del doc['Password']
+    
+    # Quitar campos que no queremos mostrar (pero mantener _id y maquinaria_id para reactivación)
+    campos_a_quitar = ['maquinaria', 'activo']
+    for campo in campos_a_quitar:
+        if campo in doc:
+            del doc[campo]
+    
+    # Convertir maquinaria a maquinaria_id si existe
     if 'maquinaria' in doc:
         doc['maquinaria_id'] = str(doc['maquinaria'])
-        doc['bien_de_uso'] = doc.get('bien_uso', '')
-        doc['vida_util'] = doc.get('vida_util', '')
-        doc['costo_activo'] = doc.get('costo_activo', 0)
+        del doc['maquinaria']
+    
+    # --- Asegurar maquinaria_id como string si existe ---
+    if 'maquinaria_id' in doc:
+        # Obtener la placa de la maquinaria en lugar del ID
+        try:
+            maquinaria_collection = get_collection('maquinaria')
+            maquinaria = maquinaria_collection.find_one({"_id": ObjectId(doc['maquinaria_id'])})
+            if maquinaria:
+                doc['Maquinaria'] = maquinaria.get('placa', 'Sin placa')
+            else:
+                doc['Maquinaria'] = 'Maquinaria no encontrada'
+        except:
+            doc['Maquinaria'] = 'Error al obtener maquinaria'
+        # NO eliminar maquinaria_id, lo necesitamos para reactivación
+    
+    # Solo mapear campos que realmente necesitan ser renombrados
+    mapeo_campos = {
+        'fecha_asignacion': 'fechaAsignacion',
+        'fecha_liberacion': 'fechaLiberacion'
+    }
+    
+    # Aplicar mapeo de campos solo si existen
+    for campo_original, campo_nuevo in mapeo_campos.items():
+        if campo_original in doc:
+            doc[campo_nuevo] = doc.pop(campo_original)
+    
+
+    
     return doc
 
 def serialize_list(docs):
@@ -85,8 +130,40 @@ class MaquinariaListView(APIView):
     def get(self, request):
         maquinaria_collection = get_collection(Maquinaria)
         try:
-            maquinarias_cursor = maquinaria_collection.find()
-            maquinarias_data = serialize_list(maquinarias_cursor)
+            # Solo mostrar maquinarias activas (activo=True o no tiene campo activo)
+            maquinarias_cursor = maquinaria_collection.find({
+                "$or": [
+                    {"activo": True},
+                    {"activo": {"$exists": False}}
+                ]
+            })
+            
+            # Serializar sin mapeo de campos para maquinaria
+            def serialize_maquinaria(doc):
+                if not doc:
+                    return None
+                from bson import ObjectId
+                from datetime import datetime, date
+                def convert(value):
+                    if isinstance(value, ObjectId):
+                        return str(value)
+                    elif isinstance(value, (datetime, date)):
+                        if isinstance(value, datetime):
+                            if value.hour == 0 and value.minute == 0 and value.second == 0:
+                                return value.strftime('%d/%m/%Y')
+                            else:
+                                return value.strftime('%d/%m/%Y %H:%M:%S')
+                        else:
+                            return value.strftime('%d/%m/%Y')
+                    elif isinstance(value, dict):
+                        return {k: convert(v) for k, v in value.items()}
+                    elif isinstance(value, list):
+                        return [convert(v) for v in value]
+                    else:
+                        return value
+                return convert(doc)
+            
+            maquinarias_data = [serialize_maquinaria(doc) for doc in maquinarias_cursor]
             return Response(maquinarias_data)
         except Exception as e:
             logger.error(f"Error al obtener lista de maquinarias: {str(e)}")
@@ -124,6 +201,8 @@ class MaquinariaListView(APIView):
                 actor_email = request.headers.get('X-User-Email')
                 user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
                 validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+                # Por defecto, los registros son activos
+                validated_data['activo'] = True
                 validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
                 result = maquinaria_collection.insert_one(validated_data)
                 new_maquinaria = maquinaria_collection.find_one({"_id": result.inserted_id})
@@ -189,8 +268,33 @@ class MaquinariaDetailView(APIView):
             if not maquinaria_doc:
                 return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
 
+            # Serializar sin mapeo de campos para maquinaria
+            def serialize_maquinaria_detail(doc):
+                if not doc:
+                    return None
+                from bson import ObjectId
+                from datetime import datetime, date
+                def convert(value):
+                    if isinstance(value, ObjectId):
+                        return str(value)
+                    elif isinstance(value, (datetime, date)):
+                        if isinstance(value, datetime):
+                            if value.hour == 0 and value.minute == 0 and value.second == 0:
+                                return value.strftime('%d/%m/%Y')
+                            else:
+                                return value.strftime('%d/%m/%Y %H:%M:%S')
+                        else:
+                            return value.strftime('%d/%m/%Y')
+                    elif isinstance(value, dict):
+                        return {k: convert(v) for k, v in value.items()}
+                    elif isinstance(value, list):
+                        return [convert(v) for v in value]
+                    else:
+                        return value
+                return convert(doc)
+
             # Solo devolver los datos de la maquinaria principal, sin anidar sub-secciones
-            return Response(serialize_doc(maquinaria_doc))
+            return Response(serialize_maquinaria_detail(maquinaria_doc))
 
         except Exception as e:
             logger.error(f"Error al obtener detalle de maquinaria: {str(e)}")
@@ -273,25 +377,74 @@ class MaquinariaDetailView(APIView):
             existing_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
             if not existing_maquinaria:
                 return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-            maquinaria_collection.delete_one({"_id": ObjectId(id)})
+            # En lugar de eliminar, desactivar
+            maquinaria_collection.update_one(
+                {"_id": ObjectId(id)},
+                {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+            )
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Eliminó maquinaria con placa {existing_maquinaria.get('placa', id)}"
+                mensaje = f"Desactivó maquinaria con placa {existing_maquinaria.get('placa', id)}"
                 registrar_actividad(
                     actor_email,
-                    'eliminar_maquinaria',
+                    'desactivar_maquinaria',
                     'Maquinaria',
                     mensaje,
                     {'datos': serialize_doc(existing_maquinaria)}
                 )
             except Exception as e:
-                logger.error(f"Error al registrar actividad de eliminación de maquinaria: {str(e)}")
+                logger.error(f"Error al registrar actividad de desactivación de maquinaria: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response({"success": True})
         except Exception as e:
-            logger.error(f"Error al eliminar maquinaria: {str(e)}")
-            return Response({"error": f"Error al eliminar registro: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error al desactivar maquinaria: {str(e)}")
+            return Response({"error": f"Error al desactivar registro: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, id):
+        """Reactivar una maquinaria desactivada"""
+        # Verificar permisos de encargado
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({"error": "Solo los encargados pueden reactivar maquinarias"}, status=status.HTTP_403_FORBIDDEN)
+        
+        maquinaria_collection = get_collection(Maquinaria)
+        if not ObjectId.is_valid(id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            existing_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
+            if not existing_maquinaria:
+                return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Reactivar la maquinaria
+            maquinaria_collection.update_one(
+                {"_id": ObjectId(id)},
+                {"$set": {"activo": True, "fecha_reactivacion": datetime.now()}}
+            )
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Reactivó maquinaria con placa {existing_maquinaria.get('placa', id)}"
+                registrar_actividad(
+                    actor_email,
+                    'reactivar_maquinaria',
+                    'Maquinaria',
+                    mensaje,
+                    {'datos': serialize_doc(existing_maquinaria)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de reactivación de maquinaria: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response({"success": True})
+        except Exception as e:
+            logger.error(f"Error al reactivar maquinaria: {str(e)}")
+            return Response({"error": f"Error al reactivar registro: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MaquinariaOptionsView(APIView):
     def get(self, request):
@@ -361,10 +514,18 @@ class BaseSectionAPIView(APIView):
         collection = get_collection(self.collection_class)
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 50))
-        filtro = {'maquinaria': ObjectId(maquinaria_id)}
+        # Solo mostrar registros activos
+        filtro = {
+            'maquinaria': ObjectId(maquinaria_id),
+            "$or": [
+                {"activo": True},
+                {"activo": {"$exists": False}}
+            ]
+        }
         cursor = collection.find(filtro, self.projection or None)
         cursor = paginar_cursor(cursor, page, page_size)
         records = list(cursor)
+        
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -379,12 +540,15 @@ class BaseSectionAPIView(APIView):
             data.pop('validado_por', None)
             data.pop('autorizado_por', None)
         data['maquinaria'] = str(maquinaria_id)
+        
         serializer = self.serializer_class(data=data)
         if serializer.is_valid():
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            # Por defecto, los registros son activos
+            validated_data['activo'] = True
             collection = get_collection(self.collection_class)
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
@@ -432,7 +596,9 @@ class BaseSectionDetailAPIView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó {self.collection_class.__name__} con ID {record_id}"
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, self.collection_class.__name__)
+                mensaje = f"Editó {record_desc} para maquinaria {maquinaria_placa}"
                 registrar_actividad(
                     actor_email,
                     'editar_' + self.collection_class.__name__.lower(),
@@ -453,21 +619,70 @@ class BaseSectionDetailAPIView(APIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": f"{self.collection_class.__name__} no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó {self.collection_class.__name__} con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, self.collection_class.__name__)
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_' + self.collection_class.__name__.lower(),
+                'desactivar_' + self.collection_class.__name__.lower(),
                 self.collection_class.__name__,
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de {self.collection_class.__name__}: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de {self.collection_class.__name__}: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
+
+    def patch(self, request, maquinaria_id, record_id):
+        """Reactivar un registro desactivado"""
+        # Verificar permisos de encargado
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({"error": "Solo los encargados pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection(self.collection_class)
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": f"{self.collection_class.__name__} no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Reactivar el registro
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": True, "fecha_reactivacion": datetime.now()}}
+        )
+        
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, self.collection_class.__name__)
+            mensaje = f"Reactivó {record_desc} para maquinaria {maquinaria_placa}"
+            registrar_actividad(
+                actor_email,
+                'reactivar_' + self.collection_class.__name__.lower(),
+                self.collection_class.__name__,
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de reactivación de {self.collection_class.__name__}: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        
         return Response({"success": True})
 
 # --- Vistas Específicas para cada Sección ---
@@ -475,7 +690,7 @@ class BaseSectionDetailAPIView(APIView):
 class HistorialControlListView(BaseSectionAPIView):
     collection_class = HistorialControl
     serializer_class = HistorialControlSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def convert_date_to_datetime(self, data):
         if not isinstance(data, dict):
@@ -512,7 +727,14 @@ class HistorialControlListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('historial_control')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        # Solo mostrar registros activos
+        records = list(collection.find({
+            'maquinaria': ObjectId(maquinaria_id),
+            "$or": [
+                {"activo": True},
+                {"activo": {"$exists": False}}
+            ]
+        }))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -538,6 +760,8 @@ class HistorialControlListView(BaseSectionAPIView):
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            # Por defecto, los registros son activos
+            validated_data['activo'] = True
 
             # Convertir fechas a datetime
             validated_data = self.convert_date_to_datetime(validated_data)
@@ -577,7 +801,7 @@ class HistorialControlListView(BaseSectionAPIView):
 class HistorialControlDetailView(BaseSectionDetailAPIView):
     collection_class = HistorialControl
     serializer_class = HistorialControlSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def convert_date_to_datetime(self, data):
         if not isinstance(data, dict):
@@ -654,27 +878,33 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Control no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó control con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            placa_maquinaria = get_maquinaria_info(maquinaria_id)
+            descripcion = get_record_description(existing_record, 'historial_control')
+            mensaje = f"Desactivó {descripcion} para maquinaria {placa_maquinaria}"
             registrar_actividad(
                 actor_email,
-                'eliminar_control',
+                'desactivar_control',
                 'HistorialControl',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de control: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de control: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
 class ActaAsignacionListView(BaseSectionAPIView):
     collection_class = ActaAsignacion
     serializer_class = ActaAsignacionSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def convert_date_to_datetime(self, data):
         if not isinstance(data, dict):
@@ -755,7 +985,7 @@ class ActaAsignacionListView(BaseSectionAPIView):
 class ActaAsignacionDetailView(BaseSectionDetailAPIView):
     collection_class = ActaAsignacion
     serializer_class = ActaAsignacionSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def convert_date_to_datetime(self, data):
         if not isinstance(data, dict):
@@ -834,27 +1064,33 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó asignación con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'ActaAsignacion')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_asignacion',
-                'ActaAsignacion',
+                'desactivar_asignacion',
+                'Asignación',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de asignación: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de asignación: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
 class MantenimientoListView(BaseSectionAPIView):
     collection_class = Mantenimiento
     serializer_class = MantenimientoSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -919,7 +1155,7 @@ class MantenimientoListView(BaseSectionAPIView):
 class MantenimientoDetailView(BaseSectionDetailAPIView):
     collection_class = Mantenimiento
     serializer_class = MantenimientoSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -983,27 +1219,33 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Mantenimiento no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó mantenimiento con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'Mantenimiento')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_mantenimiento',
+                'desactivar_mantenimiento',
                 'Mantenimiento',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de mantenimiento: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de mantenimiento: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
 class SeguroListView(BaseSectionAPIView):
     collection_class = Seguro
     serializer_class = SeguroSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -1068,7 +1310,7 @@ class SeguroListView(BaseSectionAPIView):
 class SeguroDetailView(BaseSectionDetailAPIView):
     collection_class = Seguro
     serializer_class = SeguroSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1132,27 +1374,33 @@ class SeguroDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó seguro con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'Seguro')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_seguro',
+                'desactivar_seguro',
                 'Seguro',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de seguro: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de seguro: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
 class ITVListView(BaseSectionAPIView):
     collection_class = ITV
     serializer_class = ITVSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -1217,7 +1465,7 @@ class ITVListView(BaseSectionAPIView):
 class ITVDetailView(BaseSectionDetailAPIView):
     collection_class = ITV
     serializer_class = ITVSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1281,27 +1529,33 @@ class ITVDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó ITV con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'ITV')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_itv',
+                'desactivar_itv',
                 'ITV',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de ITV: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de ITV: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
 class SOATListView(BaseSectionAPIView):
     collection_class = SOAT
     serializer_class = SOATSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -1366,7 +1620,7 @@ class SOATListView(BaseSectionAPIView):
 class SOATDetailView(BaseSectionDetailAPIView):
     collection_class = SOAT
     serializer_class = SOATSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1428,15 +1682,39 @@ class SOATDetailView(BaseSectionDetailAPIView):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('soat')
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if result.deleted_count == 0:
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
             return Response({"error": "SOAT no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
+        
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'SOAT')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
+            registrar_actividad(
+                actor_email,
+                'desactivar_soat',
+                'SOAT',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de desactivación de SOAT: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        
+        return Response({"success": True})
 
 class ImpuestoListView(BaseSectionAPIView):
     collection_class = Impuesto
     serializer_class = ImpuestoSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -1501,7 +1779,7 @@ class ImpuestoListView(BaseSectionAPIView):
 class ImpuestoDetailView(BaseSectionDetailAPIView):
     collection_class = Impuesto
     serializer_class = ImpuestoSerializer
-    projection = {'_id': 1, 'maquinaria': 1, 'fecha': 1, 'detalle': 1, 'costo': 1, 'estado': 1, 'fecha_creacion': 1}
+    projection = None  # Incluir todos los campos
 
     def get(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1565,20 +1843,26 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó impuesto con ID {record_id} para maquinaria {existing_record.get('maquinaria', '')}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'Impuesto')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_impuesto',
+                'desactivar_impuesto',
                 'Impuesto',
                 mensaje,
                 {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de impuesto: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de impuesto: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
@@ -1587,6 +1871,37 @@ def format_metodo_oracion(metodo):
     if not metodo:
         return "-"
     return metodo.replace('_', ' ').capitalize()
+
+def get_maquinaria_info(maquinaria_id):
+    """Obtiene información descriptiva de una maquinaria para usar en mensajes."""
+    try:
+        maquinaria = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+        if maquinaria:
+            return maquinaria.get('placa', 'Sin placa')
+        return 'Maquinaria no encontrada'
+    except:
+        return 'Maquinaria no encontrada'
+
+def get_record_description(record, collection_name):
+    """Obtiene una descripción legible de un registro para usar en mensajes."""
+    if collection_name == 'HistorialControl':
+        return f"Control de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'Mantenimiento':
+        return f"Mantenimiento de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'Seguro':
+        return f"Seguro de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'ITV':
+        return f"ITV de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'SOAT':
+        return f"SOAT de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'Impuesto':
+        return f"Impuesto de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'ActaAsignacion':
+        return f"Asignación de {record.get('detalle', 'Sin detalle')}"
+    elif collection_name == 'Depreciacion':
+        return f"Depreciación de {record.get('detalle', 'Sin detalle')}"
+    else:
+        return f"Registro de {collection_name}"
 
 class DepreciacionesGeneralView(APIView):
     def determinar_bien_uso_y_vida_util(self, tipo_maquinaria, detalle_maquinaria):
@@ -1649,7 +1964,33 @@ class DepreciacionesListView(APIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         collection = get_collection('depreciaciones')
         records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
-        return Response(serialize_list(records))
+        
+        # Serializar sin mapeo de campos para depreciaciones
+        def serialize_depreciaciones(doc):
+            if not doc:
+                return None
+            from bson import ObjectId
+            from datetime import datetime, date
+            def convert(value):
+                if isinstance(value, ObjectId):
+                    return str(value)
+                elif isinstance(value, (datetime, date)):
+                    if isinstance(value, datetime):
+                        if value.hour == 0 and value.minute == 0 and value.second == 0:
+                            return value.strftime('%d/%m/%Y')
+                        else:
+                            return value.strftime('%d/%m/%Y %H:%M:%S')
+                    else:
+                        return value.strftime('%d/%m/%Y')
+                elif isinstance(value, dict):
+                    return {k: convert(v) for k, v in value.items()}
+                elif isinstance(value, list):
+                    return [convert(v) for v in value]
+                else:
+                    return value
+            return convert(doc)
+        
+        return Response([serialize_depreciaciones(record) for record in records])
 
     def post(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
@@ -1756,24 +2097,26 @@ class DepreciacionesDetailView(APIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-        result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
         # --- REGISTRO DE ACTIVIDAD ---
         try:
             actor_email = request.headers.get('X-User-Email')
-            mensaje = f"Eliminó depreciación para maquinaria {existing_record.get('maquinaria', maquinaria_id)}"
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'Depreciacion')
+            mensaje = f"Desactivó {record_desc} para maquinaria {maquinaria_placa}"
             registrar_actividad(
                 actor_email,
-                'eliminar_depreciacion',
+                'desactivar_depreciacion',
                 'Depreciaciones',
                 mensaje,
-                {
-                    'maquinaria_id': str(maquinaria_id),
-                    'depreciacion_id': str(record_id),
-                    'datos': serialize_doc(existing_record)
-                }
+                {'datos': serialize_doc(existing_record)}
             )
         except Exception as e:
-            logger.error(f"Error al registrar actividad de eliminación de depreciación: {str(e)}")
+            logger.error(f"Error al registrar actividad de desactivación de depreciación: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
         return Response({"success": True})
 
@@ -2199,7 +2542,13 @@ class UsuarioListView(APIView):
         user = collection.find_one({"Email": email})
         if not user or user.get('Cargo', '').lower() != 'encargado':
             return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
-        usuarios = list(collection.find({}, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1, "permisos": 1}))
+        # Solo mostrar usuarios activos
+        usuarios = list(collection.find({
+            "$or": [
+                {"activo": True},
+                {"activo": {"$exists": False}}
+            ]
+        }, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1, "permisos": 1}))
         return Response([serialize_doc(u) for u in usuarios], status=status.HTTP_200_OK)
 
 class UsuarioCargoUpdateView(APIView):
@@ -2246,7 +2595,7 @@ class UsuarioPermisoUpdateView(APIView):
         return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
 
 class UsuarioDeleteView(APIView):
-    """Solo el encargado puede eliminar usuarios (no a sí mismo)."""
+    """Solo el encargado puede desactivar usuarios (no a sí mismo)."""
     def delete(self, request, id):
         email = request.headers.get('X-User-Email')
         if not email:
@@ -2256,11 +2605,232 @@ class UsuarioDeleteView(APIView):
         if not user or user.get('Cargo', '').lower() != 'encargado':
             return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
         if str(user.get('_id')) == id:
-            return Response({'error': 'No puedes eliminarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
-        result = collection.delete_one({'_id': ObjectId(id)})
-        if result.deleted_count == 0:
+            return Response({'error': 'No puedes desactivarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
+        # En lugar de eliminar, desactivar
+        result = collection.update_one(
+            {'_id': ObjectId(id)},
+            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+        )
+        if result.modified_count == 0:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-        return Response({'success': True}, status=status.HTTP_204_NO_CONTENT)
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
+    def patch(self, request, id):
+        """Reactivar un usuario desactivado"""
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Reactivar el usuario
+        result = collection.update_one(
+            {'_id': ObjectId(id)},
+            {"$set": {"activo": True, "fecha_reactivacion": datetime.now()}}
+        )
+        if result.modified_count == 0:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'success': True}, status=status.HTTP_200_OK)
+
+class RegistrosDesactivadosView(APIView):
+    """Vista para obtener registros desactivados"""
+    def get(self, request, maquinaria_id):
+        # Verificar permisos de encargado
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({"error": "Solo los encargados pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener todos los registros desactivados de todas las colecciones
+        collections = [
+            ('controles', 'Control'),
+            ('asignacion', 'Asignación'),
+            ('mantenimientos', 'Mantenimiento'),
+            ('seguros', 'Seguro'),
+            ('itv', 'ITV'),
+            ('soat', 'SOAT'),
+            ('impuesto', 'Impuesto')
+        ]
+        
+        registros_desactivados = {}
+        
+        for collection_name, label in collections:
+            collection = get_collection(collection_name)
+            registros = list(collection.find({
+                'maquinaria': ObjectId(maquinaria_id),
+                'activo': False
+            }))
+            if registros:
+                registros_desactivados[label] = serialize_list(registros)
+        
+        return Response(registros_desactivados)
+
+class TodosRegistrosDesactivadosView(APIView):
+    """Vista para obtener todos los registros desactivados del sistema"""
+    def get(self, request):
+        # Verificar permisos de encargado
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'encargado':
+            return Response({"error": "Solo los encargados pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Obtener parámetros de consulta
+        dias = request.GET.get('dias', '30')  # Por defecto 30 días
+        try:
+            dias = int(dias)
+        except ValueError:
+            dias = 30
+        
+        # Obtener todos los registros desactivados de todas las colecciones
+        collections = [
+            ('usuarios', 'Usuario'),
+            ('historial_control', 'Control'),
+            ('acta_asignacion', 'Asignación'),
+            ('mantenimiento', 'Mantenimiento'),
+            ('seguro', 'Seguro'),
+            ('itv', 'ITV'),
+            ('soat', 'SOAT'),
+            ('impuesto', 'Impuesto'),
+            ('maquinaria', 'Maquinaria'),
+            ('depreciaciones', 'Depreciación')
+        ]
+        
+        registros_desactivados = {}
+        
+        try:
+            # Calcular fecha límite
+            from datetime import datetime, timedelta
+            fecha_limite = datetime.now() - timedelta(days=dias)
+            print(f"Buscando registros desactivados de los últimos {dias} días")
+            
+            for collection_name, label in collections:
+                collection = get_collection(collection_name)
+                print(f"Buscando en colección: {collection_name}")
+                
+                # Buscar registros desactivados recientes
+                query = {
+                    'activo': False,
+                    '$or': [
+                        {'fecha_desactivacion': {'$gte': fecha_limite}},
+                        {'fecha_creacion': {'$gte': fecha_limite}},
+                        {'fecha_registro': {'$gte': fecha_limite}}
+                    ]
+                }
+                
+                registros = list(collection.find(query))
+                print(f"Encontrados {len(registros)} registros desactivados recientes en {collection_name}")
+                
+                # Si no hay registros recientes, buscar solo los desactivados (sin filtro de fecha)
+                if not registros:
+                    registros = list(collection.find({'activo': False}))
+                    print(f"Encontrados {len(registros)} registros desactivados totales en {collection_name}")
+                
+                if registros:
+                    # Serializar sin mapeo de campos para registros desactivados
+                    def serialize_desactivados(doc):
+                        if not doc:
+                            return None
+                        from bson import ObjectId
+                        from datetime import datetime, date
+                        def convert(value):
+                            if isinstance(value, ObjectId):
+                                return str(value)
+                            elif isinstance(value, (datetime, date)):
+                                if isinstance(value, datetime):
+                                    if value.hour == 0 and value.minute == 0 and value.second == 0:
+                                        return value.strftime('%d/%m/%Y')
+                                    else:
+                                        return value.strftime('%d/%m/%Y %H:%M:%S')
+                                else:
+                                    return value.strftime('%d/%m/%Y')
+                            elif isinstance(value, dict):
+                                return {k: convert(v) for k, v in value.items()}
+                            elif isinstance(value, list):
+                                return [convert(v) for v in value]
+                            else:
+                                return value
+                        
+                        doc = convert(doc)
+                        
+                        # Quitar la contraseña si existe
+                        if 'Password' in doc:
+                            del doc['Password']
+                        
+                        # Quitar campos que no queremos mostrar (pero mantener _id y maquinaria_id para reactivación)
+                        campos_a_quitar = ['maquinaria', 'activo']
+                        for campo in campos_a_quitar:
+                            if campo in doc:
+                                del doc[campo]
+                        
+                        # Convertir maquinaria a maquinaria_id si existe
+                        if 'maquinaria' in doc:
+                            doc['maquinaria_id'] = str(doc['maquinaria'])
+                            # NO eliminar maquinaria, lo necesitamos para reactivación
+                        
+                        # --- Asegurar maquinaria_id como string si existe ---
+                        if 'maquinaria_id' in doc:
+                            # Obtener la placa de la maquinaria en lugar del ID
+                            try:
+                                maquinaria_collection = get_collection('maquinaria')
+                                maquinaria = maquinaria_collection.find_one({"_id": ObjectId(doc['maquinaria_id'])})
+                                if maquinaria:
+                                    doc['Maquinaria'] = maquinaria.get('placa', 'Sin placa')
+                                else:
+                                    doc['Maquinaria'] = 'Maquinaria no encontrada'
+                            except:
+                                doc['Maquinaria'] = 'Error al obtener maquinaria'
+                            # NO eliminar maquinaria_id, lo necesitamos para reactivación
+                        
+                        # Mejorar nombres de campos para mejor legibilidad
+                        mapeo_campos = {
+                            'fecha_desactivacion': 'Fecha de Desactivación',
+                            'fecha_reactivacion': 'Fecha de Reactivación',
+                            'fecha_creacion': 'Fecha de Creación',
+                            'fecha_registro': 'Fecha de Registro',
+                            'fecha_asignacion': 'Fecha de Asignación',
+                            'fecha_liberacion': 'Fecha de Liberación',
+                            'detalle': 'Detalle',
+                            'estado': 'Estado',
+                            'costo': 'Costo',
+                            'tipo': 'Tipo',
+                            'cantidad': 'Cantidad',
+                            'ubicacion': 'Ubicación',
+                            'encargado': 'Encargado',
+                            'numero_2024': 'N° 2024',
+                            'importe': 'Importe',
+                            'importe_2023': 'Importe 2023',
+                            'importe_2024': 'Importe 2024',
+                            'importe_2025': 'Importe 2025',
+                            'bien_uso': 'Bien de Uso',
+                            'vida_util': 'Vida Útil',
+                            'metodo': 'Método'
+                        }
+                        
+                        # Aplicar mapeo de campos
+                        for campo_original, campo_nuevo in mapeo_campos.items():
+                            if campo_original in doc:
+                                doc[campo_nuevo] = doc.pop(campo_original)
+                        
+                        return doc
+                    
+                    registros_desactivados[label] = [serialize_desactivados(record) for record in registros]
+                    print(f"Agregados {len(registros)} registros de {label}")
+            
+            print(f"Total de colecciones con registros: {len(registros_desactivados)}")
+            return Response(registros_desactivados)
+        except Exception as e:
+            return Response({"error": f"Error interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 def sugerir_bien_uso(request):
@@ -2502,6 +3072,11 @@ class UsuarioOpcionesView(APIView):
             "unidades": unidades
         }, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def test_api(request):
+    """Vista de prueba para verificar que la API funciona"""
+    return Response({"message": "API funcionando correctamente", "status": "ok"})
+
 @api_view(['POST'])
 def validar_password_usuario(request):
     email = request.data.get('email')
@@ -2517,3 +3092,41 @@ def validar_password_usuario(request):
         return Response({'valid': True})
     else:
         return Response({'valid': False, 'error': 'Contraseña incorrecta'}, status=401)
+
+@api_view(['POST'])
+def reset_password_usuario(request):
+    """Endpoint para restablecer contraseña de usuario"""
+    email = request.data.get('email')
+    nueva_password = request.data.get('nueva_password')
+    
+    if not email or not nueva_password:
+        return Response({"error": "Email y nueva contraseña son requeridos"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Verificar que el usuario existe
+    user = get_collection(Usuario).find_one({"Email": email})
+    if not user:
+        return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+    
+    try:
+        # Hashear la nueva contraseña
+        hashed_password = bcrypt.hashpw(nueva_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        # Actualizar la contraseña en la base de datos
+        get_collection(Usuario).update_one(
+            {"Email": email},
+            {"$set": {"Password": hashed_password}}
+        )
+        
+        # Registrar la actividad
+        registrar_actividad(
+            email=email,
+            accion="reset_password",
+            modulo="usuarios",
+            mensaje=f"Contraseña restablecida para usuario {email}",
+            detalle="Restablecimiento de contraseña"
+        )
+        
+        return Response({"message": "Contraseña actualizada exitosamente"}, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({"error": f"Error al actualizar contraseña: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import PronosticoChart from './components/PronosticoChart';
 import StatCard from "./components/StatCard";
 import RegistroActividadMain from "./components/RegistroActividad/RegistroActividadMain";
-import ActivosMain from "./components/Activos/ActivosMain";
+import ActivosDashboardSimple from "./components/Activos/ActivosDashboardSimple";
 import { useUser } from "src/components/UserContext";
 
 // Mapeo de iconos más representativos
@@ -94,10 +94,10 @@ const Dashboard = () => {
             {isAdminOrEncargado ? (
               <RegistroActividadMain />
             ) : isTecnico ? (
-              <ActivosMain />
+              <ActivosDashboardSimple />
             ) : (
               // Fallback para otros cargos o usuarios sin cargo definido
-              <ActivosMain />
+              <ActivosDashboardSimple />
             )}
           </Grid>
         </Grid>

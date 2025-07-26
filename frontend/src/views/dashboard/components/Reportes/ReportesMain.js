@@ -5,6 +5,7 @@ import BusquedaForm from './BusquedaForm';
 import TablaGenerica from './TablaGenerica';
 import TablaGenericaAvanzada from './TablaGenerica.jsx';
 import ExportarReportes from './ExportarReportes';
+import ReportesDashboard from './ReportesDashboard';
 import {
   fetchMaquinarias,
   fetchDepreciaciones,
@@ -20,7 +21,7 @@ import {
 import { maquinariaFields, depFields, proFields } from './fields';
 import exportPDF from './exportacionPDF';
 import exportXLS from './exportacionExcel';
-import { CircularProgress, Typography, Box} from '@mui/material';
+import { CircularProgress, Typography, Box, Divider} from '@mui/material';
 
 const ReportesMain = () => {
   const [maquinaria, setMaquinaria] = useState(null);
@@ -111,52 +112,75 @@ const ReportesMain = () => {
           <BusquedaForm
             onBuscar={handleBuscar}
             onExportPDF={() => exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
-            onExportXLS={() => exportXLS({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
+            onExportXLS={() => exportXLS({ maquinaria: maquinaria ? [maquinaria] : [], depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos })}
             maquinaria={maquinaria}
             loading={loading}
           />
         </Box>
         <ExportarReportes />
+        
+        {/* Dashboard de Reportes */}
+        <ReportesDashboard
+          maquinaria={maquinaria}
+          depreciaciones={depreciaciones}
+          pronosticos={pronosticos}
+          control={control}
+          asignacion={asignacion}
+          mantenimiento={mantenimiento}
+          soat={soat}
+          seguros={seguros}
+          itv={itv}
+          impuestos={impuestos}
+          searched={searched}
+        />
+        
         {loading && <Box p={3} textAlign="center"><CircularProgress /></Box>}
         {error && <Typography color="error" mb={2}>{error}</Typography>}
+        
         {maquinaria && (
-          <Box>
-            <TablaGenericaAvanzada
-              title="Datos de la Maquinaria"
-              data={[maquinaria]}
-              fields={maquinariaFields}
-              emptyMessage="No hay datos de maquinaria"
-            />
-            <TablaGenerica title="Control" data={control} ocultarCampos={ocultarCampos} reemplazos={{ 'gerente': 'Gerente', 'encargado': 'Encargado', 'estado': 'Estado', 'ubicacion': 'Ubicación' }} />
-            <TablaGenerica title="Asignación" data={asignacion} ocultarCampos={ocultarCampos} reemplazos={{ 'fecha_asignacion': 'Fecha de Asignación', 'recorrido_km': 'Recorrido Km', 'encargado': 'Encargado', 'ubicacion': 'Ubicación' }} />
-            <TablaGenerica title="Mantenimiento" data={mantenimiento} ocultarCampos={ocultarCampos} />
-            <TablaGenerica title="SOAT" data={soat} ocultarCampos={ocultarCampos} />
-            <TablaGenerica title="Seguros" data={seguros} ocultarCampos={ocultarCampos} reemplazos={{ 'numero_2024': 'N° 2024' }} />
-            <TablaGenerica title="ITV" data={itv} ocultarCampos={ocultarCampos} />
-            <TablaGenerica title="Impuestos" data={impuestos} ocultarCampos={ocultarCampos} />
-            <TablaGenericaAvanzada
-              title="Depreciaciones"
-              data={depreciaciones}
-              fields={depFields}
-              emptyMessage="No hay depreciaciones para esta maquinaria"
-              customCellRender={(key, value) => key.toLowerCase().includes('fecha') ? (value ? value.split('T')[0] : '-') : (value ?? '-')}
-            />
-            <TablaGenericaAvanzada
-              title="Pronósticos"
-              data={pronosticos}
-              fields={proFields}
-              emptyMessage="No hay pronósticos para esta maquinaria"
-              customCellRender={(key, value, row) => {
-                if (key === 'recomendaciones') {
-                  return Array.isArray(value) ? value.join('; ') : (value || '-');
-                }
-                if (key.toLowerCase().includes('fecha')) {
-                  return value ? value.split('T')[0] : '-';
-                }
-                return value ?? '-';
-              }}
-            />
-          </Box>
+          <>
+            <Divider sx={{ my: 4 }} />
+            <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, color: 'primary.main' }}>
+              Detalles de la Maquinaria
+            </Typography>
+            <Box>
+              <TablaGenericaAvanzada
+                title="Datos de la Maquinaria"
+                data={[maquinaria]}
+                fields={maquinariaFields}
+                emptyMessage="No hay datos de maquinaria"
+              />
+              <TablaGenerica title="Control" data={control} ocultarCampos={ocultarCampos} reemplazos={{ 'gerente': 'Gerente', 'encargado': 'Encargado', 'estado': 'Estado', 'ubicacion': 'Ubicación' }} />
+              <TablaGenerica title="Asignación" data={asignacion} ocultarCampos={ocultarCampos} reemplazos={{ 'fecha_asignacion': 'Fecha de Asignación', 'recorrido_km': 'Recorrido Km', 'encargado': 'Encargado', 'ubicacion': 'Ubicación' }} />
+              <TablaGenerica title="Mantenimiento" data={mantenimiento} ocultarCampos={ocultarCampos} />
+              <TablaGenerica title="SOAT" data={soat} ocultarCampos={ocultarCampos} />
+              <TablaGenerica title="Seguros" data={seguros} ocultarCampos={ocultarCampos} reemplazos={{ 'numero_2024': 'N° 2024' }} />
+              <TablaGenerica title="ITV" data={itv} ocultarCampos={ocultarCampos} />
+              <TablaGenerica title="Impuestos" data={impuestos} ocultarCampos={ocultarCampos} />
+              <TablaGenericaAvanzada
+                title="Depreciaciones"
+                data={depreciaciones}
+                fields={depFields}
+                emptyMessage="No hay depreciaciones para esta maquinaria"
+                customCellRender={(key, value) => key.toLowerCase().includes('fecha') ? (value ? value.split('T')[0] : '-') : (value ?? '-')}
+              />
+              <TablaGenericaAvanzada
+                title="Pronósticos"
+                data={pronosticos}
+                fields={proFields}
+                emptyMessage="No hay pronósticos para esta maquinaria"
+                customCellRender={(key, value, row) => {
+                  if (key === 'recomendaciones') {
+                    return Array.isArray(value) ? value.join('; ') : (value || '-');
+                  }
+                  if (key.toLowerCase().includes('fecha')) {
+                    return value ? value.split('T')[0] : '-';
+                  }
+                  return value ?? '-';
+                }}
+              />
+            </Box>
+          </>
         )}
         {searched && !maquinaria && !loading && !error && (
           <Typography color="text.secondary">Busca una maquinaria por placa, código o detalle.</Typography>

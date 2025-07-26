@@ -9,16 +9,16 @@ class Maquinaria:
     collection_name = "maquinaria"
 
 class HistorialControl:
-    collection_name = "controles"
+    collection_name = "historial_control"
 
 class ActaAsignacion:
-    collection_name = "asignacion"
+    collection_name = "acta_asignacion"
 
 class Mantenimiento:
-    collection_name = "mantenimientos"
+    collection_name = "mantenimiento"
 
 class Seguro:
-    collection_name = "seguros"
+    collection_name = "seguro"
 
 class ITV:
     collection_name = "itv"
