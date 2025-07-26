@@ -96,19 +96,35 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
     try {
       let url;
       
+      // Mapeo de tipos a endpoints
+      const tipoToEndpoint = {
+        'Usuario': 'usuarios',
+        'Control': 'control',
+        'Asignación': 'asignacion',
+        'Mantenimiento': 'mantenimiento',
+        'Seguro': 'seguros',
+        'ITV': 'itv',
+        'SOAT': 'soat',
+        'Impuesto': 'impuestos',
+        'Maquinaria': 'maquinaria',
+        'Depreciación': 'depreciaciones'
+      };
+      
+      const endpoint = tipoToEndpoint[tipo];
+      if (!endpoint) {
+        throw new Error(`Tipo de registro no soportado: ${tipo}`);
+      }
+      
       // Para usuarios, usar endpoint diferente
       if (tipo === 'Usuario') {
         url = `http://localhost:8000/api/usuarios/${recordId}/`;
       } else {
         // Para otros tipos, usar endpoint con maquinaria_id
         if (!maquinariaId) {
-          // Intentar obtener el maquinaria_id del registro si no se proporciona
           console.log('No se proporcionó maquinariaId, intentando obtener del registro...');
-          // Para este caso, necesitamos obtener el maquinaria_id del registro
-          // Por ahora, mostraremos un mensaje más informativo
           throw new Error(`No se puede reactivar este registro de ${tipo} porque no se encontró la información de la maquinaria asociada. Contacte al administrador.`);
         }
-        url = `http://localhost:8000/api/maquinaria/${maquinariaId}/${tipo.toLowerCase()}/${recordId}/`;
+        url = `http://localhost:8000/api/maquinaria/${maquinariaId}/${endpoint}/${recordId}/`;
       }
       
       console.log('Reactivating URL:', url);
