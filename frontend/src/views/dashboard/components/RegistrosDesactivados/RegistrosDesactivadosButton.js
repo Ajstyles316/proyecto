@@ -14,17 +14,17 @@ const RegistrosDesactivadosButton = ({ maquinariaId, isEncargado }) => {
   return (
     <Box>
       <Button
-        variant="outlined"
-        color="primary"
+        variant="contained"
+        color="secondary"
         onClick={() => setShowRegistrosDesactivados(!showRegistrosDesactivados)}
         startIcon={<RestoreIcon />}
         sx={{ 
           minWidth: 200,
           borderColor: '#1976d2',
-          color: '#1976d2',
+          color: 'rgb(253, 251, 251)',
           '&:hover': {
             borderColor: '#1565c0',
-            backgroundColor: 'rgba(25, 118, 210, 0.04)'
+            backgroundColor: 'rgba(246, 248, 250, 0.04)'
           }
         }}
       >

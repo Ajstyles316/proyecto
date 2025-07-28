@@ -15,9 +15,11 @@ import pymongo
 from corsheaders.defaults import default_headers
 import os
 from dotenv import load_dotenv
-load_dotenv()
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(dotenv_path=BASE_DIR / '.env')
+print('MONGO_URI:', os.environ.get('MONGO_URI'))
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 
 
 # Quick-start development settings - unsuitable for production
@@ -151,3 +153,11 @@ MONGO_DB_NAME = os.environ.get('MONGO_DB_NAME', 'activos')
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',
 ]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'activosfijos39@gmail.com'
+EMAIL_HOST_PASSWORD = 'tdvf wsbt dudz clmc'
+DEFAULT_FROM_EMAIL = 'Sistema de Mantenimiento <activosfijos39@gmail.com>'

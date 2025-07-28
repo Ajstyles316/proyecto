@@ -30,6 +30,9 @@ from django.conf import settings
 from .mongo_connection import get_collection, get_collection_from_activos_db # Asegúrate de importar la nueva función
 import bcrypt
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.core.mail import send_mail, EmailMultiAlternatives
+import ast
+from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 
@@ -2432,19 +2435,96 @@ def cargar_funcion_pronostico():
         print(f"Error al importar pronostico_model: {e}")
         raise
 
+def enviar_correo_a_todos_usuarios_html(maquinaria, pronostico):
+    usuarios = get_collection(Usuario).find({})
+    emails = [u.get('Email') for u in usuarios if u.get('Email')]
+    if not emails:
+        return
+    placa = maquinaria.get('placa', pronostico.get('placa', 'Sin placa'))
+    fecha_asig = pronostico.get('fecha_asig', maquinaria.get('fecha_asig', maquinaria.get('fecha_asignacion', 'N/A')))
+    horas_op = pronostico.get('horas_op', maquinaria.get('horas_op', 'N/A'))
+    recorrido = pronostico.get('recorrido', maquinaria.get('recorrido', 'N/A'))
+    tipo = pronostico.get('resultado', 'N/A')
+    riesgo = pronostico.get('riesgo', 'N/A')
+    probabilidad = pronostico.get('probabilidad', 'N/A')
+    fecha_prediccion = pronostico.get('fecha_prediccion', 'N/A')
+    # Fechas futuras como lista
+    fechas_futuras = pronostico.get('fechas_futuras', [])
+    if isinstance(fechas_futuras, str):
+        try:
+            fechas_futuras = ast.literal_eval(fechas_futuras)
+        except Exception:
+            fechas_futuras = []
+    if not isinstance(fechas_futuras, list):
+        fechas_futuras = [fechas_futuras]
+    # Si fechas_futuras está vacío, intenta generarlas a partir de fecha_asig
+    if (not fechas_futuras or all(not f for f in fechas_futuras)) and fecha_asig and fecha_asig != 'N/A':
+        try:
+            if isinstance(fecha_asig, str):
+                base_date = datetime.strptime(fecha_asig[:10], "%Y-%m-%d")
+            else:
+                base_date = fecha_asig
+            saltos = [4, 6, 12, 24]
+            fechas_futuras = [
+                (base_date + relativedelta(months=+salto)).strftime("%Y-%m-%d")
+                for salto in saltos
+            ]
+        except Exception as e:
+            fechas_futuras = []
+    # Recomendaciones como lista
+    recomendaciones = pronostico.get('recomendaciones', [])
+    if isinstance(recomendaciones, str):
+        try:
+            recomendaciones = ast.literal_eval(recomendaciones)
+        except Exception:
+            recomendaciones = [recomendaciones]
+    if not isinstance(recomendaciones, list):
+        recomendaciones = [recomendaciones]
+    # Formatear fecha de predicción
+    if fecha_prediccion and 'T' in str(fecha_prediccion):
+        fecha_prediccion = str(fecha_prediccion).replace('T', ' ').split('.')[0]
+    html_content = f"""
+    <h2>Alerta de Mantenimiento</h2>
+    <table style='border-collapse:collapse;'>
+      <tr><td><b>Fecha del Mantenimiento:</b></td><td>{fecha_asig}</td></tr>
+      <tr><td><b>Placa:</b></td><td>{placa}</td></tr>
+      <tr><td><b>Horas de Operación:</b></td><td>{horas_op}</td></tr>
+      <tr><td><b>Recorrido:</b></td><td>{recorrido}</td></tr>
+      <tr><td><b>Tipo de Mantenimiento:</b></td><td>{tipo}</td></tr>
+      <tr><td><b>Riesgo:</b></td><td style='color:red;'><b>{riesgo}</b></td></tr>
+      <tr><td><b>Probabilidad:</b></td><td>{probabilidad}</td></tr>
+      <tr><td><b>Fechas Futuras:</b></td>
+        <td>
+          <ul>
+            {''.join(f'<li>{f}</li>' for f in fechas_futuras if f)}
+          </ul>
+        </td>
+      </tr>
+      <tr><td><b>Recomendaciones:</b></td>
+        <td>
+          <ul>
+            {''.join(f'<li>{r}</li>' for r in recomendaciones if r)}
+          </ul>
+        </td>
+      </tr>
+    </table>
+    """
+    subject = f"Pronóstico de mantenimiento para {placa}"
+    msg = EmailMultiAlternatives(subject, '', 'noreply@tusistema.com', emails)
+    msg.attach_alternative(html_content, "text/html")
+    msg.send()
+
 class PronosticoAPIView(APIView):
     def post(self, request):
         serializer = PronosticoInputSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            # Lanzar predicción automática (import robusto)
             import sys, os
             pronostico_dir = os.path.join(os.path.dirname(__file__), '../pronostico-v1')
             if pronostico_dir not in sys.path:
                 sys.path.insert(0, pronostico_dir)
             from pronostico_model import predecir_mantenimiento
             resultado_dict = predecir_mantenimiento(data)
-            # Extraer campos del dict
             data['resultado'] = resultado_dict.get('resultado')
             data['recomendaciones'] = resultado_dict.get('recomendaciones')
             data['fechas_futuras'] = resultado_dict.get('fechas_futuras', [])
@@ -2453,20 +2533,23 @@ class PronosticoAPIView(APIView):
             data['fecha_prediccion'] = resultado_dict.get('fecha_prediccion')
             placa = data.get('placa')
             fecha_asig = data.get('fecha_asig')
-            # --- Refuerzo: convertir fecha_asig a string ISO para filtro y guardado ---
             if isinstance(fecha_asig, (datetime, date)):
                 fecha_asig = fecha_asig.isoformat()
             data['fecha_asig'] = fecha_asig
             collection = get_collection(Pronostico)
             data = convert_dates_to_str(data)
             existing = collection.find_one({'placa': placa, 'fecha_asig': fecha_asig})
+            maquinaria_collection = get_collection(Maquinaria)
+            maquinaria_doc = maquinaria_collection.find_one({'placa': placa}) or {}
             if existing:
                 collection.update_one({'_id': existing['_id']}, {'$set': data})
                 updated = collection.find_one({'_id': existing['_id']})
+                enviar_correo_a_todos_usuarios_html(maquinaria_doc, data)
                 return Response(serialize_doc(updated), status=status.HTTP_200_OK)
             else:
                 result = collection.insert_one(data)
                 new_doc = collection.find_one({'_id': result.inserted_id})
+                enviar_correo_a_todos_usuarios_html(maquinaria_doc, data)
                 return Response(serialize_doc(new_doc), status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

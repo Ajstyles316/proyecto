@@ -22,6 +22,7 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useUser } from 'src/components/UserContext.jsx';
+import { getRandomRecomendacionesPorTipo } from './hooks';
 
 // Agregar utilidades para capitalizar y formatear probabilidad
 function capitalizeSentence(str) {
@@ -174,7 +175,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                   <IconButton
                     size="small"
                     color="info"
-                    onClick={e => canEdit && onRecomendacionClick(e, Array.isArray(item.recomendaciones) && item.recomendaciones.length > 0 ? item.recomendaciones : ["No hay recomendaciones generadas."])}
+                    onClick={e => canEdit && onRecomendacionClick(e, getRandomRecomendacionesPorTipo(item.resultado, Array.isArray(item.recomendaciones) && item.recomendaciones.length > 0 ? item.recomendaciones : ["No hay recomendaciones generadas."]))}
                     disabled={!canEdit && !isAdminOrEncargado}
                   >
                     <InfoIcon />

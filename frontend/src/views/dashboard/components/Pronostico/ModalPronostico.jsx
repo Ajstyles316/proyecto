@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useState, useEffect } from "react";
-import { getRiesgoColor, getRecomendacion, getAccionPorTipo, FIELD_LABELS } from "./hooks";
+import { getRiesgoColor, getRecomendacion, getAccionPorTipo, FIELD_LABELS, getRandomRecomendacionesPorTipo } from "./hooks";
 import PropTypes from "prop-types";
 // Utilidades para capitalizar y formatear probabilidad
 function capitalizeSentence(str) {
@@ -23,7 +23,57 @@ function formatProbabilidad(prob) {
   const num = Number(prob);
   return Number.isInteger(num) ? `${num}%` : `${num.toFixed(2)}%`;
 }
-const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
+// Componente reutilizable para mostrar un pronóstico con estilo
+function PronosticoCard({ pronostico }) {
+  if (!pronostico) return null;
+  const {
+    placa,
+    fecha_asig,
+    horas_op,
+    recorrido,
+    resultado,
+    riesgo,
+    probabilidad,
+    fecha_prediccion,
+    fecha_sugerida,
+    fechas_futuras,
+    recomendaciones
+  } = pronostico;
+  // Mostrar solo 3 recomendaciones aleatorias relevantes
+  const recomendacionesMostrar = getRandomRecomendacionesPorTipo(resultado, recomendaciones);
+  return (
+    <Box p={2} border={1} borderColor="primary.main" borderRadius={2} bgcolor="#f5faff" mb={2}>
+      <Typography variant="subtitle1" color="primary" mb={1}>
+        Resultado del Pronóstico
+      </Typography>
+      <Typography><b>Placa:</b> {placa || '-'}</Typography>
+      <Typography><b>Fecha de Asignación:</b> {fecha_asig || '-'}</Typography>
+      <Typography><b>Horas de Operación:</b> {horas_op || '-'}</Typography>
+      <Typography><b>Recorrido (km):</b> {recorrido || '-'}</Typography>
+      <Typography><b>Resultado:</b> <b>{capitalizeSentence(resultado)}</b></Typography>
+      {resultado && resultado.toLowerCase() === 'correctivo' && (
+        <Typography color="error" fontWeight={600}>¡Atención inmediata!</Typography>
+      )}
+      <Typography><b>Riesgo:</b> <span style={{ color: getRiesgoColor(riesgo), fontWeight: 600 }}>{capitalizeSentence(riesgo)}</span></Typography>
+      <Typography><b>Probabilidad:</b> {formatProbabilidad(probabilidad)}</Typography>
+      <Typography sx={{ color: 'teal', fontWeight: 600 }}>
+        Fecha Sugerida de Mantenimiento: {fecha_sugerida || (Array.isArray(fechas_futuras) && fechas_futuras.length > 0 ? fechas_futuras[0] : '-')}
+      </Typography>
+      <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>Recomendaciones:</Typography>
+      {Array.isArray(recomendacionesMostrar) && recomendacionesMostrar.length > 0 ? (
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          {recomendacionesMostrar.map((rec, idx) => (
+            <li key={idx} style={{ marginBottom: 4 }}>{rec}</li>
+          ))}
+        </ul>
+      ) : (
+        <Typography color="text.secondary">No hay recomendaciones generadas.</Typography>
+      )}
+    </Box>
+  );
+}
+
+const ModalPronostico = ({ open, onClose, maquinaria, historial = [], onPredictionSaved }) => {
   const [form, setForm] = useState({
     fecha_asig: "",
     horas_op: "",
@@ -33,6 +83,8 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
   const [submitting, setSubmitting] = useState(false);
   const [iaResult, setIaResult] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  // Mostrar historial por defecto si existe, formulario si no hay historial
+  const [showForm, setShowForm] = useState(!(Array.isArray(historial) && historial.length > 0));
 
   useEffect(() => {
     if (open) {
@@ -41,8 +93,9 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
       setSubmitting(false);
       setIaResult(null);
       setSaveSuccess(false);
+      setShowForm(!(Array.isArray(historial) && historial.length > 0));
     }
-  }, [open, maquinaria]);
+  }, [open, maquinaria, historial]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -106,116 +159,58 @@ const ModalPronostico = ({ open, onClose, maquinaria, onPredictionSaved }) => {
         </IconButton>
       </DialogTitle>
       <DialogContent>
-        <Box component="form" onSubmit={handleSubmit} display="flex" flexDirection="column" gap={2} mt={1}>
-          <TextField
-            label="Fecha de asignación"
-            name="fecha_asig"
-            type="date"
-            value={form.fecha_asig}
-            onChange={handleFormChange}
-            InputLabelProps={{ shrink: true }}
-            required
-          />
-          <TextField
-            label="Horas de operación"
-            name="horas_op"
-            type="number"
-            value={form.horas_op}
-            onChange={handleFormChange}
-            required
-          />
-          <TextField
-            label="Recorrido (km)"
-            name="recorrido"
-            type="number"
-            value={form.recorrido}
-            onChange={handleFormChange}
-            required
-          />
-          {formError && <Alert severity="error">{formError}</Alert>}
-          <Button type="submit" variant="contained" color="primary" disabled={submitting}>
-            {submitting ? "Calculando..." : "Solicitar Pronóstico"}
-          </Button>
-        </Box>
-
+        {/* Historial de pronósticos con estilo */}
+        {showForm === false && Array.isArray(historial) && historial.length > 0 && (
+          <Box mb={3}>
+            <Typography variant="subtitle1" color="primary" mb={1}>Historial de Pronósticos</Typography>
+            {historial.map((h, idx) => (
+              <PronosticoCard key={idx} pronostico={h} />
+            ))}
+            <Button variant="outlined" color="primary" sx={{ mt: 1 }} onClick={() => { setShowForm(true); setIaResult(null); setSaveSuccess(false); }}>Generar otro pronóstico</Button>
+          </Box>
+        )}
+        {/* Formulario para nuevo pronóstico */}
+        {showForm && (
+          <Box component="form" onSubmit={handleSubmit} display="flex" flexDirection="column" gap={2} mt={1}>
+            <TextField
+              label="Fecha de asignación"
+              name="fecha_asig"
+              type="date"
+              value={form.fecha_asig}
+              onChange={handleFormChange}
+              InputLabelProps={{ shrink: true }}
+              required
+            />
+            <TextField
+              label="Horas de operación"
+              name="horas_op"
+              type="number"
+              value={form.horas_op}
+              onChange={handleFormChange}
+              required
+            />
+            <TextField
+              label="Recorrido (km)"
+              name="recorrido"
+              type="number"
+              value={form.recorrido}
+              onChange={handleFormChange}
+              required
+            />
+            {formError && <Alert severity="error">{formError}</Alert>}
+            <Button type="submit" variant="contained" color="primary" disabled={submitting}>
+              {submitting ? "Calculando..." : "Solicitar Pronóstico"}
+            </Button>
+          </Box>
+        )}
+        {/* Resultado del pronóstico */}
         {iaResult && (
           <Box mt={3}>
-            <Box p={2} border={1} borderColor="primary.main" borderRadius={2} bgcolor="#f5faff">
-              <Typography variant="subtitle1" color="primary" mb={1}>
-                Resultado del Pronóstico
-              </Typography>
-              {Object.entries(iaResult)
-                .filter(([key]) => key !== '_id' && key !== 'creado_en' && key !== 'fecha_prediccion' && key !== 'recomendaciones' && key !== 'fechas_futuras')
-                .map(([key, value]) => {
-                  if (key === "riesgo") {
-                    return (
-                      <Typography key={key} sx={{ color: getRiesgoColor(value), fontWeight: 600 }}>
-                        {FIELD_LABELS[key] || capitalizeSentence(key)}: {capitalizeSentence(String(value))}
-                      </Typography>
-                    );
-                  }
-                  if (key === "probabilidad") {
-                    return (
-                      <Typography key={key}>
-                        {FIELD_LABELS[key] || capitalizeSentence(key)}: {formatProbabilidad(value)}
-                      </Typography>
-                    );
-                  }
-                  if (key === "resultado") {
-                    return (
-                      <Typography key={key}>
-                        {FIELD_LABELS[key] || capitalizeSentence(key)}: <b>{capitalizeSentence(String(value))}</b> <br />
-                        <span style={{ fontStyle: 'italic', color: '#1976d2' }}>{getRecomendacion(String(value))}</span>
-                      </Typography>
-                    );
-                  }
-                  if (key === "fecha_sugerida") {
-                    return (
-                      <Typography key={key} sx={{ color: 'success.dark', fontWeight: 600 }}>
-                        {FIELD_LABELS[key] || capitalizeSentence(key)}: {String(value)}
-                      </Typography>
-                    );
-                  }
-                  return (
-                    <Typography key={key}>
-                      {FIELD_LABELS[key] || capitalizeSentence(key)}: {String(value)}
-                    </Typography>
-                  );
-                })}
-              {!iaResult.fecha_sugerida && (
-                <Typography sx={{ color: 'success.dark', fontWeight: 600 }}>
-                  Fecha Sugerida de Mantenimiento: {(() => {
-                    try {
-                      const base = iaResult.fecha_asig || iaResult.fecha_prediccion;
-                      if (!base) return 'No disponible';
-                      const d = new Date(base);
-                      d.setDate(d.getDate() + 180);
-                      return d.toISOString().split('T')[0];
-                    } catch {
-                      return 'No disponible';
-                    }
-                  })()}
-                </Typography>
-              )}
-              <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>
-                Recomendaciones:
-              </Typography>
-              {Array.isArray(iaResult.recomendaciones) && iaResult.recomendaciones.length > 0 && iaResult.recomendaciones[0] !== 'Consultar con el área de mantenimiento.' ? (
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  {iaResult.recomendaciones.map((rec, idx) => (
-                    <li key={idx} style={{ marginBottom: 4 }}>{rec}</li>
-                  ))}
-                </ul>
-              ) : (
-                <Typography color="text.secondary">No hay recomendaciones generadas.</Typography>
-              )}
-              <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>
-                Acciones a tomar: {getAccionPorTipo(iaResult.resultado)}
-              </Typography>
-              {saveSuccess && (
-                <Alert severity="success" sx={{ mt: 2 }}>¡Información guardada exitosamente!</Alert>
-              )}
-            </Box>
+            <PronosticoCard pronostico={iaResult} />
+            {saveSuccess && (
+              <Alert severity="success" sx={{ mt: 2 }}>¡Información guardada exitosamente!</Alert>
+            )}
+            <Button variant="outlined" color="primary" sx={{ mt: 1 }} onClick={() => { setShowForm(false); setIaResult(null); setSaveSuccess(false); }}>Ver historial</Button>
           </Box>
         )}
       </DialogContent>
@@ -229,6 +224,7 @@ ModalPronostico.propTypes = {
     placa: PropTypes.string,
     detalle: PropTypes.string,
   }),
+  historial: PropTypes.array,
   onPredictionSaved: PropTypes.func.isRequired,
 };
 export default ModalPronostico;

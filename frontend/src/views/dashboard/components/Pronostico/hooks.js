@@ -46,3 +46,17 @@ export const getRecomendacionesPorTipo = (resultado) => {
   ];
   return ['Consultar con el área de mantenimiento.'];
 };
+
+// Devuelve 3 recomendaciones aleatorias relevantes según el tipo de mantenimiento
+export function getRandomRecomendacionesPorTipo(tipo, recomendaciones) {
+  if (!Array.isArray(recomendaciones) || recomendaciones.length === 0) return [];
+  // Filtrar por tipo si las recomendaciones tienen relación (puedes mejorar esto si tienes categorías)
+  // Por ahora, solo aleatorio de la lista
+  const recs = [...recomendaciones];
+  // Mezclar array
+  for (let i = recs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [recs[i], recs[j]] = [recs[j], recs[i]];
+  }
+  return recs.slice(0, 3);
+}

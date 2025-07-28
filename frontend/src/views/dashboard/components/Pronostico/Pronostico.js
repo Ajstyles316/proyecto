@@ -174,6 +174,7 @@ const Pronostico = () => {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         maquinaria={selectedMaquinaria}
+        historial={pronosticos.filter(p => p.placa === selectedMaquinaria?.placa)}
         onPredictionSaved={() => {
           fetch("http://localhost:8000/api/pronostico/")
             .then((res) => res.json())

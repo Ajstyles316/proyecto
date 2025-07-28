@@ -46,7 +46,6 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
           <TableCell>Encargado</TableCell>
           <TableCell>Estado</TableCell>
           <TableCell>Hoja de Trámite</TableCell>
-          <TableCell>Fecha de Ingreso</TableCell>
           <TableCell align="right">Acciones</TableCell>
         </TableRow>
       </TableHead>
@@ -59,7 +58,6 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
             <TableCell>{control.encargado}</TableCell>
             <TableCell>{control.estado}</TableCell>
             <TableCell>{control.hoja_tramite}</TableCell>
-            <TableCell>{formatDate(control.fecha)}</TableCell>
             <TableCell align="right">
               {!isReadOnly && (
                 <>
