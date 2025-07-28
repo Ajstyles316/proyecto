@@ -40,8 +40,8 @@ const MODULOS_SEGUIMIENTO = [
 const getAccionChip = (accion) => {
   // Acciones legibles
   const map = {
-    login: { label: 'Inicio de sesión', color: 'info' },
-    logout: { label: 'Cierre de sesión', color: 'warning' },
+    login: { label: 'Inicio de Sesión', color: 'info' },
+    logout: { label: 'Cierre de Sesión', color: 'warning' },
     crear_maquinaria: { label: 'Crear maquinaria', color: 'success' },
     editar_maquinaria: { label: 'Editar maquinaria', color: 'default' },
     eliminar_maquinaria: { label: 'Desactivar maquinaria', color: 'error' },
@@ -49,31 +49,40 @@ const getAccionChip = (accion) => {
     crear_control: { label: 'Crear control', color: 'success' },
     editar_control: { label: 'Editar control', color: 'default' },
     eliminar_control: { label: 'Desactivar control', color: 'error' },
-    reactivar_control: { label: 'Reactivar control', color: 'success' },
+    reactivar_historialcontrol: { label: 'Reactivar control', color: 'default' },
+    desactivar_control: { label: 'Desactivar control', color: 'error' },
     crear_asignacion: { label: 'Crear asignación', color: 'success' },
     editar_asignacion: { label: 'Editar asignación', color: 'default' },
     eliminar_asignacion: { label: 'Desactivar asignación', color: 'error' },
+    reactivar_asignacion: { label: 'Reactivar asignación', color: 'success' },
     crear_mantenimiento: { label: 'Crear mantenimiento', color: 'success' },
     editar_mantenimiento: { label: 'Editar mantenimiento', color: 'default' },
     eliminar_mantenimiento: { label: 'Desactivar mantenimiento', color: 'error' },
+    reactivar_mantenimiento: { label: 'Reactivar mantenimiento', color: 'success' },
     crear_soat: { label: 'Crear SOAT', color: 'success' },
     editar_soat: { label: 'Editar SOAT', color: 'default' },
     eliminar_soat: { label: 'Desactivar SOAT', color: 'error' },
+    reactivar_soat: { label: 'Reactivar SOAT', color: 'success' },
     crear_impuesto: { label: 'Crear impuesto', color: 'success' },
     editar_impuesto: { label: 'Editar impuesto', color: 'default' },
     eliminar_impuesto: { label: 'Desactivar impuesto', color: 'error' },
+    reactivar_impuesto: { label: 'Reactivar impuesto', color: 'success' },
     crear_seguros: { label: 'Crear seguro', color: 'success' },
     editar_seguros: { label: 'Editar seguro', color: 'default' },
     eliminar_seguros: { label: 'Desactivar seguro', color: 'error' },
+    reactivar_seguros: { label: 'Reactivar seguro', color: 'success' },
     crear_itv: { label: 'Crear ITV', color: 'success' },
     editar_itv: { label: 'Editar ITV', color: 'default' },
     eliminar_itv: { label: 'Desactivar ITV', color: 'error' },
+    reactivar_itv: { label: 'Reactivar ITV', color: 'success' },
     crear_pronostico: { label: 'Crear pronóstico', color: 'success' },
     editar_pronostico: { label: 'Editar pronóstico', color: 'default' },
     eliminar_pronostico: { label: 'Desactivar pronóstico', color: 'error' },
+    reactivar_pronostico: { label: 'Reactivar pronóstico', color: 'success' },
     crear_depreciacion: { label: 'Crear depreciación', color: 'success' },
     editar_depreciacion: { label: 'Editar depreciación', color: 'default' },
     eliminar_depreciacion: { label: 'Desactivar depreciación', color: 'error' },
+    reactivar_depreciacion: { label: 'Reactivar depreciación', color: 'success' },
     validar: { label: 'Validar', color: 'primary' },
     autorizar: { label: 'Autorizar', color: 'primary' },
     cambio_permisos: { label: 'Cambio de permisos', color: 'warning', icon: <SecurityIcon /> },
@@ -108,24 +117,40 @@ const getAccionChip = (accion) => {
 
 function capitalizeWords(str) {
   if (!str) return '';
-  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  // Reemplazar guiones bajos por espacios
+  let formatted = str.replace(/_/g, ' ');
+  
+  // Capitalizar solo la primera letra de cada palabra, respetando acentos
+  formatted = formatted.replace(/\b\w/g, l => l.toUpperCase());
+  
+  // Corregir casos específicos de ortografía española
+  formatted = formatted.replace(/SesióN/g, 'Sesión');
+  formatted = formatted.replace(/Inicio De SesióN/g, 'Inicio de Sesión');
+  formatted = formatted.replace(/Cierre De SesióN/g, 'Cierre de Sesión');
+  
+  return formatted;
 }
 
 // Función mejorada para capitalizar acciones y módulos
 function formatActivityText(text) {
   if (!text) return '';
-  
+  // Reemplazar guiones bajos por espacios y capitalizar cada palabra
+  let formatted = text.replace(/_/g, ' ');
   // Mapeo específico para acciones
   const actionMap = {
-    'crear_': 'Creó ',
-    'editar_': 'Editó ',
-    'eliminar_': 'Eliminó ',
-    'desactivar_': 'Desactivó ',
-    'reactivar_': 'Reactivó ',
-    'validar_': 'Validó ',
-    'autorizar_': 'Autorizó '
+    'crear ': 'Creó ',
+    'editar ': 'Editó ',
+    'eliminar ': 'Eliminó ',
+    'desactivar ': 'Desactivó ',
+    'reactivar ': 'Reactivó ',
+    'validar ': 'Validó ',
+    'autorizar ': 'Autorizó '
   };
-  
+  Object.entries(actionMap).forEach(([key, value]) => {
+    if (formatted.toLowerCase().startsWith(key)) {
+      formatted = formatted.replace(new RegExp('^' + key, 'i'), value);
+    }
+  });
   // Mapeo específico para módulos
   const moduleMap = {
     'maquinaria': 'Maquinaria',
@@ -140,24 +165,11 @@ function formatActivityText(text) {
     'pronostico': 'Pronóstico',
     'usuario': 'Usuario'
   };
-  
-  let formatted = text;
-  
-  // Aplicar mapeo de acciones
-  Object.entries(actionMap).forEach(([key, value]) => {
-    if (formatted.startsWith(key)) {
-      formatted = formatted.replace(key, value);
-    }
-  });
-  
-  // Aplicar mapeo de módulos
   Object.entries(moduleMap).forEach(([key, value]) => {
     formatted = formatted.replace(new RegExp(key, 'gi'), value);
   });
-  
   // Capitalizar palabras restantes
   formatted = formatted.replace(/\b\w/g, l => l.toUpperCase());
-  
   return formatted;
 }
 
