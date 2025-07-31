@@ -99,8 +99,6 @@ const Pronostico = () => {
     const year = d.getFullYear();
     return `${day}-${month}-${year}`;
   }
-
-  // Genera fechas futuras cada 4, 6, 12, 24 meses hasta hoy o fin de año
   function generarFechasFuturas(base) {
     if (!base) return [];
     const fechas = [];

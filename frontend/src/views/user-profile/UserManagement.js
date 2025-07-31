@@ -11,7 +11,7 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
-const cargos = ["Encargado", "Técnico"];
+const cargos = ["Admin", "Encargado", "Técnico"];
 const MODULOS = [
   'Dashboard',
   'Maquinaria',
@@ -282,7 +282,7 @@ const UserManagement = () => {
   const totalSeguimientoPages = Math.ceil(filteredSeguimiento.length / rowsPerPage);
 
   useEffect(() => {
-    if (!user || user.Cargo.toLowerCase() !== 'encargado') return;
+    if (!user || user.Cargo.toLowerCase() !== 'admin') return;
     fetch('http://localhost:8000/api/usuarios/', {
       headers: { 'X-User-Email': user.Email }
     })
@@ -295,7 +295,27 @@ const UserManagement = () => {
       });
   }, [user]);
 
+  const fetchUsuarios = () => {
+    if (!user || user.Cargo.toLowerCase() !== 'admin') return;
+    fetch('http://localhost:8000/api/usuarios/', {
+      headers: { 'X-User-Email': user.Email }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setUsuarios(data);
+      })
+      .catch(() => {
+        setSnackbar({ open: true, message: 'Error al cargar usuarios', severity: 'error' });
+      });
+  };
+
   const handleCargoChange = (id, newCargo) => {
+    // Solo el admin puede cambiar cargos
+    if (user.Cargo?.toLowerCase() !== 'admin') {
+      setSnackbar({ open: true, message: 'Solo el administrador puede cambiar roles', severity: 'error' });
+      return;
+    }
+    
     fetch(`http://localhost:8000/api/usuarios/${id}/cargo/`, {
       method: 'PUT',
       headers: {
@@ -355,6 +375,12 @@ const UserManagement = () => {
   };
   const handleClosePermisos = () => setModalPermisos({ open: false, usuario: null, permisos: {} });
   const handleGuardarPermisos = () => {
+    // Solo el admin puede gestionar permisos
+    if (user.Cargo?.toLowerCase() !== 'admin') {
+      setSnackbar({ open: true, message: 'Solo el administrador puede gestionar permisos', severity: 'error' });
+      return;
+    }
+    
     const id = modalPermisos.usuario._id?.$oid || modalPermisos.usuario._id || modalPermisos.usuario.Email;
     // Fusionar defaultPermisos con los permisos actuales para asegurar que todos los módulos estén presentes
     const permisosAEnviar = { ...{}, ...modalPermisos.permisos };
@@ -412,11 +438,11 @@ const UserManagement = () => {
     setSeguimientoFilters({ usuario: '', modulo: '', desde: '', hasta: '' });
   };
 
-  if (!user || user.Cargo.toLowerCase() !== 'encargado') {
+  if (!user || user.Cargo.toLowerCase() !== 'admin') {
     return <Typography variant="h6" color="error">Acceso denegado</Typography>;
   }
 
-  const isAdmin = user.Cargo.toLowerCase() === 'encargado';
+  const isAdmin = user.Cargo.toLowerCase() === 'admin';
 
   return (
     <Box sx={{ p: 3 }}>

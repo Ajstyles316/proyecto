@@ -27,11 +27,28 @@ export function cleanRow(row) {
 }
 
 export function formatHeader(key) {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  // Si el key ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+  if (key.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(key)) {
+    return key;
+  }
+  // Si es un string con guiones bajos, procesarlo
+  if (key.includes('_')) {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  // Para otros casos, solo capitalizar la primera letra
+  return key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
 }
 
 export function formatMethod(method) {
   if (!method) return '-';
-  // Capitaliza y reemplaza guiones bajos por espacios
-  return method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  // Si el method ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+  if (method.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(method)) {
+    return method;
+  }
+  // Si es un string con guiones bajos, procesarlo
+  if (method.includes('_')) {
+    return method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  // Para otros casos, solo capitalizar la primera letra
+  return method.charAt(0).toUpperCase() + method.slice(1).toLowerCase();
 }

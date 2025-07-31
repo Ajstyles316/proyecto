@@ -144,17 +144,24 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                 </TableCell>
                 <TableCell align="center">
                   <span>
-                    {/* Mostrar fechas futuras si existen */}
-                    {Array.isArray(item.fechas_futuras) && item.fechas_futuras.length > 0
-                      ? item.fechas_futuras.join(', ')
-                      : item.fecha_sugerida
-                        ? item.fecha_sugerida
+                    {/* Mostrar fecha sugerida si existe, sino fechas futuras, sino calcular una fecha por defecto */}
+                    {item.fecha_sugerida 
+                      ? item.fecha_sugerida
+                      : Array.isArray(item.fechas_futuras) && item.fechas_futuras.length > 0
+                        ? item.fechas_futuras.join(', ')
                         : (() => {
                             try {
                               const base = item.fecha_asig;
                               if (!base) return "No disponible";
                               const d = new Date(base);
-                              d.setDate(d.getDate() + 180);
+                              // Calcular fecha sugerida por defecto según el tipo de mantenimiento
+                              if (item.resultado && item.resultado.toLowerCase().includes('correctivo')) {
+                                d.setDate(d.getDate() + 10); // 10 días para correctivo
+                              } else if (item.resultado && item.resultado.toLowerCase().includes('preventivo')) {
+                                d.setDate(d.getDate() + 60); // 60 días para preventivo
+                              } else {
+                                d.setDate(d.getDate() + 30); // 30 días por defecto
+                              }
                               return d.toISOString().split("T")[0];
                             } catch {
                               return "No disponible";

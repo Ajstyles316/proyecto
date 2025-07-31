@@ -38,6 +38,102 @@ logger = logging.getLogger(__name__)
 
 # --- Funciones auxiliares para PyMongo y serialización ---
 
+def create_default_admin():
+    """Crea un usuario admin por defecto si no existe ninguno"""
+    try:
+        usuarios_collection = get_collection(Usuario)
+        # Verificar si ya existe un admin
+        admin_exists = usuarios_collection.find_one({"Cargo": "admin"})
+        if not admin_exists:
+            # Crear usuario admin por defecto
+            admin_data = {
+                "Nombre": "Administrador",
+                "Cargo": "admin",
+                "Unidad": "Sistema",
+                "Email": "admin123@gmail.com",
+                "Password": bcrypt.hashpw("Aleatorio12$".encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                "Permiso": "Admin",
+                "permisos": {
+                    "Dashboard": {"ver": True, "crear": True, "editar": True, "eliminar": True},
+                    "Maquinaria": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Control": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Asignación": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Mantenimiento": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "SOAT": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Impuestos": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Seguros": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Inspección Técnica Vehicular": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Depreciaciones": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Activos": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Pronóstico": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Reportes": {"ver": True, "crear": True, "editar": True, "eliminar": True},
+                    "Usuarios": {"ver": True, "crear": True, "editar": True, "eliminar": True}
+                },
+                "activo": True,
+                "fecha_creacion": datetime.now()
+            }
+            usuarios_collection.insert_one(admin_data)
+            logger.info("Usuario admin por defecto creado exitosamente")
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"Error al crear usuario admin por defecto: {str(e)}")
+        return False
+
+def check_user_permissions(user, required_role=None, required_permission=None, module=None):
+    """
+    Verifica los permisos del usuario según el nuevo sistema de roles
+    
+    Args:
+        user: Usuario a verificar
+        required_role: Rol requerido ('admin', 'encargado', 'tecnico')
+        required_permission: Permiso requerido ('ver', 'crear', 'editar', 'eliminar')
+        module: Módulo específico para verificar permisos granulares
+    
+    Returns:
+        bool: True si tiene permisos, False en caso contrario
+    """
+    if not user:
+        return False
+    
+    cargo = user.get('Cargo', '').lower()
+    
+    # Verificar rol requerido
+    if required_role:
+        if required_role == 'admin' and cargo != 'admin':
+            return False
+        elif required_role == 'encargado' and cargo not in ['admin', 'encargado']:
+            return False
+        elif required_role == 'tecnico' and cargo not in ['admin', 'encargado', 'tecnico']:
+            return False
+    
+    # Si es admin, tiene acceso completo excepto modificar maquinaria y depreciaciones
+    if cargo == 'admin':
+        # Restricciones específicas del admin
+        if module == 'Maquinaria' and required_permission in ['crear', 'editar', 'eliminar']:
+            return False
+        if module == 'Depreciaciones' and required_permission in ['crear', 'editar']:
+            return False
+        # Para todo lo demás, el admin tiene acceso completo
+        return True
+    
+    # Si es encargado, tiene permisos completos excepto gestión de roles
+    if cargo == 'encargado':
+        if module == 'Usuarios' and required_permission in ['crear', 'editar', 'eliminar']:
+            return False
+        return True
+    
+    # Si es técnico, verificar permisos granulares
+    if cargo == 'tecnico':
+        if not module or not required_permission:
+            return True
+        
+        permisos = user.get('permisos', {})
+        module_permissions = permisos.get(module, {})
+        return module_permissions.get(required_permission, False)
+    
+    return False
+
 def serialize_doc(doc):
     """Convierte un documento de PyMongo a un formato JSON serializable (recursivo)."""
     if not doc:
@@ -175,6 +271,13 @@ class MaquinariaListView(APIView):
     def post(self, request):
         maquinaria_collection = get_collection(Maquinaria)
         try:
+            # Verificar permisos
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            
+            if not check_user_permissions(user, required_permission='crear', module='Maquinaria'):
+                return Response({"error": "No tienes permisos para crear maquinaria"}, status=status.HTTP_403_FORBIDDEN)
+            
             data = request.data.copy()
             
             # Ensure fecha_registro is in the correct format
@@ -201,8 +304,6 @@ class MaquinariaListView(APIView):
                 if 'imagen' in data:
                     validated_data['imagen'] = data['imagen']
                 # Agregar el campo registrado_por con el nombre del usuario
-                actor_email = request.headers.get('X-User-Email')
-                user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
                 validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
                 # Por defecto, los registros son activos
                 validated_data['activo'] = True
@@ -308,10 +409,15 @@ class MaquinariaDetailView(APIView):
         if not ObjectId.is_valid(id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            data = request.data.copy()
-            # --- RESTRICCIÓN DE CAMPOS POR ROL ---
+            # Verificar permisos
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email})
+            
+            if not check_user_permissions(user, required_permission='editar', module='Maquinaria'):
+                return Response({"error": "No tienes permisos para editar maquinaria"}, status=status.HTTP_403_FORBIDDEN)
+            
+            data = request.data.copy()
+            # --- RESTRICCIÓN DE CAMPOS POR ROL ---
             cargo = user.get('Cargo', '').lower() if user else ''
             if cargo != 'encargado':
                 data.pop('validado_por', None)
@@ -377,6 +483,13 @@ class MaquinariaDetailView(APIView):
         if not ObjectId.is_valid(id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         try:
+            # Verificar permisos
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            
+            if not check_user_permissions(user, required_permission='eliminar', module='Maquinaria'):
+                return Response({"error": "No tienes permisos para desactivar maquinaria"}, status=status.HTTP_403_FORBIDDEN)
+            
             existing_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
             if not existing_maquinaria:
                 return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
@@ -406,14 +519,14 @@ class MaquinariaDetailView(APIView):
 
     def patch(self, request, id):
         """Reactivar una maquinaria desactivada"""
-        # Verificar permisos de encargado
+        # Verificar permisos
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({"error": "Solo los encargados pueden reactivar maquinarias"}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_permission='editar', module='Maquinaria'):
+            return Response({"error": "No tienes permisos para reactivar maquinarias"}, status=status.HTTP_403_FORBIDDEN)
         
         maquinaria_collection = get_collection(Maquinaria)
         if not ObjectId.is_valid(id):
@@ -1998,6 +2111,14 @@ class DepreciacionesListView(APIView):
     def post(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar permisos
+        actor_email = request.headers.get('X-User-Email')
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        
+        if not check_user_permissions(user, required_permission='crear', module='Depreciaciones'):
+            return Response({"error": "No tienes permisos para crear depreciaciones"}, status=status.HTTP_403_FORBIDDEN)
+        
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
         maquinaria_collection = get_collection(Maquinaria)
@@ -2217,6 +2338,9 @@ class LoginView(APIView):
 
     def post(self, request):
         try:
+            # Crear usuario admin por defecto si no existe
+            create_default_admin()
+            
             data = request.data
             print("Datos recibidos:", data)
             serializer = self.serializer_class(data=data)
@@ -2531,6 +2655,7 @@ class PronosticoAPIView(APIView):
             data['riesgo'] = resultado_dict.get('riesgo')
             data['probabilidad'] = resultado_dict.get('probabilidad')
             data['fecha_prediccion'] = resultado_dict.get('fecha_prediccion')
+            data['fecha_sugerida'] = resultado_dict.get('fecha_sugerida')
             placa = data.get('placa')
             fecha_asig = data.get('fecha_asig')
             if isinstance(fecha_asig, (datetime, date)):
@@ -2557,7 +2682,7 @@ class PronosticoAPIView(APIView):
         # Devolver todos los pronósticos sin paginación
         cursor = Pronostico().collection.find({}, {
             "_id": 1, "placa": 1, "fecha_asig": 1, "horas_op": 1, "recorrido": 1, "resultado": 1, "creado_en": 1, "recomendaciones": 1, "fechas_futuras": 1,
-            "riesgo": 1, "probabilidad": 1
+            "riesgo": 1, "probabilidad": 1, "fecha_sugerida": 1
         })
         registros = list(cursor)
         registros_serializados = [serialize_doc(r) for r in registros]
@@ -2616,15 +2741,15 @@ class MaquinariaViewSet(viewsets.ViewSet):
         return Response(serialize_doc(m))
 
 class UsuarioListView(APIView):
-    """Solo el encargado puede ver la lista de usuarios."""
+    """Solo el admin puede ver la lista de usuarios."""
     def get(self, request):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_role='admin'):
+            return Response({'error': 'Solo el administrador puede ver la lista de usuarios'}, status=status.HTTP_403_FORBIDDEN)
         # Solo mostrar usuarios activos
         usuarios = list(collection.find({
             "$or": [
@@ -2635,21 +2760,27 @@ class UsuarioListView(APIView):
         return Response([serialize_doc(u) for u in usuarios], status=status.HTTP_200_OK)
 
 class UsuarioCargoUpdateView(APIView):
-    """Solo el encargado puede cambiar el cargo de otros usuarios."""
+    """Solo el admin puede cambiar el cargo de otros usuarios."""
     def put(self, request, id):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_role='admin'):
+            return Response({'error': 'Solo el administrador puede cambiar roles'}, status=status.HTTP_403_FORBIDDEN)
         # No puede cambiarse a sí mismo
         if str(user.get('_id')) == id:
             return Response({'error': 'No puedes cambiar tu propio cargo'}, status=status.HTTP_400_BAD_REQUEST)
         nuevo_cargo = request.data.get('Cargo')
         if not nuevo_cargo:
             return Response({'error': 'Cargo requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar que el cargo sea válido
+        cargos_validos = ['admin', 'encargado', 'tecnico']
+        if nuevo_cargo.lower() not in cargos_validos:
+            return Response({'error': 'Cargo inválido. Debe ser: admin, encargado o tecnico'}, status=status.HTTP_400_BAD_REQUEST)
+        
         result = collection.update_one({'_id': ObjectId(id)}, {'$set': {'Cargo': nuevo_cargo}})
         if result.matched_count == 0:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -2657,15 +2788,15 @@ class UsuarioCargoUpdateView(APIView):
         return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
 
 class UsuarioPermisoUpdateView(APIView):
-    """Solo el encargado puede cambiar el permiso de otros usuarios."""
+    """Solo el admin puede cambiar el permiso de otros usuarios."""
     def put(self, request, id):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_role='admin'):
+            return Response({'error': 'Solo el administrador puede cambiar permisos'}, status=status.HTTP_403_FORBIDDEN)
         if str(user.get('_id')) == id:
             return Response({'error': 'No puedes cambiar tu propio permiso'}, status=status.HTTP_400_BAD_REQUEST)
         nuevo_permiso = request.data.get('Permiso')
@@ -2678,15 +2809,15 @@ class UsuarioPermisoUpdateView(APIView):
         return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
 
 class UsuarioDeleteView(APIView):
-    """Solo el encargado puede desactivar usuarios (no a sí mismo)."""
+    """Solo el admin puede desactivar usuarios (no a sí mismo)."""
     def delete(self, request, id):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_role='admin'):
+            return Response({'error': 'Solo el administrador puede desactivar usuarios'}, status=status.HTTP_403_FORBIDDEN)
         if str(user.get('_id')) == id:
             return Response({'error': 'No puedes desactivarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
         # En lugar de eliminar, desactivar
@@ -2705,8 +2836,8 @@ class UsuarioDeleteView(APIView):
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_role='admin'):
+            return Response({'error': 'Solo el administrador puede reactivar usuarios'}, status=status.HTTP_403_FORBIDDEN)
         
         # Reactivar el usuario
         result = collection.update_one(
@@ -2720,13 +2851,13 @@ class UsuarioDeleteView(APIView):
 class RegistrosDesactivadosView(APIView):
     """Vista para obtener registros desactivados"""
     def get(self, request, maquinaria_id):
-        # Verificar permisos de encargado
+        # Verificar permisos de encargado o admin
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
+        if not check_user_permissions(user, required_role='encargado'):
             return Response({"error": "Solo los encargados pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
         
         if not ObjectId.is_valid(maquinaria_id):
@@ -2759,13 +2890,13 @@ class RegistrosDesactivadosView(APIView):
 class TodosRegistrosDesactivadosView(APIView):
     """Vista para obtener todos los registros desactivados del sistema"""
     def get(self, request):
-        # Verificar permisos de encargado
+        # Verificar permisos de encargado o admin
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
+        if not check_user_permissions(user, required_role='encargado'):
             return Response({"error": "Solo los encargados pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
         
         # Obtener parámetros de consulta
@@ -3044,16 +3175,15 @@ class MaquinariaConDepreciacionBuscarView(APIView):
         return Response(maquinaria_serializada, status=200)
 
 class UsuarioPermisosUpdateView(APIView):
-    """Solo el admin o encargado puede cambiar los permisos granulares de otros usuarios."""
+    """Solo el admin puede cambiar los permisos granulares de otros usuarios."""
     def put(self, request, id):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        cargo = user.get('Cargo', '').lower() if user else ''
-        if cargo not in ['admin', 'encargado']:
-            return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
+        if not check_user_permissions(user, required_role='admin'):
+            return Response({'error': 'Solo el administrador puede gestionar permisos'}, status=status.HTTP_403_FORBIDDEN)
         if str(user.get('_id')) == id:
             return Response({'error': 'No puedes cambiar tus propios permisos'}, status=status.HTTP_400_BAD_REQUEST)
         nuevos_permisos = request.data.get('permisos')

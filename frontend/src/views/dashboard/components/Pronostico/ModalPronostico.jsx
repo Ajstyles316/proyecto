@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useState, useEffect } from "react";
-import { getRiesgoColor, getRecomendacion, getAccionPorTipo, FIELD_LABELS, getRandomRecomendacionesPorTipo } from "./hooks";
+import { getRiesgoColor, getRandomRecomendacionesPorTipo } from "./hooks";
 import PropTypes from "prop-types";
 // Utilidades para capitalizar y formatear probabilidad
 function capitalizeSentence(str) {
@@ -34,7 +34,6 @@ function PronosticoCard({ pronostico }) {
     resultado,
     riesgo,
     probabilidad,
-    fecha_prediccion,
     fecha_sugerida,
     fechas_futuras,
     recomendaciones
@@ -57,7 +56,24 @@ function PronosticoCard({ pronostico }) {
       <Typography><b>Riesgo:</b> <span style={{ color: getRiesgoColor(riesgo), fontWeight: 600 }}>{capitalizeSentence(riesgo)}</span></Typography>
       <Typography><b>Probabilidad:</b> {formatProbabilidad(probabilidad)}</Typography>
       <Typography sx={{ color: 'teal', fontWeight: 600 }}>
-        Fecha Sugerida de Mantenimiento: {fecha_sugerida || (Array.isArray(fechas_futuras) && fechas_futuras.length > 0 ? fechas_futuras[0] : '-')}
+        Fecha Sugerida de Mantenimiento: {fecha_sugerida || (Array.isArray(fechas_futuras) && fechas_futuras.length > 0 ? fechas_futuras[0] : (() => {
+          try {
+            if (fecha_asig) {
+              const d = new Date(fecha_asig);
+              if (resultado && resultado.toLowerCase().includes('correctivo')) {
+                d.setDate(d.getDate() + 10);
+              } else if (resultado && resultado.toLowerCase().includes('preventivo')) {
+                d.setDate(d.getDate() + 60);
+              } else {
+                d.setDate(d.getDate() + 30);
+              }
+              return d.toISOString().split('T')[0];
+            }
+            return '-';
+          } catch {
+            return '-';
+          }
+        })())}
       </Typography>
       <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>Recomendaciones:</Typography>
       {Array.isArray(recomendacionesMostrar) && recomendacionesMostrar.length > 0 ? (
@@ -72,6 +88,22 @@ function PronosticoCard({ pronostico }) {
     </Box>
   );
 }
+
+// PropTypes para PronosticoCard
+PronosticoCard.propTypes = {
+  pronostico: PropTypes.shape({
+    placa: PropTypes.string,
+    fecha_asig: PropTypes.string,
+    horas_op: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    recorrido: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    resultado: PropTypes.string,
+    riesgo: PropTypes.string,
+    probabilidad: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    fecha_sugerida: PropTypes.string,
+    fechas_futuras: PropTypes.array,
+    recomendaciones: PropTypes.array
+  })
+};
 
 const ModalPronostico = ({ open, onClose, maquinaria, historial = [], onPredictionSaved }) => {
   const [form, setForm] = useState({

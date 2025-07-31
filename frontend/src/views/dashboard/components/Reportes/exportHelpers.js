@@ -48,7 +48,17 @@ export function cleanRow(row, section = '') {
 export function formatHeader(key) {
   if (key.toLowerCase() === 'ubicación') return 'Ubicación';
   if (key.toLowerCase() === 'numero 2024' || key.toLowerCase() === 'número 2024') return 'N° 2024';
-  return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  
+  // Si el key ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+  if (key.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(key)) {
+    return key;
+  }
+  // Si es un string con guiones bajos, procesarlo
+  if (key.includes('_')) {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  // Para otros casos, solo capitalizar la primera letra
+  return key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
 }
 
 export function formatCurrency(value) {

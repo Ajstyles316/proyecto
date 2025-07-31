@@ -36,7 +36,14 @@ function exportXLS(data, filename = 'reporte') {
           if ((k === 'metodo' || k === 'método') && typeof obj[k] === 'string') {
             obj[k] = (obj[k].toLowerCase() === 'linea_recta') ? 'Línea Recta' : obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           } else if (typeof obj[k] === 'string') {
-            obj[k] = obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+            if (obj[k].includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(obj[k])) {
+              // No hacer nada, mantener el string tal como está
+            } else if (obj[k].includes('_')) {
+              obj[k] = obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            } else {
+              obj[k] = obj[k].charAt(0).toUpperCase() + obj[k].slice(1).toLowerCase();
+            }
           }
         });
         return obj;

@@ -13,6 +13,25 @@ export const useIsReadOnly = () => {
   return user && user.Permiso && user.Permiso.toLowerCase() === "lector";
 };
 
+export const useCanManageRoles = () => {
+  const { user } = useUser();
+  return user && user.Cargo?.toLowerCase() === 'admin';
+};
+
+export const useCanEditMaquinaria = () => {
+  const { user } = useUser();
+  if (!user) return false;
+  
+  const cargo = user.Cargo?.toLowerCase();
+  if (cargo === 'admin') return false; // Admin no puede editar maquinaria
+  if (cargo === 'encargado') return true; // Encargado puede editar
+  if (cargo === 'tecnico') {
+    // Técnico puede editar según permisos granulares
+    return user.permisos?.Maquinaria?.editar || false;
+  }
+  return false;
+};
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem('user');

@@ -67,7 +67,16 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
     const formatValue = (value) => {
       if (!value) return '—';
       if (typeof value === 'string') {
-        return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+        if (value.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(value)) {
+          return value;
+        }
+        // Si es un string con guiones bajos, procesarlo
+        if (value.includes('_')) {
+          return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        // Para otros casos, solo capitalizar la primera letra
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
       return value;
     };
@@ -151,7 +160,18 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
         return {
           title: tipo,
           fields: camposDisponibles.map(key => ({
-            label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            label: (() => {
+              // Si el key ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+              if (key.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(key)) {
+                return key;
+              }
+              // Si es un string con guiones bajos, procesarlo
+              if (key.includes('_')) {
+                return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              }
+              // Para otros casos, solo capitalizar la primera letra
+              return key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+            })(),
             value: formatValue(record[key])
           }))
         };

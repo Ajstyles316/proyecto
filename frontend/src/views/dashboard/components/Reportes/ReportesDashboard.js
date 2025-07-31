@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Grid,
@@ -6,21 +7,14 @@ import {
   Typography,
   Card,
   CardContent,
-  Chip,
-  Stack,
-  Divider
+  Chip
 } from '@mui/material';
 import {
   Assessment,
-  Description,
-  TrendingUp,
   Warning,
   CheckCircle,
-  Schedule,
-  Engineering,
   FileDownload,
-  Search,
-  Analytics
+  Search
 } from '@mui/icons-material';
 import {
   BarChart,
@@ -34,8 +28,6 @@ import {
   Pie,
   Cell
 } from 'recharts';
-
-const COLORS = ['#1976d2', '#2e7d32', '#ed6c02', '#d32f2f', '#9c27b0', '#0288d1'];
 
 const ReportesDashboard = ({ 
   maquinaria, 
@@ -165,6 +157,16 @@ const ReportesDashboard = ({
       </CardContent>
     </Card>
   );
+
+  // PropTypes para StatCard
+  StatCard.propTypes = {
+    title: PropTypes.string.isRequired,
+    value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    subtitle: PropTypes.string,
+    color: PropTypes.string,
+    icon: PropTypes.element,
+    variant: PropTypes.oneOf(['default', 'outlined'])
+  };
 
   if (!searched) {
     return (
@@ -324,6 +326,21 @@ const ReportesDashboard = ({
       </Grid>
     </Box>
   );
+};
+
+// PropTypes para el componente principal
+ReportesDashboard.propTypes = {
+  maquinaria: PropTypes.object,
+  depreciaciones: PropTypes.array,
+  pronosticos: PropTypes.array,
+  control: PropTypes.array,
+  asignacion: PropTypes.array,
+  mantenimiento: PropTypes.array,
+  soat: PropTypes.array,
+  seguros: PropTypes.array,
+  itv: PropTypes.array,
+  impuestos: PropTypes.array,
+  searched: PropTypes.bool
 };
 
 export default ReportesDashboard; 

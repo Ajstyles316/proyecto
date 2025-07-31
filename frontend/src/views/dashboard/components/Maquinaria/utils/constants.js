@@ -1,7 +1,7 @@
 export const SECTIONS = [
   'Maquinaria',
-  'Control',
   'Asignación',
+  'Control',
   'Mantenimiento',
   'Seguros',
   'ITV',

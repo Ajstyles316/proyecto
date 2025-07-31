@@ -87,7 +87,7 @@ const baseMenuItems = [
     title: 'Permisos y Roles',
     icon: IconUsers,
     href: '/usuarios',
-    onlyEncargado: true,
+    onlyAdmin: true,
   },
   {
     id: uniqueId(),
@@ -109,11 +109,19 @@ const moduloMap = {
 };
 
 const getMenuItems = (user) => {
-  if (!user) return baseMenuItems.filter(item => !item.onlyEncargado);
-  if (user.Cargo && (user.Cargo.toLowerCase() === 'encargado' || user.Cargo.toLowerCase() === 'admin')) return baseMenuItems;
-  // Filtrar por permisos granulares
+  if (!user) return baseMenuItems.filter(item => !item.onlyAdmin);
+  
+  // Si es admin, tiene acceso a todo
+  if (user.Cargo && user.Cargo.toLowerCase() === 'admin') return baseMenuItems;
+  
+  // Si es encargado, tiene acceso a todo excepto gestión de roles
+  if (user.Cargo && user.Cargo.toLowerCase() === 'encargado') {
+    return baseMenuItems.filter(item => !item.onlyAdmin);
+  }
+  
+  // Si es técnico, filtrar por permisos granulares
   return baseMenuItems.filter(item => {
-    if (item.onlyEncargado) return false;
+    if (item.onlyAdmin) return false;
     if (!item.title || !moduloMap[item.title]) return true; // navlabel, subheader, logout, etc.
     const mod = moduloMap[item.title];
     return user.permisos && user.permisos[mod] && user.permisos[mod].ver;

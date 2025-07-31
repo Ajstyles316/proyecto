@@ -55,9 +55,21 @@ const getAccionChip = (accion) => {
 
 const capitalizeWords = (str) => {
   if (!str) return '';
-  return str.split('_').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-  ).join(' ');
+  
+  // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+  if (str.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(str)) {
+    return str;
+  }
+  
+  // Si es un string con guiones bajos, procesarlo
+  if (str.includes('_')) {
+    return str.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  }
+  
+  // Para otros casos, solo capitalizar la primera letra
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
 const RegistroActividadMain = () => {
