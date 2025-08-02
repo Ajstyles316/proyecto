@@ -7,10 +7,11 @@ import {
   Button,
   Paper,
   Grid,
+  CircularProgress,
 } from '@mui/material';
 import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
-const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
+const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
   const { user } = useUser();
@@ -19,8 +20,8 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'detalle', label: 'Detalle', required: true },
-    { name: 'importe', label: 'Importe', type: 'number', required: true },
+    { name: 'detalle', label: 'Detalle', required: false },
+    { name: 'importe', label: 'Importe', type: 'number', required: false },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -83,9 +84,10 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
-          disabled={isReadOnly}
+          disabled={isReadOnly || submitLoading}
+          startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
         >
-          {isEditing ? 'Actualizar' : 'Guardar'}
+          {submitLoading ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar' : 'Guardar')}
         </Button>
       </Box>
     </Paper>

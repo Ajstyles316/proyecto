@@ -12,12 +12,28 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
+import { useUser } from '../../../../components/UserContext';
 
-const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+  const { user } = useUser();
+  const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
+  
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('es-ES');
+    } catch (error) {
+      return '';
+    }
+  };
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1" sx={{ ml: 2 }}>Cargando controles...</Typography>
       </Box>
     );
   }
@@ -30,11 +46,9 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
     );
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
-  };
+  // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
     <Table>
@@ -46,7 +60,7 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
           <TableCell>Encargado</TableCell>
           <TableCell>Estado</TableCell>
           <TableCell>Hoja de Trámite</TableCell>
-          <TableCell align="right">Acciones</TableCell>
+          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -58,9 +72,9 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
             <TableCell>{control.encargado}</TableCell>
             <TableCell>{control.estado}</TableCell>
             <TableCell>{control.hoja_tramite}</TableCell>
-            <TableCell align="right">
-              {!isReadOnly && (
-                <>
+            {showActionsColumn && (
+              <TableCell align="right">
+                {(isEncargado || canEdit) && (
                   <IconButton
                     size="small"
                     color="primary"
@@ -68,16 +82,23 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
                   >
                     <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
+                )}
+                {(isEncargado || canDelete) && (
                   <IconButton
                     size="small"
                     color="error"
                     onClick={() => onDelete(control._id)}
+                    disabled={deleteLoading[control._id]}
                   >
-                    <BlockIcon sx={{ color: '#f44336' }} />
+                    {deleteLoading[control._id] ? (
+                      <CircularProgress size={16} color="error" />
+                    ) : (
+                      <BlockIcon sx={{ color: '#f44336' }} />
+                    )}
                   </IconButton>
-                </>
-              )}
-            </TableCell>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
@@ -100,7 +121,8 @@ ControlTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool.isRequired,
-  isEncargado: PropTypes.bool,
+  canEdit: PropTypes.bool,
+  canDelete: PropTypes.bool,
 };
 
 export default ControlTable;

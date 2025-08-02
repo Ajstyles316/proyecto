@@ -7,12 +7,13 @@ import {
   Button,
   Paper,
   Grid,
+  CircularProgress,
 } from '@mui/material';
 import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
-const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
+const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false }) => {
   const [form, setForm] = useState({
-    numero2024: '',
+    numero_2024: '',
     importe: '',
     detalle: '',
   });
@@ -26,7 +27,7 @@ const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
   useEffect(() => {
     if (initialData) {
       setForm({
-        numero2024: initialData.numero2024 || '',
+        numero_2024: initialData.numero_2024 || '',
         importe: initialData.importe || '',
         detalle: initialData.detalle || '',
       });
@@ -34,9 +35,9 @@ const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
   }, [initialData]);
 
   const fieldLabels = [
-    { name: 'numero2024', label: 'N° 2024', required: true },
-    { name: 'importe', label: 'Importe', type: 'number', required: true },
-    { name: 'detalle', label: 'Detalle', required: true },
+    { name: 'numero_2024', label: 'N° 2024', required: false },
+    { name: 'importe', label: 'Importe', type: 'number', required: false },
+    { name: 'detalle', label: 'Detalle', required: false },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -102,8 +103,10 @@ const SeguroForm = ({ onSubmit, initialData, isEditing }) => {
             type="submit"
             variant="contained" 
             color="success"
+            disabled={submitLoading}
+            startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
           >
-            {isEditing ? 'Actualizar' : 'Guardar'}
+            {submitLoading ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar' : 'Guardar')}
           </Button>
         </Box>
       </form>
@@ -115,7 +118,7 @@ SeguroForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.shape({
-    numero2024: PropTypes.string,
+    numero_2024: PropTypes.string,
     importe: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     detalle: PropTypes.string,
   }),

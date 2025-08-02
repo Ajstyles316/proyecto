@@ -9,8 +9,16 @@ import {
 import ActivosTabla from './ActivosTabla';
 import ActivosDashboard from './ActivosDashboard';
 import { fetchActivos } from './utils/api';
+import { useCanView } from 'src/components/UserContext.jsx';
 
 const ActivosMain = () => {
+  const canView = useCanView('Activos');
+  
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
+  
   const [activos, setActivos] = useState([]);
   const [loading, setLoading] = useState(false);
 

@@ -6,10 +6,12 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import MantenimientoForm from './MantenimientoForm';
 import MantenimientoTable from './MantenimientoTable';
-import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -17,13 +19,36 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingMantenimiento, setEditingMantenimiento] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosMantenimiento = user?.permisos?.Mantenimiento || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('Mantenimiento');
+  const canCreate = useCanCreate('Mantenimiento');
+  const canEdit = useCanEdit('Mantenimiento');
+  const canDelete = useCanDelete('Mantenimiento');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('Mantenimiento');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosMantenimiento.eliminar;
-  const canEdit = isAdminOrEncargado || permisosMantenimiento.editar;
-  const isReadOnly = !canEdit && permisosMantenimiento.ver;
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de Mantenimiento.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const fetchMantenimientos = useCallback(async () => {
     if (!maquinariaId) return;
@@ -60,6 +85,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleSubmit = async (formData) => {
+    setSubmitLoading(true);
     const url = editingMantenimiento 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${editingMantenimiento._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/`;
@@ -102,11 +128,14 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Desactivar este mantenimiento?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${id}/`, {
         method: 'DELETE',
@@ -119,12 +148,12 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
       fetchMantenimientos();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a Mantenimiento</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -154,7 +183,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
               setShowForm(true);
             }
           }}
-          disabled={!canEdit}
+          disabled={!canCreate}
         >
           {showForm ? 'Cancelar' : 'Nuevo Mantenimiento'}
         </Button>
@@ -166,7 +195,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingMantenimiento}
           isEditing={!!editingMantenimiento}
-          isReadOnly={isReadOnly || !canEdit}
+          isReadOnly={editingMantenimiento && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
@@ -176,8 +206,10 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

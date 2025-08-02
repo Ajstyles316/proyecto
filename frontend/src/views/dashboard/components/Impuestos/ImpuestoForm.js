@@ -6,11 +6,12 @@ import {
   Button,
   Paper,
   Grid,
+  CircularProgress,
 } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
-const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
+const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const { user } = useUser();
@@ -19,8 +20,8 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'importe_2023', label: 'Importe 2023', type: 'number', required: true },
-    { name: 'importe_2024', label: 'Importe 2024', type: 'number', required: true },
+    { name: 'importe_2023', label: 'Importe 2023', type: 'number', required: false },
+    { name: 'importe_2024', label: 'Importe 2024', type: 'number', required: false },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -93,9 +94,10 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
-          disabled={isReadOnly}
+          disabled={isReadOnly || submitLoading}
+          startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
         >
-          {isEditing ? 'Actualizar' : 'Guardar'}
+          {submitLoading ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar' : 'Guardar')}
         </Button>
       </Box>
     </Paper>

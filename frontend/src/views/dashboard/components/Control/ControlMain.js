@@ -6,24 +6,49 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import ControlForm from './ControlForm';
 import ControlTable from './ControlTable';
-import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
-  const [controls, setControls] = useState([]);
+  const [controles, setControles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingControl, setEditingControl] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosControl = user?.permisos?.Control || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('Control');
+  const canCreate = useCanCreate('Control');
+  const canEdit = useCanEdit('Control');
+  const canDelete = useCanDelete('Control');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('Control');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosControl.eliminar;
-  const canEdit = isAdminOrEncargado || permisosControl.editar;
-  const isReadOnly = !canEdit && permisosControl.ver;
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de Control.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const fetchControls = useCallback(async () => {
     if (!maquinariaId) return;
@@ -36,10 +61,10 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
       });
       if (!response.ok) throw new Error('Error al cargar controles');
       const data = await response.json();
-      setControls(Array.isArray(data) ? data : []);
+      setControles(Array.isArray(data) ? data : []);
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
-      setControls([]);
+      setControles([]);
     } finally {
       setLoading(false);
     }
@@ -60,6 +85,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleSubmit = async (formData) => {
+    setSubmitLoading(true);
     const url = editingControl 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${editingControl._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/control/`;
@@ -104,29 +130,37 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
+      console.log('Desactivando registro:', id);
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email
         }
       });
+      console.log('Respuesta DELETE:', response.status, response.statusText);
       if (!response.ok) throw new Error('Error al desactivar');
       setSnackbar({ open: true, message: 'Control desactivado exitosamente!', severity: 'success' });
-      fetchControls();
+      console.log('Recargando controles...');
+      await fetchControls();
+      console.log('Controles recargados');
     } catch (error) {
+      console.error('Error en handleDelete:', error);
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a Control</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -164,7 +198,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={!canEdit}
+            disabled={!canCreate}
           >
             {showForm ? 'Cancelar' : 'Nuevo Control'}
           </Button>
@@ -177,18 +211,21 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingControl}
           isEditing={!!editingControl}
-          isReadOnly={isReadOnly || !canEdit}
+          isReadOnly={editingControl && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
       <ControlTable
-        controls={controls}
+        controls={controles}
         maquinariaPlaca={maquinariaPlaca}
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

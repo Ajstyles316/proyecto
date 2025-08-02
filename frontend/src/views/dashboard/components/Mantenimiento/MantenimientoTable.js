@@ -1,3 +1,4 @@
+import React from 'react';
 import PropTypes from 'prop-types';
 import {
   Table,
@@ -8,33 +9,47 @@ import {
   IconButton,
   Typography,
   Box,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
-import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
+import BlockIcon from '@mui/icons-material/Block';
+import { useUser } from '../../../../components/UserContext';
 
-const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+  const { user } = useUser();
+  const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('es-ES');
+    } catch (error) {
+      return '';
+    }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1" sx={{ ml: 2 }}>Cargando mantenimientos...</Typography>
       </Box>
     );
   }
 
   if (mantenimientos.length === 0) {
     return (
-      <Typography align="center" sx={{ py: 5 }}>
-        No hay registros de mantenimiento
+      <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
+        No hay registros de mantenimiento para esta maquinaria.
       </Typography>
     );
   }
+
+  // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
+  const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
     <Table>
@@ -45,37 +60,44 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
           <TableCell>Cantidad</TableCell>
           <TableCell>Gestión</TableCell>
           <TableCell>Ubicación</TableCell>
-          <TableCell align="right">Acciones</TableCell>
+          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {mantenimientos.map((m) => (
-          <TableRow key={m._id}>
+        {mantenimientos.map((mantenimiento) => (
+          <TableRow key={mantenimiento._id}>
             <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{m.tipo}</TableCell>
-            <TableCell>{m.cantidad}</TableCell>
-            <TableCell>{m.gestion}</TableCell>
-            <TableCell>{m.ubicación}</TableCell>
-            <TableCell align="right">
-              {!isReadOnly && (
-                <>
+            <TableCell>{mantenimiento.tipo}</TableCell>
+            <TableCell>{mantenimiento.cantidad}</TableCell>
+            <TableCell>{mantenimiento.gestion}</TableCell>
+            <TableCell>{mantenimiento.ubicacion}</TableCell>
+            {showActionsColumn && (
+              <TableCell align="right">
+                {(isEncargado || canEdit) && (
                   <IconButton 
                     size="small" 
                     color="primary"
-                    onClick={() => onEdit(m)}
+                    onClick={() => onEdit(mantenimiento)}
                   >
                     <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
+                )}
+                {(isEncargado || canDelete) && (
                   <IconButton 
                     size="small" 
                     color="error"
-                    onClick={() => onDelete(m._id)}
+                    onClick={() => onDelete(mantenimiento._id)}
+                    disabled={deleteLoading[mantenimiento._id]}
                   >
-                    <BlockIcon sx={{ color: '#f44336' }} />
+                    {deleteLoading[mantenimiento._id] ? (
+                      <CircularProgress size={16} color="error" />
+                    ) : (
+                      <BlockIcon sx={{ color: '#f44336' }} />
+                    )}
                   </IconButton>
-                </>
-              )}
-            </TableCell>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
@@ -90,7 +112,8 @@ MantenimientoTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool.isRequired,
-  isEncargado: PropTypes.bool,
+  canEdit: PropTypes.bool,
+  canDelete: PropTypes.bool,
 };
 
 export default MantenimientoTable; 

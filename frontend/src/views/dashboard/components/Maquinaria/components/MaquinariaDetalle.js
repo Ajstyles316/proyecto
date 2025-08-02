@@ -9,7 +9,7 @@ import ITVMain from '../../ITV/ITVMain';
 import SOATMain from '../../SOAT/SOATMain';
 import ImpuestoMain from '../../Impuestos/ImpuestoMain';
 import { fieldLabels } from '../utils/fieldLabels';
-import { useIsReadOnly, useUser } from '../../../../../components/UserContext';
+import { useIsReadOnly, useUser, useCanEditMaquinaria, useCanDeleteMaquinaria } from '../../../../../components/UserContext';
 import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -34,6 +34,8 @@ const MaquinariaDetalle = ({
   const maquinariaPlaca = sectionForm.Maquinaria?.placa;
   const isReadOnly = useIsReadOnly();
   const { user } = useUser();
+  const canEditMaquinaria = useCanEditMaquinaria();
+  const canDeleteMaquinaria = useCanDeleteMaquinaria();
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
   const canEditAuthFields = isEncargado || isAdmin;
@@ -138,6 +140,7 @@ const MaquinariaDetalle = ({
                     InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
                     disabled={
                       isReadOnly || 
+                      !canEditMaquinaria ||
                       (field.name === 'placa' && activeSection !== 'Maquinaria') ||
                       (field.name === 'registrado_por') ||
                       (field.name === 'validado_por' && !canEditAuthFields) ||
@@ -176,7 +179,7 @@ const MaquinariaDetalle = ({
               variant="contained"
               sx={{ bgcolor: 'red', color: 'white', minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
               onClick={handleDeleteMaquinaria}
-              disabled={isReadOnly}
+              disabled={isReadOnly || !canDeleteMaquinaria}
             >
               <BlockIcon sx={{ color: '#fff', mr: 1 }} />
               Desactivar
@@ -185,7 +188,7 @@ const MaquinariaDetalle = ({
               variant="contained"
               sx={{ bgcolor: '#03a9f4', color: 'white', minWidth: 120, display: 'flex', alignItems: 'center', gap: 1, '&:hover': { bgcolor: '#0288d1' } }}
               onClick={handleUpdateMaquinaria}
-              disabled={isReadOnly}
+              disabled={isReadOnly || !canEditMaquinaria}
             >
               <EditIcon sx={{ color: '#fff', mr: 1 }} />
               Actualizar

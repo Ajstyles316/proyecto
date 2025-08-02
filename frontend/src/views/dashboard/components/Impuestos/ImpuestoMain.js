@@ -6,10 +6,12 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import ImpuestoForm from './ImpuestoForm';
 import ImpuestoTable from './ImpuestoTable';
-import { useIsReadOnly, useUser } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [impuestos, setImpuestos] = useState([]);
@@ -17,13 +19,36 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingImpuesto, setEditingImpuesto] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosImpuestos = user?.permisos?.Impuestos || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('Impuestos');
+  const canCreate = useCanCreate('Impuestos');
+  const canEdit = useCanEdit('Impuestos');
+  const canDelete = useCanDelete('Impuestos');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('Impuestos');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosImpuestos.eliminar;
-  const canEdit = isAdminOrEncargado || permisosImpuestos.editar;
-  const isReadOnly = !canEdit && permisosImpuestos.ver;
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de Impuestos.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const fetchImpuestos = useCallback(async () => {
     if (!maquinariaId) return;
@@ -56,6 +81,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleSubmit = async (formData) => {
+    setSubmitLoading(true);
     const url = editingImpuesto 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${editingImpuesto._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`;
@@ -99,11 +125,14 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este impuesto?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${id}/`, {
         method: 'DELETE',
@@ -116,12 +145,12 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
       fetchImpuestos();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a Impuestos</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -159,7 +188,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={!canEdit}
+            disabled={!canCreate}
           >
             {showForm ? 'Cancelar' : 'Nuevo Impuesto'}
           </Button>
@@ -178,18 +207,21 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingImpuesto}
           isEditing={!!editingImpuesto}
-          isReadOnly={isReadOnly || !canEdit}
+          isReadOnly={editingImpuesto && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
       <ImpuestoTable
         impuestos={impuestos}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={isReadOnly ? undefined : handleOpenEditForm}
-        onDelete={isReadOnly ? undefined : handleDelete}
+        onEdit={handleOpenEditForm}
+        onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

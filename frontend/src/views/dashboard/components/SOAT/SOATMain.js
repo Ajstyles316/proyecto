@@ -6,24 +6,60 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import SOATForm from './SOATForm';
 import SOATTable from './SOATTable';
-import { useIsReadOnly, useUser } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [soats, setSoats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
-  const [editingSoat, setEditingSoat] = useState(null);
+  const [editingSOAT, setEditingSOAT] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosSOAT = user?.permisos?.SOAT || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('SOAT');
+  const canCreate = useCanCreate('SOAT');
+  const canEdit = useCanEdit('SOAT');
+  const canDelete = useCanDelete('SOAT');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('SOAT');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosSOAT.eliminar;
-  const canEdit = isAdminOrEncargado || permisosSOAT.editar;
-  const isReadOnly = !canEdit && permisosSOAT.ver;
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de SOAT.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
+
+  console.log('SOATMain - User:', user?.Email, 'Cargo:', user?.Cargo);
+  console.log('SOATMain - canView:', canView, 'canCreate:', canCreate, 'canEdit:', canEdit, 'canDelete:', canDelete);
+  
+  // Debug más visible para técnicos
+  if (user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico') {
+    console.log('🔍 TÉCNICO DETECTADO - canEdit:', canEdit, 'canDelete:', canDelete);
+    if (canEdit || canDelete) {
+      console.log('❌ ERROR: Técnico tiene permisos de edición/eliminación cuando no debería');
+    }
+  }
 
   const fetchSoats = useCallback(async () => {
     setLoading(true);
@@ -46,18 +82,19 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
 
   const handleResetForm = () => {
     setShowForm(false);
-    setEditingSoat(null);
+    setEditingSOAT(null);
   };
 
   const handleOpenEditForm = (soat) => {
-    setEditingSoat(soat);
+    setEditingSOAT(soat);
     setShowForm(true);
   };
 
   const handleSubmit = async (formData) => {
-    const method = editingSoat ? 'PUT' : 'POST';
-    const url = editingSoat
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${editingSoat._id}/`
+    setSubmitLoading(true);
+    const method = editingSOAT ? 'PUT' : 'POST';
+    const url = editingSOAT
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${editingSOAT._id}/`
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/`;
     
     const payload = {
@@ -65,7 +102,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       maquinaria: maquinariaId,
       importe_2024: Number(formData.importe_2024) || 0,
       importe_2025: Number(formData.importe_2025) || 0,
-      ...(editingSoat ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
+      ...(editingSOAT ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
     
     try {
@@ -85,7 +122,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       
       setSnackbar({ 
         open: true, 
-        message: `SOAT ${editingSoat ? 'actualizado' : 'creado'} exitosamente!`, 
+        message: `SOAT ${editingSOAT ? 'actualizado' : 'creado'} exitosamente!`, 
         severity: 'success' 
       });
       
@@ -97,11 +134,14 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${id}/`, {
         method: 'DELETE',
@@ -114,12 +154,12 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       fetchSoats();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a SOAT</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -157,7 +197,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={!canEdit}
+            disabled={!canCreate}
           >
             {showForm ? 'Cancelar' : 'Nuevo SOAT'}
           </Button>
@@ -174,20 +214,23 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
         <SOATForm
           onSubmit={handleSubmit}
           onCancel={handleResetForm}
-          initialData={editingSoat}
-          isEditing={!!editingSoat}
-          isReadOnly={isReadOnly || !canEdit}
+          initialData={editingSOAT}
+          isEditing={!!editingSOAT}
+          isReadOnly={editingSOAT && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
       <SOATTable
         soats={soats}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={isReadOnly ? undefined : handleOpenEditForm}
-        onDelete={isReadOnly ? undefined : handleDelete}
+        onEdit={handleOpenEditForm}
+        onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

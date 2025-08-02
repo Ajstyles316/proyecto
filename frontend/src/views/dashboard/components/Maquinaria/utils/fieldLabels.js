@@ -32,8 +32,8 @@ export const fieldLabels = {
     { name: 'observacion', label: 'Observación' },
   ],
   'Asignación': [
-    { name: 'fechaAsignacion', label: 'Fecha Asignación', type: 'date' },
-    { name: 'fechaLiberacion', label: 'Fecha Liberación', type: 'date' },
+      { name: 'fecha_asignacion', label: 'Fecha Asignación', type: 'date' },
+  { name: 'fecha_liberacion', label: 'Fecha Liberación', type: 'date' },
     { name: 'recorridoKm', label: 'Recorrido Asignado (Km)', type: 'number' },
     { name: 'recorridoEntregado', label: 'Recorrido Entregado (Km)', type: 'number' },
   ],

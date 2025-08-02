@@ -6,24 +6,49 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import ITVForm from './ITVForm';
 import ITVTable from './ITVTable';
-import { useIsReadOnly, useUser } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [itvs, setItvs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
-  const [editingItv, setEditingItv] = useState(null);
+  const [editingITV, setEditingITV] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosITV = user?.permisos?.ITV || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('Inspección Técnica Vehicular');
+  const canCreate = useCanCreate('Inspección Técnica Vehicular');
+  const canEdit = useCanEdit('Inspección Técnica Vehicular');
+  const canDelete = useCanDelete('Inspección Técnica Vehicular');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('Inspección Técnica Vehicular');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosITV.eliminar;
-  const canEdit = isAdminOrEncargado || permisosITV.editar;
-  const isReadOnly = !canEdit && permisosITV.ver;
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de ITV.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const fetchItvs = useCallback(async () => {
     if (!maquinariaId) return;
@@ -47,25 +72,26 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
 
   const handleResetForm = () => {
     setShowForm(false);
-    setEditingItv(null);
+    setEditingITV(null);
   };
 
   const handleOpenEditForm = (itv) => {
-    setEditingItv(itv);
+    setEditingITV(itv);
     setShowForm(true);
   };
 
   const handleSubmit = async (formData) => {
-    const url = editingItv 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${editingItv._id}/` 
+    setSubmitLoading(true);
+    const url = editingITV 
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${editingITV._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/`;
-    const method = editingItv ? 'PUT' : 'POST';
+    const method = editingITV ? 'PUT' : 'POST';
     
     const payload = {
       ...formData,
       maquinaria: maquinariaId,
       importe: Number(formData.importe) || 0,
-      ...(editingItv ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
+      ...(editingITV ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
     
     try {
@@ -85,7 +111,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
       
       setSnackbar({ 
         open: true, 
-        message: `ITV ${editingItv ? 'actualizado' : 'creado'} exitosamente!`, 
+        message: `ITV ${editingITV ? 'actualizado' : 'creado'} exitosamente!`, 
         severity: 'success' 
       });
       
@@ -97,11 +123,14 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Desactivar este ITV?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${id}/`, {
         method: 'DELETE',
@@ -114,12 +143,12 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
       fetchItvs();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a ITV</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -154,7 +183,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={!canEdit}
+            disabled={!canCreate}
           >
             {showForm ? 'Cancelar' : 'Nuevo ITV'}
           </Button>
@@ -171,20 +200,23 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
         <ITVForm
           onSubmit={handleSubmit}
           onCancel={handleResetForm}
-          initialData={editingItv}
-          isEditing={!!editingItv}
-          isReadOnly={isReadOnly || !canEdit}
+          initialData={editingITV}
+          isEditing={!!editingITV}
+          isReadOnly={editingITV && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
       <ITVTable
         itvs={itvs}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={isReadOnly ? undefined : handleOpenEditForm}
-        onDelete={isReadOnly ? undefined : handleDelete}
+        onEdit={handleOpenEditForm}
+        onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

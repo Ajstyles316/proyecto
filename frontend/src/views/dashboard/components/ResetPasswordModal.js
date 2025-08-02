@@ -10,7 +10,8 @@ import {
   Box,
   IconButton,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import LockResetIcon from '@mui/icons-material/LockReset';
@@ -169,6 +170,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
             variant="contained" 
             color="primary"
             disabled={loading}
+            startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
           >
             {loading ? 'Actualizando...' : 'Actualizar Contraseña'}
           </Button>

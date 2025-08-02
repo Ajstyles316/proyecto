@@ -8,22 +8,33 @@ import {
   IconButton,
   Typography,
   Box,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
-import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
+import BlockIcon from '@mui/icons-material/Block';
+import { useUser } from '../../../../components/UserContext';
 
-const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+  const { user } = useUser();
+  const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('es-ES');
+    } catch (error) {
+      return '';
+    }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1" sx={{ ml: 2 }}>Cargando SOAT...</Typography>
       </Box>
     );
   }
@@ -36,6 +47,9 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
     );
   }
 
+  // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
+  const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
+
   return (
     <Table>
       <TableHead>
@@ -43,7 +57,7 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
           <TableCell>Placa</TableCell>
           <TableCell>Importe 2024</TableCell>
           <TableCell>Importe 2025</TableCell>
-          <TableCell align="right">Acciones</TableCell>
+          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -52,9 +66,9 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{soat.importe_2024}</TableCell>
             <TableCell>{soat.importe_2025}</TableCell>
-            <TableCell align="right">
-              {!isReadOnly && (
-                <>
+            {showActionsColumn && (
+              <TableCell align="right">
+                {(isEncargado || canEdit) && (
                   <IconButton 
                     size="small" 
                     color="primary"
@@ -62,16 +76,23 @@ const SOATTable = ({ soats, maquinariaPlaca, onEdit, onDelete, loading, isReadOn
                   >
                     <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
+                )}
+                {(isEncargado || canDelete) && (
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete && onDelete(soat._id)}
+                    disabled={deleteLoading[soat._id]}
                   >
-                    <BlockIcon sx={{ color: '#f44336' }} />
+                    {deleteLoading[soat._id] ? (
+                      <CircularProgress size={16} color="error" />
+                    ) : (
+                      <BlockIcon sx={{ color: '#f44336' }} />
+                    )}
                   </IconButton>
-                </>
-              )}
-            </TableCell>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
@@ -86,7 +107,8 @@ SOATTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool,
-  isEncargado: PropTypes.bool,
+  canEdit: PropTypes.bool,
+  canDelete: PropTypes.bool,
 };
 
 export default SOATTable; 

@@ -19,7 +19,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
-import { useIsReadOnly } from 'src/components/UserContext.jsx';
+import { useCanEdit } from 'src/components/UserContext.jsx';
 
 const BIENES_DE_USO = [
   {
@@ -78,7 +78,7 @@ function normalizaFecha(fecha) {
 }
 
 const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave }) => {
-  const isReadOnly = useIsReadOnly();
+  const canEditDepreciacion = useCanEdit('Depreciación');
   const [editableData, setEditableData] = useState({
     costo_activo: '',
     fecha_compra: '',
@@ -293,7 +293,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         onChange={handleInputChange}
         variant="outlined"
         inputProps={{ min: 0 }}
-        disabled={isReadOnly}
+        disabled={!canEditDepreciacion}
       />
     </Grid>
     <Grid item xs={12} sm={6}>
@@ -306,7 +306,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         onChange={handleInputChange}
         InputLabelProps={{ shrink: true }}
         variant="outlined"
-        disabled={isReadOnly}
+        disabled={!canEditDepreciacion}
       />
     </Grid>
     <Grid item xs={12} sm={6}>
@@ -319,7 +319,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         value={editableData.metodo}
         onChange={handleInputChange}
         variant="outlined"
-        disabled={isReadOnly}
+        disabled={!canEditDepreciacion}
       >
         <MenuItem value="linea_recta">Línea recta</MenuItem>
         <MenuItem value="saldo_decreciente">Saldo decreciente</MenuItem>
@@ -392,7 +392,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
             color="success"
             onClick={handleSaveClick}
             sx={{ mr: 1 }}
-            disabled={isReadOnly}
+            disabled={!canEditDepreciacion}
           >
             Guardar
           </Button>

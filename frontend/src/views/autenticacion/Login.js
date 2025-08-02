@@ -7,6 +7,7 @@ import {
   InputAdornment,
   IconButton,
   Stack,
+  CircularProgress,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
@@ -27,6 +28,7 @@ const Login = () => {
 
   const [denied, setDenied] = useState("");
   const [showResetModal, setShowResetModal] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,6 +48,7 @@ const Login = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    setLoginLoading(true);
     try {
       const response = await fetch("http://localhost:8000/api/login/", {
         method: "POST",
@@ -71,6 +74,8 @@ const Login = () => {
     } catch (error) {
       alert("No se pudo iniciar sesión");
       console.error("Error al iniciar sesión:", error.message);
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -153,8 +158,16 @@ const Login = () => {
               }}
             />
 
-            <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
-              Iniciar Sesión
+            <Button 
+              variant="contained" 
+              color="primary" 
+              type="submit" 
+              fullWidth 
+              sx={{ mt: 2 }}
+              disabled={loginLoading}
+              startIcon={loginLoading ? <CircularProgress size={20} color="inherit" /> : null}
+            >
+              {loginLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
           </Stack>
         </form>

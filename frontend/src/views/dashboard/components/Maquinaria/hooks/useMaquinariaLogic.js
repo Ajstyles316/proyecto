@@ -19,6 +19,10 @@ const useMaquinariaLogic = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [unidadFilter, setUnidadFilter] = useState('');
+  const [actionLoading, setActionLoading] = useState({});
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
   const { user } = useUser();
 
   useEffect(() => {
@@ -68,6 +72,7 @@ const useMaquinariaLogic = () => {
   };
 
   const handleUpdateMaquinaria = async () => {
+    setUpdateLoading(true);
     const maquinariaId = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
     if (!maquinariaId) {
       setSnackbar({
@@ -75,6 +80,7 @@ const useMaquinariaLogic = () => {
         message: 'ID de maquinaria no encontrado',
         severity: 'error',
       });
+      setUpdateLoading(false);
       return;
     }
 
@@ -106,7 +112,13 @@ const useMaquinariaLogic = () => {
         body: JSON.stringify(maquinariaData)
       });
 
-      if (!response.ok) throw new Error('Error al actualizar la maquinaria');
+      if (!response.ok) {
+        if (response.status === 403) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'No tienes permisos para editar maquinaria');
+        }
+        throw new Error('Error al actualizar la maquinaria');
+      }
 
       setSnackbar({
         open: true,
@@ -123,10 +135,13 @@ const useMaquinariaLogic = () => {
         message: `Error: ${error.message}`,
         severity: 'error',
       });
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
   const handleNewMaquinariaSubmit = async () => {
+  setCreateLoading(true);
   const errors = {};
   fieldLabels.Maquinaria.forEach(field => {
     if (field.name !== 'imagen' && !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)) {
@@ -138,7 +153,10 @@ const useMaquinariaLogic = () => {
   });
 
   setNewMaquinariaErrors(errors);
-  if (Object.keys(errors).length > 0) return;
+  if (Object.keys(errors).length > 0) {
+    setCreateLoading(false);
+    return;
+  }
 
   try {
     const formattedData = {
@@ -175,6 +193,10 @@ const useMaquinariaLogic = () => {
     });
 
     if (!response.ok) {
+      if (response.status === 403) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'No tienes permisos para crear maquinaria');
+      }
       const errorText = await response.text(); // Agregado para ver el detalle del error
       throw new Error(`Error al guardar: ${errorText}`);
     }
@@ -187,6 +209,8 @@ const useMaquinariaLogic = () => {
     fetchMaquinarias();
   } catch (error) {
     setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+  } finally {
+    setCreateLoading(false);
   }
 };
 
@@ -210,6 +234,7 @@ const useMaquinariaLogic = () => {
 
 
   const handleDeleteMaquinaria = async () => {
+  setDeleteLoading(true);
   const id = sectionForm.Maquinaria?._id?.$oid || sectionForm.Maquinaria?._id;
   if (!id) {
     setSnackbar({
@@ -217,6 +242,7 @@ const useMaquinariaLogic = () => {
       message: 'ID de maquinaria no encontrado',
       severity: 'error',
     });
+    setDeleteLoading(false);
     return;
   }
 
@@ -228,7 +254,13 @@ const useMaquinariaLogic = () => {
       }
     });
 
-    if (!response.ok) throw new Error('Error al desactivar la maquinaria');
+    if (!response.ok) {
+      if (response.status === 403) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'No tienes permisos para desactivar maquinaria');
+      }
+      throw new Error('Error al desactivar la maquinaria');
+    }
 
     setSnackbar({
       open: true,
@@ -246,6 +278,8 @@ const useMaquinariaLogic = () => {
       message: `Error: ${error.message}`,
       severity: 'error',
     });
+  } finally {
+    setDeleteLoading(false);
   }
 };
   
@@ -264,6 +298,7 @@ const metodosUnicos = [...new Set(
 )].sort();
 
   const handleDetailsClick = async (id) => {
+  setActionLoading(prev => ({ ...prev, [id]: true }));
   try {
     const cleanId = id.toString().replace(/[^a-zA-Z0-9]/g, '');
     setCurrentMaquinariaId(cleanId);
@@ -295,10 +330,10 @@ const metodosUnicos = [...new Set(
       message: `Error al cargar detalles: ${error.message}`,
       severity: 'error',
     });
+  } finally {
+    setActionLoading(prev => ({ ...prev, [id]: false }));
   }
-  console.log("Clic en historial:", id);
-
-};
+  };
 
   return {
     maquinarias: filteredMaquinarias,
@@ -327,13 +362,17 @@ const metodosUnicos = [...new Set(
     snackbar,
     setSnackbar,
     sectionForm,
-  setSectionForm,
-  detailView,
-  handleDeleteMaquinaria,
-  setDetailView,
-  activeSection,
-  setActiveSection,
-  selectedImage
+    setSectionForm,
+    detailView,
+    handleDeleteMaquinaria,
+    setDetailView,
+    activeSection,
+    setActiveSection,
+    selectedImage,
+    actionLoading,
+    updateLoading,
+    deleteLoading,
+    createLoading
   };
 };
 

@@ -4,6 +4,7 @@ import exportXLS from './exportacionExcel';
 import exportPDF, { exportPDFMasivo } from './exportacionPDF';
 import { maquinariaFields } from './fields';
 import { fetchMaquinarias, fetchControl, fetchITV, fetchDepreciaciones, fetchPronosticos, fetchAsignacion, fetchMantenimiento, fetchSOAT, fetchSeguros, fetchImpuestos } from './serviciosAPI';
+import { useIsReadOnlyForModule } from 'src/components/UserContext.jsx';
 
 const tablas = [
   { key: 'maquinaria', label: 'Maquinaria' },
@@ -37,6 +38,10 @@ const ExportarReportes = () => {
   const [opcionesUnidad, setOpcionesUnidad] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const isReadOnly = useIsReadOnlyForModule('reporte');
+  
+  // Debug para verificar permisos
+  console.log('🔍 DEBUG ExportarReportes - isReadOnly:', isReadOnly);
 
   // Cargar opciones de unidad
   useEffect(() => {
@@ -188,7 +193,12 @@ const ExportarReportes = () => {
 
   return (
     <Box mb={3}>
-      <Button variant="contained" color="primary" onClick={() => setOpen(true)}>
+      <Button 
+        variant="contained" 
+        color="primary" 
+        onClick={() => setOpen(true)}
+        disabled={isReadOnly}
+      >
         Exportar reportes masivos
       </Button>
       <Modal open={open} onClose={() => setOpen(false)}>

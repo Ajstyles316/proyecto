@@ -7,6 +7,7 @@ import {
   updateDepreciacion,
   fetchMaquinarias,
 } from './utils/api';
+import { useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
 
 function normalizaFecha(fecha) {
   if (!fecha) return '';
@@ -19,6 +20,24 @@ const getMaquinariaId = (maquinaria) =>
   maquinaria._id?.$oid || maquinaria._id || maquinaria.maquinaria_id || maquinaria.id;
 
 const DepreciacionesMain = () => {
+  const canView = useCanView('Depreciación');
+  const isPermissionDenied = useIsPermissionDenied('Depreciación');
+  
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2 style={{ color: '#f44336' }}>Acceso Denegado</h2>
+        <p>No tienes permisos para acceder al módulo de Depreciaciones.</p>
+      </div>
+    );
+  }
+  
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
+  
   const [maquinarias, setMaquinarias] = useState([]);
   const [depreciaciones, setDepreciaciones] = useState([]);
   const [maquinariaSeleccionada, setMaquinariaSeleccionada] = useState(null);

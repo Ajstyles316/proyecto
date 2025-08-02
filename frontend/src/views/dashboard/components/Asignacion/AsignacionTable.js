@@ -8,22 +8,48 @@ import {
   IconButton,
   Typography,
   Box,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
-import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
+import BlockIcon from '@mui/icons-material/Block';
+import { useUser } from '../../../../components/UserContext';
 
-const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+  const { user } = useUser();
+  const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
+    
+    // Si ya está en formato YYYY-MM-DD, devolverlo tal como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // Si está en formato DD/MM/YYYY, convertirlo
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+      const [day, month, year] = dateString.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    // Para otros formatos, intentar con Date
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      return '';
+    }
   };
+
+
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1" sx={{ ml: 2 }}>Cargando asignaciones...</Typography>
       </Box>
     );
   }
@@ -36,6 +62,11 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
     );
   }
 
+  // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
+  const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
+
+
+
   return (
     <Table>
       <TableHead>
@@ -46,21 +77,21 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
           <TableCell>Recorrido Asignado (Km)</TableCell>
           <TableCell>Recorrido Entregado (Km)</TableCell>
           <TableCell>Encargado</TableCell>
-          <TableCell align="right">Acciones</TableCell>
+          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
         {asignaciones.map((asignacion) => (
           <TableRow key={asignacion._id}>
             <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{formatDate(asignacion.fechaAsignacion)}</TableCell>
-            <TableCell>{formatDate(asignacion.fechaLiberacion)}</TableCell>
+            <TableCell>{formatDate(asignacion.fecha_asignacion)}</TableCell>
+            <TableCell>{formatDate(asignacion.fecha_liberacion)}</TableCell>
             <TableCell>{asignacion.recorrido_km}</TableCell>
             <TableCell>{asignacion.recorrido_entregado}</TableCell>
             <TableCell>{asignacion.encargado}</TableCell>
-            <TableCell align="right">
-              {!isReadOnly && (
-                <>
+            {showActionsColumn && (
+              <TableCell align="right">
+                {(isEncargado || canEdit) && (
                   <IconButton 
                     size="small" 
                     color="primary"
@@ -68,16 +99,23 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
                   >
                     <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
+                )}
+                {(isEncargado || canDelete) && (
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete(asignacion._id)}
+                    disabled={deleteLoading[asignacion._id]}
                   >
-                    <BlockIcon sx={{ color: '#f44336' }} />
+                    {deleteLoading[asignacion._id] ? (
+                      <CircularProgress size={16} color="error" />
+                    ) : (
+                      <BlockIcon sx={{ color: '#f44336' }} />
+                    )}
                   </IconButton>
-                </>
-              )}
-            </TableCell>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
@@ -92,7 +130,8 @@ AsignacionTable.propTypes = {
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
   isReadOnly: PropTypes.bool.isRequired,
-  isEncargado: PropTypes.bool,
+  canEdit: PropTypes.bool,
+  canDelete: PropTypes.bool,
 };
 
 export default AsignacionTable; 

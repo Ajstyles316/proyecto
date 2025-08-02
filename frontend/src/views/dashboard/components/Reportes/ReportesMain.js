@@ -2,8 +2,7 @@ import { useState } from 'react';
 import PageContainer from 'src/components/container/PageContainer';
 import DashboardCard from 'src/components/shared/DashboardCard';
 import BusquedaForm from './BusquedaForm';
-import TablaGenerica from './TablaGenerica';
-import TablaGenericaAvanzada from './TablaGenerica.jsx';
+import TablaGenericaAvanzada, { TablaGenerica } from './TablaGenerica.jsx';
 import ExportarReportes from './ExportarReportes';
 import ReportesDashboard from './ReportesDashboard';
 import {
@@ -21,9 +20,28 @@ import {
 import { maquinariaFields, depFields, proFields } from './fields';
 import exportPDF from './exportacionPDF';
 import exportXLS from './exportacionExcel';
-import { CircularProgress, Typography, Box, Divider} from '@mui/material';
+import { CircularProgress, Typography, Box, Divider, Tooltip} from '@mui/material';
+import { useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
 
 const ReportesMain = () => {
+  const canView = useCanView('Reportes');
+  const isPermissionDenied = useIsPermissionDenied('Reportes');
+  
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2 style={{ color: '#f44336' }}>Acceso Denegado</h2>
+        <p>No tienes permisos para acceder al módulo de Reportes.</p>
+      </div>
+    );
+  }
+  
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
+  
   const [maquinaria, setMaquinaria] = useState(null);
   const [depreciaciones, setDepreciaciones] = useState([]);
   const [pronosticos, setPronosticos] = useState([]);
@@ -102,6 +120,46 @@ const ReportesMain = () => {
 
   const ocultarCampos = ['bien_de_uso', 'vida_util', 'costo_activo'];
 
+  // Función para renderizar recomendaciones con formato mejorado
+  const renderRecomendaciones = (recomendaciones) => {
+    if (!recomendaciones) return '-';
+    
+    let items = [];
+    let fullText = '';
+    
+    // Si es un array, tomar solo los primeros 3 elementos
+    if (Array.isArray(recomendaciones)) {
+      items = recomendaciones.slice(0, 3);
+      fullText = recomendaciones.join('; ');
+    }
+    // Si es un string, dividirlo por puntos y comas y tomar solo los primeros 3
+    else if (typeof recomendaciones === 'string') {
+      const allItems = recomendaciones.split(';').map(item => item.trim()).filter(item => item);
+      items = allItems.slice(0, 3);
+      fullText = recomendaciones;
+    }
+    
+    const displayText = items.map((item, index) => `- ${item}`).join('\n');
+    
+    return (
+      <Tooltip title={fullText} placement="top-start">
+        <Box sx={{ 
+          maxHeight: '100px', 
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 4,
+          WebkitBoxOrient: 'vertical',
+          lineHeight: '1.4',
+          fontSize: '0.875rem',
+          whiteSpace: 'pre-line'
+        }}>
+          {displayText}
+        </Box>
+      </Tooltip>
+    );
+  };
+
   return (
     <PageContainer title="Reportes" description="Busca una maquinaria por placa, código o detalle y exporta sus datos">
       <DashboardCard>
@@ -140,7 +198,14 @@ const ReportesMain = () => {
         {maquinaria && (
           <>
             <Divider sx={{ my: 4 }} />
-            <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, color: 'primary.main' }}>
+            <Typography variant="h5" sx={{ 
+              mb: 3, 
+              fontWeight: 600, 
+              color: 'primary.main',
+              borderBottom: '2px solid #1976d2',
+              paddingBottom: 1,
+              display: 'inline-block'
+            }}>
               Detalles de la Maquinaria
             </Typography>
             <Box>
@@ -171,7 +236,7 @@ const ReportesMain = () => {
                 emptyMessage="No hay pronósticos para esta maquinaria"
                 customCellRender={(key, value, row) => {
                   if (key === 'recomendaciones') {
-                    return Array.isArray(value) ? value.join('; ') : (value || '-');
+                    return renderRecomendaciones(value);
                   }
                   if (key.toLowerCase().includes('fecha')) {
                     return value ? value.split('T')[0] : '-';

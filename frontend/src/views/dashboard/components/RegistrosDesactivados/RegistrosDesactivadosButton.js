@@ -8,7 +8,7 @@ const RegistrosDesactivadosButton = ({ maquinariaId, isEncargado }) => {
   const [showRegistrosDesactivados, setShowRegistrosDesactivados] = useState(false);
 
   if (!isEncargado) {
-    return null; // No mostrar nada para usuarios no encargados
+    return null; // No mostrar nada para usuarios que no sean admin o encargado
   }
 
   return (

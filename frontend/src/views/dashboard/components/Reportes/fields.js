@@ -25,8 +25,8 @@ export const proFields = [
   { key: 'riesgo', label: 'Riesgo' },
   { key: 'resultado', label: 'Resultado' },
   { key: 'probabilidad', label: 'Probabilidad (%)' },
-  { key: 'fecha_asig', label: 'Fecha asignación' },
+  { key: 'fecha_asig', label: 'Fecha de Asignación' },
   { key: 'recorrido', label: 'Recorrido' },
-  { key: 'horas_op', label: 'Horas op.' },
+  { key: 'horas_op', label: 'Horas de Operación' },
   { key: 'recomendaciones', label: 'Recomendaciones' },
 ];

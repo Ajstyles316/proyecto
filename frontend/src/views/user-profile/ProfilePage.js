@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TextField, Button, Box, Alert, Stack, Grid, Avatar, IconButton, MenuItem, Tooltip } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import PageContainer from 'src/components/container/PageContainer';
 import DashboardCard from '../../components/shared/DashboardCard';
 import { useUser } from '../../components/UserContext';
@@ -10,6 +11,23 @@ import { HelpOutline } from '@mui/icons-material';
 
 const EMAIL_REGEX = /^[\w.-]+@(gmail\.com|enc\.cof\.gob\.bo|tec\.cof\.gob\.bo)$/i;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
+// Custom styled tooltip with dark background
+const CustomTooltip = styled(({ className, ...props }) => (
+  <Tooltip {...props} classes={{ popper: className }} />
+))(({ theme }) => ({
+  '& .MuiTooltip-tooltip': {
+    backgroundColor: '#333',
+    color: '#fff',
+    fontSize: '0.875rem',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+  },
+  '& .MuiTooltip-popper': {
+    zIndex: 9999,
+  },
+}));
 
 const ProfilePage = () => {
   const { user, setUser } = useUser();
@@ -125,6 +143,16 @@ const ProfilePage = () => {
     }
   };
 
+  // Helper texts
+  const helperTexts = {
+    Nombre: "Ejemplo: Juan Pérez",
+    Cargo: "Selecciona tu cargo",
+    Unidad: "Selecciona tu unidad",
+    Email: "Ejemplo: usuario@gmail.com, usuario@enc.cof.gob.bo, usuario@tec.cof.gob.bo",
+    Password: "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!",
+    confirmPassword: "Repite la contraseña",
+  };
+
   // Helper para mostrar errores en negro
   const errorHelper = (msg) => msg ? <span style={{ color: 'black' }}>{msg}</span> : '';
 
@@ -161,105 +189,121 @@ const ProfilePage = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Stack spacing={2}>
-                <TextField
-                  label="Nombre completo"
-                  name="Nombre"
-                  value={form.Nombre}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  helperText={errorHelper(error && error.toLowerCase().includes('nombre') ? error : '')}
-                />
-                <TextField
-                  select
-                  label="Cargo"
-                  name="Cargo"
-                  value={form.Cargo}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  helperText={errorHelper(error && error.toLowerCase().includes('cargo') ? error : '')}
-                >
-                  {opciones.cargos.map((cargo) => (
-                    <MenuItem key={cargo} value={cargo === 'Tecnico' ? 'Técnico' : cargo}>
-                      {cargo === 'Tecnico' ? 'Técnico' : cargo}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Unidad"
-                  name="Unidad"
-                  value={form.Unidad}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  helperText={errorHelper(error && error.toLowerCase().includes('unidad') ? error : '')}
-                >
-                  {opciones.unidades.map((unidad) => (
-                    <MenuItem key={unidad} value={unidad}>
-                      {unidad}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Box display="flex" alignItems="center">
+                  <TextField
+                    label="Nombre completo"
+                    name="Nombre"
+                    value={form.Nombre}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    helperText={errorHelper(error && error.toLowerCase().includes('nombre') ? error : '')}
+                  />
+                  <CustomTooltip title={helperTexts.Nombre} placement="right">
+                    <IconButton size="small" sx={{ ml: 1 }}>
+                      <HelpOutline fontSize="small" />
+                    </IconButton>
+                  </CustomTooltip>
+                </Box>
+                <Box display="flex" alignItems="center">
+                  <TextField
+                    select
+                    label="Cargo"
+                    name="Cargo"
+                    value={form.Cargo}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    helperText={errorHelper(error && error.toLowerCase().includes('cargo') ? error : '')}
+                  >
+                    {opciones.cargos.filter(cargo => cargo !== 'Admin' && cargo !== 'admin').map((cargo) => (
+                      <MenuItem key={cargo} value={cargo === 'Tecnico' ? 'Técnico' : cargo}>
+                        {cargo === 'Tecnico' ? 'Técnico' : cargo}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <CustomTooltip title={helperTexts.Cargo} placement="right">
+                    <IconButton size="small" sx={{ ml: 1 }}>
+                      <HelpOutline fontSize="small" />
+                    </IconButton>
+                  </CustomTooltip>
+                </Box>
+                <Box display="flex" alignItems="center">
+                  <TextField
+                    select
+                    label="Unidad"
+                    name="Unidad"
+                    value={form.Unidad}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    helperText={errorHelper(error && error.toLowerCase().includes('unidad') ? error : '')}
+                  >
+                    {opciones.unidades.map((unidad) => (
+                      <MenuItem key={unidad} value={unidad}>
+                        {unidad}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <CustomTooltip title={helperTexts.Unidad} placement="right">
+                    <IconButton size="small" sx={{ ml: 1 }}>
+                      <HelpOutline fontSize="small" />
+                    </IconButton>
+                  </CustomTooltip>
+                </Box>
               </Stack>
             </Grid>
             <Grid item xs={12} md={6}>
               <Stack spacing={2}>
-                <TextField
-                  label="Correo electrónico"
-                  name="Email"
-                  value={form.Email}
-                  onChange={handleChange}
-                  fullWidth
-                  required
-                  type="email"
-                  helperText={errorHelper(error && error.toLowerCase().includes('correo') ? error : '')}
-                  InputProps={{
-                    endAdornment: (
-                      <Tooltip
-                        title="Ejemplo: usuario@gmail.com, usuario@enc.cof.gob.bo, usuario@tec.cof.gob.bo"
-                        placement="right"
-                        sx={{ color: 'black' }}
-                      >
-                        <IconButton size="small">
-                          <HelpOutline fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    ),
-                  }}
-                />
-                <TextField
-                  label="Nueva contraseña"
-                  name="Password"
-                  value={form.Password}
-                  onChange={handleChange}
-                  fullWidth
-                  type="password"
-                  helperText={errorHelper(error && error.toLowerCase().includes('nueva') ? error : '')}
-                  InputProps={{
-                    endAdornment: (
-                      <Tooltip
-                        title="Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!"
-                        placement="right"
-                        sx={{ color: 'black' }}
-                      >
-                        <IconButton size="small">
-                          <HelpOutline fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    ),
-                  }}
-                />
-                <TextField
-                  label="Confirmar nueva contraseña"
-                  name="confirmPassword"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  fullWidth
-                  type="password"
-                  helperText={errorHelper(error && error.toLowerCase().includes('coinciden') ? error : '')}
-                />
+                <Box display="flex" alignItems="center">
+                  <TextField
+                    label="Correo electrónico"
+                    name="Email"
+                    value={form.Email}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                    type="email"
+                    helperText={errorHelper(error && error.toLowerCase().includes('correo') ? error : '')}
+                  />
+                  <CustomTooltip title={helperTexts.Email} placement="right">
+                    <IconButton size="small" sx={{ ml: 1 }}>
+                      <HelpOutline fontSize="small" />
+                    </IconButton>
+                  </CustomTooltip>
+                </Box>
+                <Box display="flex" alignItems="center">
+                  <TextField
+                    label="Nueva contraseña"
+                    name="Password"
+                    value={form.Password}
+                    onChange={handleChange}
+                    fullWidth
+                    type="password"
+                    helperText={errorHelper(error && error.toLowerCase().includes('nueva') ? error : '')}
+                  />
+                  <CustomTooltip title={helperTexts.Password} placement="right">
+                    <IconButton size="small" sx={{ ml: 1 }}>
+                      <HelpOutline fontSize="small" />
+                    </IconButton>
+                  </CustomTooltip>
+                </Box>
+                <Box display="flex" alignItems="center">
+                  <TextField
+                    label="Confirmar nueva contraseña"
+                    name="confirmPassword"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    fullWidth
+                    type="password"
+                    helperText={errorHelper(error && error.toLowerCase().includes('coinciden') ? error : '')}
+                  />
+                  <CustomTooltip title={helperTexts.confirmPassword} placement="right">
+                    <IconButton size="small" sx={{ ml: 1 }}>
+                      <HelpOutline fontSize="small" />
+                    </IconButton>
+                  </CustomTooltip>
+                </Box>
               </Stack>
             </Grid>
           </Grid>

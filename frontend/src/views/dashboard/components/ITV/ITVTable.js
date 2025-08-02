@@ -8,33 +8,47 @@ import {
   IconButton,
   Typography,
   Box,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
-import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
+import BlockIcon from '@mui/icons-material/Block';
+import { useUser } from '../../../../components/UserContext';
 
-const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, isEncargado = false }) => {
+const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+  const { user } = useUser();
+  const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES');
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('es-ES');
+    } catch (error) {
+      return '';
+    }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1" sx={{ ml: 2 }}>Cargando ITV...</Typography>
       </Box>
     );
   }
 
   if (itvs.length === 0) {
     return (
-      <Typography align="center" sx={{ py: 5 }}>
-        No hay registros de ITV
+      <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
+        No hay registros de ITV para esta maquinaria.
       </Typography>
     );
   }
+
+  // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
+  const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
     <Table>
@@ -43,7 +57,7 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
           <TableCell>Placa</TableCell>
           <TableCell>Detalle</TableCell>
           <TableCell>Importe</TableCell>
-          <TableCell align="right">Acciones</TableCell>
+          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -52,9 +66,9 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{itv.detalle}</TableCell>
             <TableCell>{itv.importe}</TableCell>
-            <TableCell align="right">
-              {!isReadOnly && (
-                <>
+            {showActionsColumn && (
+              <TableCell align="right">
+                {(isEncargado || canEdit) && (
                   <IconButton 
                     size="small" 
                     color="primary"
@@ -62,16 +76,23 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
                   >
                     <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
+                )}
+                {(isEncargado || canDelete) && (
                   <IconButton 
                     size="small" 
                     color="error"
                     onClick={() => onDelete && onDelete(itv._id)}
+                    disabled={deleteLoading[itv._id]}
                   >
-                    <BlockIcon sx={{ color: '#f44336' }} />
+                    {deleteLoading[itv._id] ? (
+                      <CircularProgress size={16} color="error" />
+                    ) : (
+                      <BlockIcon sx={{ color: '#f44336' }} />
+                    )}
                   </IconButton>
-                </>
-              )}
-            </TableCell>
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
@@ -85,8 +106,9 @@ ITVTable.propTypes = {
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
-  isReadOnly: PropTypes.bool,
-  isEncargado: PropTypes.bool,
+  isReadOnly: PropTypes.bool.isRequired,
+  canEdit: PropTypes.bool,
+  canDelete: PropTypes.bool,
 };
 
 export default ITVTable; 

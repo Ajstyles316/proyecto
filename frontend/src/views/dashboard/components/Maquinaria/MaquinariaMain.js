@@ -7,7 +7,7 @@ import useMaquinariaLogic from "./hooks/useMaquinariaLogic";
 import NuevoModalMaquinaria from "./components/NuevoModalMaquinaria";
 import MaquinariaTabla from "./components/MaquinariaTabla";
 import MaquinariaDetalle from "./components/MaquinariaDetalle";
-import { useIsReadOnly } from '../../../../components/UserContext';
+import { useIsReadOnly, useCanCreateMaquinaria, useUser } from '../../../../components/UserContext';
 
 const Maquinaria = () => {
   const {
@@ -41,10 +41,22 @@ const Maquinaria = () => {
     setActiveSection,
     handleUpdateMaquinaria,
     handleDeleteMaquinaria,
-    selectedImage
+    selectedImage,
+    actionLoading,
+    updateLoading,
+    deleteLoading,
+    createLoading
   } = useMaquinariaLogic();
 
   const isReadOnly = useIsReadOnly();
+  const canCreateMaquinaria = useCanCreateMaquinaria();
+  const { user } = useUser();
+  
+  // Debug logs
+  console.log('MaquinariaMain - isReadOnly:', isReadOnly);
+  console.log('MaquinariaMain - canCreateMaquinaria:', canCreateMaquinaria);
+  console.log('MaquinariaMain - user object:', user);
+  console.log('MaquinariaMain - user cargo:', user?.Cargo);
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
@@ -67,22 +79,32 @@ const Maquinaria = () => {
           </Alert>
         </Box>
       )}
+      
+      {!canCreateMaquinaria && !isReadOnly && user?.Cargo?.toLowerCase() !== 'tecnico' && (
+        <Box mb={2}>
+          <Alert severity="info">
+            No tienes permisos para crear maquinaria. Solo puedes visualizar los registros.
+          </Alert>
+        </Box>
+      )}
 
       {detailView ? (
         <MaquinariaDetalle
-    sectionForm={sectionForm}
-    setSectionForm={setSectionForm}
-    activeSection={activeSection}
-    setActiveSection={setActiveSection}
-    setDetailView={setDetailView}
-    handleUpdateMaquinaria={handleUpdateMaquinaria}
-    handleDeleteMaquinaria={handleDeleteMaquinaria}
-    selectedImage={selectedImage}
-    newMaquinariaErrors={newMaquinariaErrors}
-    setNewMaquinariaErrors={setNewMaquinariaErrors}
-    handleFileChange={handleFileChange}
-    unidadesUnicas={unidadesUnicas}
-  />
+          sectionForm={sectionForm}
+          setSectionForm={setSectionForm}
+          activeSection={activeSection}
+          setActiveSection={setActiveSection}
+          setDetailView={setDetailView}
+          handleUpdateMaquinaria={handleUpdateMaquinaria}
+          handleDeleteMaquinaria={handleDeleteMaquinaria}
+          selectedImage={selectedImage}
+          newMaquinariaErrors={newMaquinariaErrors}
+          setNewMaquinariaErrors={setNewMaquinariaErrors}
+          handleFileChange={handleFileChange}
+          unidadesUnicas={unidadesUnicas}
+          updateLoading={updateLoading}
+          deleteLoading={deleteLoading}
+        />
       ) : (
         <>
           {/* Encabezado con filtros */}
@@ -142,35 +164,37 @@ const Maquinaria = () => {
               <Button
                 variant="contained"
                 color="success"
-                startIcon={<AddIcon />}
+                startIcon={createLoading ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
                 onClick={() => setNewMaquinariaModalOpen(true)}
-                disabled={isReadOnly}
+                disabled={!canCreateMaquinaria || createLoading}
               >
-                Nuevo
+                {createLoading ? 'Creando...' : 'Nuevo'}
               </Button>
             </Box>
           </Box>
 
           {/* Tabla o loading */}
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-              <CircularProgress />
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+              <CircularProgress color="primary" />
+              <Typography variant="body1" sx={{ ml: 2 }}>Cargando maquinaria...</Typography>
             </Box>
           ) : (
             <MaquinariaTabla
-    maquinarias={maquinarias}
-    pageSize={pageSize}
-    setPageSize={setPageSize}
-    currentPage={currentPage}
-    setCurrentPage={setCurrentPage}
-    handleDetailsClick={handleDetailsClick}
-    setNewMaquinariaModalOpen={setNewMaquinariaModalOpen}
-    searchQuery={searchQuery}
-    setSearchQuery={setSearchQuery}
-    unidadFilter={unidadFilter}
-    setUnidadFilter={setUnidadFilter}
-    loading={loading}
-  />
+              maquinarias={maquinarias}
+              pageSize={pageSize}
+              setPageSize={setPageSize}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              handleDetailsClick={handleDetailsClick}
+              setNewMaquinariaModalOpen={setNewMaquinariaModalOpen}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              unidadFilter={unidadFilter}
+              setUnidadFilter={setUnidadFilter}
+              loading={loading}
+              actionLoading={actionLoading}
+            />
           )}
         </>
       )}
@@ -186,6 +210,7 @@ const Maquinaria = () => {
         handleNewMaquinariaSubmit={handleNewMaquinariaSubmit}
         handleFileChange={handleFileChange}
         unidadesUnicas={unidadesUnicas}
+        createLoading={createLoading}
       />
     </Box>
   );

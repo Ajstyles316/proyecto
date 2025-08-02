@@ -7,10 +7,11 @@ import {
   Button,
   Paper,
   Grid,
+  CircularProgress,
 } from '@mui/material';
 import { useUser } from '../../../../components/UserContext';
 
-const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
+const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
   const { user } = useUser();
@@ -20,9 +21,9 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => 
 
   const fieldLabels = [
     { name: 'tipo', label: 'Tipo', required: true },
-    { name: 'cantidad', label: 'Cantidad', type: 'number', required: true },
+    { name: 'cantidad', label: 'Cantidad', type: 'number', required: false },
     { name: 'gestion', label: 'Gestión', required: true },
-    { name: 'ubicación', label: 'Ubicación', required: true },
+    { name: 'ubicacion', label: 'Ubicación', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -85,9 +86,10 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => 
           variant="contained" 
           color="success"
           onClick={handleSubmit}
-          disabled={isReadOnly}
+          disabled={isReadOnly || submitLoading}
+          startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
         >
-          {isEditing ? 'Actualizar' : 'Guardar'}
+          {submitLoading ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar' : 'Guardar')}
         </Button>
       </Box>
     </Paper>

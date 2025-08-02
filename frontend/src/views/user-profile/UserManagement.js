@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useUser } from '../../components/UserContext';
+import { useUser, useIsReadOnlyForModule } from '../../components/UserContext';
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip } from '@mui/material';
 import RegistrosDesactivadosButton from '../dashboard/components/RegistrosDesactivados/RegistrosDesactivadosButton';
 import BlockIcon from '@mui/icons-material/Block';
@@ -11,9 +11,8 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
-const cargos = ["Admin", "Encargado", "Técnico"];
+const cargos = ["Encargado", "Técnico"];
 const MODULOS = [
-  'Dashboard',
   'Maquinaria',
   'Control',
   'Asignación',
@@ -40,8 +39,8 @@ const MODULOS_SEGUIMIENTO = [
 const getAccionChip = (accion) => {
   // Acciones legibles
   const map = {
-    login: { label: 'Inicio de Sesión', color: 'info' },
-    logout: { label: 'Cierre de Sesión', color: 'warning' },
+    login: { label: 'Inicio de sesión', color: 'info' },
+    logout: { label: 'Cierre de sesión', color: 'warning' },
     crear_maquinaria: { label: 'Crear maquinaria', color: 'success' },
     editar_maquinaria: { label: 'Editar maquinaria', color: 'default' },
     eliminar_maquinaria: { label: 'Desactivar maquinaria', color: 'error' },
@@ -117,18 +116,7 @@ const getAccionChip = (accion) => {
 
 function capitalizeWords(str) {
   if (!str) return '';
-  // Reemplazar guiones bajos por espacios
-  let formatted = str.replace(/_/g, ' ');
-  
-  // Capitalizar solo la primera letra de cada palabra, respetando acentos
-  formatted = formatted.replace(/\b\w/g, l => l.toUpperCase());
-  
-  // Corregir casos específicos de ortografía española
-  formatted = formatted.replace(/SesióN/g, 'Sesión');
-  formatted = formatted.replace(/Inicio De SesióN/g, 'Inicio de Sesión');
-  formatted = formatted.replace(/Cierre De SesióN/g, 'Cierre de Sesión');
-  
-  return formatted;
+  return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 // Función mejorada para capitalizar acciones y módulos
@@ -163,6 +151,7 @@ function formatActivityText(text) {
     'impuesto': 'Impuesto',
     'depreciacion': 'Depreciación',
     'pronostico': 'Pronóstico',
+    'reporte': 'Reportes',
     'usuario': 'Usuario'
   };
   Object.entries(moduleMap).forEach(([key, value]) => {
@@ -190,7 +179,7 @@ function formatMessage(message, accion) {
       
       // Reemplazar IDs con nombres más legibles
       if (k === 'maquinaria_id' || k === 'maquinaria') {
-        value = 'Maquinaria'; // Aquí podrías hacer una llamada a la API para obtener la placa
+        value = 'Maquinaria'; 
       } else if (k === 'control_id' || k === 'control') {
         value = 'Control';
       } else if (k === 'asignacion_id' || k === 'asignacion') {
@@ -209,6 +198,8 @@ function formatMessage(message, accion) {
         value = 'Depreciación';
       } else if (k === 'pronostico_id' || k === 'pronostico') {
         value = 'Pronóstico';
+      } else if (k === 'reporte_id' || k === 'reporte') {
+        value = 'Reportes';
       } else if (k === 'usuario_id' || k === 'usuario') {
         value = 'Usuario';
       }
@@ -236,6 +227,7 @@ function formatMessage(message, accion) {
   formatted = formatted.replace(/impuesto [a-f0-9]{24}/gi, 'impuesto');
   formatted = formatted.replace(/depreciacion [a-f0-9]{24}/gi, 'depreciación');
   formatted = formatted.replace(/pronostico [a-f0-9]{24}/gi, 'pronóstico');
+  formatted = formatted.replace(/reporte [a-f0-9]{24}/gi, 'reportes');
   formatted = formatted.replace(/usuario [a-f0-9]{24}/gi, 'usuario');
   
   // Limpiar espacios extra y caracteres no deseados
@@ -249,7 +241,9 @@ function formatMessage(message, accion) {
 
 const UserManagement = () => {
   const { user } = useUser();
+  const isReadOnly = useIsReadOnlyForModule('Usuarios');
   const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [modalPermisos, setModalPermisos] = useState({ open: false, usuario: null, permisos: {} });
   const [usuariosRegistrados, setUsuariosRegistrados] = useState([]);
@@ -281,22 +275,8 @@ const UserManagement = () => {
   const paginatedSeguimiento = filteredSeguimiento.slice((seguimientoPage - 1) * rowsPerPage, seguimientoPage * rowsPerPage);
   const totalSeguimientoPages = Math.ceil(filteredSeguimiento.length / rowsPerPage);
 
-  useEffect(() => {
-    if (!user || user.Cargo.toLowerCase() !== 'admin') return;
-    fetch('http://localhost:8000/api/usuarios/', {
-      headers: { 'X-User-Email': user.Email }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setUsuarios(data);
-      })
-      .catch(() => {
-        setSnackbar({ open: true, message: 'Error al cargar usuarios', severity: 'error' });
-      });
-  }, [user]);
-
   const fetchUsuarios = () => {
-    if (!user || user.Cargo.toLowerCase() !== 'admin') return;
+    setLoading(true);
     fetch('http://localhost:8000/api/usuarios/', {
       headers: { 'X-User-Email': user.Email }
     })
@@ -306,16 +286,23 @@ const UserManagement = () => {
       })
       .catch(() => {
         setSnackbar({ open: true, message: 'Error al cargar usuarios', severity: 'error' });
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 
+  useEffect(() => {
+    if (!user || (user.Cargo.toLowerCase() !== 'admin' && user.Cargo.toLowerCase() !== 'encargado')) return;
+    fetchUsuarios();
+  }, [user]);
+
+  const [cargoLoading, setCargoLoading] = useState({});
+  const [actionLoading, setActionLoading] = useState({});
+  const [permisosLoading, setPermisosLoading] = useState(false);
+
   const handleCargoChange = (id, newCargo) => {
-    // Solo el admin puede cambiar cargos
-    if (user.Cargo?.toLowerCase() !== 'admin') {
-      setSnackbar({ open: true, message: 'Solo el administrador puede cambiar roles', severity: 'error' });
-      return;
-    }
-    
+    setCargoLoading(prev => ({ ...prev, [id]: true }));
     fetch(`http://localhost:8000/api/usuarios/${id}/cargo/`, {
       method: 'PUT',
       headers: {
@@ -329,27 +316,35 @@ const UserManagement = () => {
         setUsuarios(usuarios => usuarios.map(u => (u._id?.$oid || u._id) === id ? data : u));
         setSnackbar({ open: true, message: 'Cargo actualizado', severity: 'success' });
       })
-      .catch(() => setSnackbar({ open: true, message: 'Error al actualizar cargo', severity: 'error' }));
+      .catch(() => setSnackbar({ open: true, message: 'Error al actualizar cargo', severity: 'error' }))
+      .finally(() => {
+        setCargoLoading(prev => ({ ...prev, [id]: false }));
+      });
   };
   const handleEliminarUsuario = (id) => {
     if (!window.confirm('¿Seguro que deseas desactivar este usuario?')) return;
+    setActionLoading(prev => ({ ...prev, [`delete_${id}`]: true }));
     fetch(`http://localhost:8000/api/usuarios/${id}/`, {
       method: 'DELETE',
       headers: { 'X-User-Email': user.Email }
     })
       .then(res => {
         if (res.ok) {
-          setUsuarios(usuarios => usuarios.filter(u => (u._id?.$oid || u._id) !== id));
-          setSnackbar({ open: true, message: 'Usuario eliminado', severity: 'success' });
+          setSnackbar({ open: true, message: 'Usuario desactivado exitosamente!', severity: 'success' });
+          fetchUsuarios(); // Recargar la lista de usuarios
         } else {
           setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' });
         }
       })
-              .catch(() => setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' }));
+      .catch(() => setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' }))
+      .finally(() => {
+        setActionLoading(prev => ({ ...prev, [`delete_${id}`]: false }));
+      });
   };
 
   const handleReactivarUsuario = (id) => {
     if (!window.confirm('¿Seguro que deseas reactivar este usuario?')) return;
+    setActionLoading(prev => ({ ...prev, [`reactivate_${id}`]: true }));
     fetch(`http://localhost:8000/api/usuarios/${id}/`, {
       method: 'PATCH',
       headers: { 'X-User-Email': user.Email }
@@ -357,12 +352,15 @@ const UserManagement = () => {
       .then(res => {
         if (res.ok) {
           setSnackbar({ open: true, message: 'Usuario reactivado exitosamente!', severity: 'success' });
-          fetchUsuarios();
+          fetchUsuarios(); // Recargar la lista de usuarios
         } else {
           setSnackbar({ open: true, message: 'Error al reactivar usuario', severity: 'error' });
         }
       })
-      .catch(() => setSnackbar({ open: true, message: 'Error al reactivar usuario', severity: 'error' }));
+      .catch(() => setSnackbar({ open: true, message: 'Error al reactivar usuario', severity: 'error' }))
+      .finally(() => {
+        setActionLoading(prev => ({ ...prev, [`reactivate_${id}`]: false }));
+      });
   };
 
   const handleOpenPermisos = (usuario) => {
@@ -375,12 +373,7 @@ const UserManagement = () => {
   };
   const handleClosePermisos = () => setModalPermisos({ open: false, usuario: null, permisos: {} });
   const handleGuardarPermisos = () => {
-    // Solo el admin puede gestionar permisos
-    if (user.Cargo?.toLowerCase() !== 'admin') {
-      setSnackbar({ open: true, message: 'Solo el administrador puede gestionar permisos', severity: 'error' });
-      return;
-    }
-    
+    setPermisosLoading(true);
     const id = modalPermisos.usuario._id?.$oid || modalPermisos.usuario._id || modalPermisos.usuario.Email;
     // Fusionar defaultPermisos con los permisos actuales para asegurar que todos los módulos estén presentes
     const permisosAEnviar = { ...{}, ...modalPermisos.permisos };
@@ -398,7 +391,10 @@ const UserManagement = () => {
         setSnackbar({ open: true, message: 'Permisos actualizados', severity: 'success' });
         handleClosePermisos();
       })
-      .catch(() => setSnackbar({ open: true, message: 'Error al actualizar permisos', severity: 'error' }));
+      .catch(() => setSnackbar({ open: true, message: 'Error al actualizar permisos', severity: 'error' }))
+      .finally(() => {
+        setPermisosLoading(false);
+      });
   };
 
   const handleOpenSeguimiento = () => {
@@ -438,16 +434,17 @@ const UserManagement = () => {
     setSeguimientoFilters({ usuario: '', modulo: '', desde: '', hasta: '' });
   };
 
-  if (!user || user.Cargo.toLowerCase() !== 'admin') {
+  if (!user || (user.Cargo.toLowerCase() !== 'admin' && user.Cargo.toLowerCase() !== 'encargado')) {
     return <Typography variant="h6" color="error">Acceso denegado</Typography>;
   }
 
   const isAdmin = user.Cargo.toLowerCase() === 'admin';
+  const isEncargado = user.Cargo.toLowerCase() === 'encargado';
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" mb={2} fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
-      {isAdmin && (
+      {(isAdmin || isEncargado) && (
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
           <Button
             variant="contained"
@@ -455,28 +452,35 @@ const UserManagement = () => {
             startIcon={<HistoryIcon />}
             sx={{ borderRadius: 2, fontWeight: 600, boxShadow: 2, textTransform: 'none' }}
             onClick={handleOpenSeguimiento}
+            disabled={isReadOnly}
           >
             Registro de Actividad
           </Button>
           
-          {/* Botón de Registros Desactivados (solo para encargados) */}
-          <RegistrosDesactivadosButton maquinariaId="all" isEncargado={isAdmin} />
+          {/* Botón de Registros Desactivados (solo para admin y encargados) */}
+          <RegistrosDesactivadosButton maquinariaId="all" isEncargado={isAdmin || isEncargado} />
         </Box>
       )}
       <Paper sx={{ overflowX: 'auto', borderRadius: 3, boxShadow: 3 }}>
-        <Table>
-          <TableHead sx={{ background: theme => theme.palette.grey[100] }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 700 }}>Permisos</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Unidad</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {usuarios.map(u => {
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+            <CircularProgress color="primary" />
+            <Typography variant="body1" sx={{ ml: 2 }}>Cargando usuarios...</Typography>
+          </Box>
+        ) : (
+          <Table>
+            <TableHead sx={{ background: theme => theme.palette.grey[100] }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>Permisos</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Unidad</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {usuarios.map(u => {
               const id = u._id?.$oid || u._id || u.Email;
               return (
                 <TableRow key={id}>
@@ -484,19 +488,23 @@ const UserManagement = () => {
                   <TableCell>{u.Email}</TableCell>
                   <TableCell>
                     {id === (user._id?.$oid || user._id) ? (
-                      u.Cargo
+                      <Typography variant="body2" sx={{ py: 1 }}>{u.Cargo?.toUpperCase()}</Typography>
                     ) : (
-                      <Select
-                        value={u.Cargo}
-                        onChange={e => handleCargoChange(id, e.target.value)}
-                        size="small"
-                      >
-                        {cargos.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-                      </Select>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Select
+                          value={u.Cargo}
+                          onChange={e => handleCargoChange(id, e.target.value)}
+                          size="small"
+                          disabled={isReadOnly || cargoLoading[id]}
+                        >
+                          {cargos.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                        </Select>
+                        {cargoLoading[id] && <CircularProgress size={16} />}
+                      </Box>
                     )}
                   </TableCell>
                   <TableCell align="center">
-                    {isAdmin && u.Email !== user.Email && (
+                    {(isAdmin || isEncargado) && u.Email !== user.Email && !isReadOnly && (
                       <IconButton onClick={() => handleOpenPermisos(u)}>
                         <VpnKeyIcon />
                       </IconButton>
@@ -508,12 +516,30 @@ const UserManagement = () => {
                       <Typography variant="caption" color="textSecondary">(Tú)</Typography>
                     ) : (
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton color="error" onClick={() => handleEliminarUsuario(id)}>
-                          <BlockIcon sx={{ color: '#f44336' }} />
-                        </IconButton>
-                        {u.activo === false && (
-                          <IconButton color="success" onClick={() => handleReactivarUsuario(id)}>
-                            <RestoreIcon sx={{ color: '#4caf50' }} />
+                        {!isReadOnly && (
+                          <IconButton 
+                            color="error" 
+                            onClick={() => handleEliminarUsuario(id)}
+                            disabled={actionLoading[`delete_${id}`]}
+                          >
+                            {actionLoading[`delete_${id}`] ? (
+                              <CircularProgress size={20} color="error" />
+                            ) : (
+                              <BlockIcon sx={{ color: '#f44336' }} />
+                            )}
+                          </IconButton>
+                        )}
+                        {u.activo === false && !isReadOnly && (
+                          <IconButton 
+                            color="success" 
+                            onClick={() => handleReactivarUsuario(id)}
+                            disabled={actionLoading[`reactivate_${id}`]}
+                          >
+                            {actionLoading[`reactivate_${id}`] ? (
+                              <CircularProgress size={20} color="success" />
+                            ) : (
+                              <RestoreIcon sx={{ color: '#4caf50' }} />
+                            )}
                           </IconButton>
                         )}
                       </Box>
@@ -524,6 +550,7 @@ const UserManagement = () => {
             })}
           </TableBody>
         </Table>
+        )}
       </Paper>
       <Snackbar
         open={snackbar.open}
@@ -577,6 +604,7 @@ const UserManagement = () => {
                           }
                         }}
                         color="primary"
+                        disabled={isReadOnly}
                       />
                       Lector
                     </TableCell>
@@ -595,6 +623,7 @@ const UserManagement = () => {
                           }
                         }}
                         color="primary"
+                        disabled={isReadOnly}
                       />
                       Editor
                     </TableCell>
@@ -613,6 +642,7 @@ const UserManagement = () => {
                           }
                         }}
                         color="error"
+                        disabled={isReadOnly}
                       />
                       Denegado
                     </TableCell>
@@ -623,7 +653,15 @@ const UserManagement = () => {
           </Table>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleGuardarPermisos} variant="contained" color="success">Guardar</Button>
+          <Button 
+          onClick={handleGuardarPermisos} 
+          variant="contained" 
+          color="success" 
+          disabled={isReadOnly || permisosLoading}
+          startIcon={permisosLoading ? <CircularProgress size={16} color="inherit" /> : null}
+        >
+          {permisosLoading ? 'Guardando...' : 'Guardar'}
+        </Button>
           <Button onClick={handleClosePermisos} variant="contained" color="error">Salir</Button>
         </DialogActions>
       </Dialog>
@@ -642,6 +680,7 @@ const UserManagement = () => {
               displayEmpty
               size="small"
               sx={{ minWidth: 320 }}
+              disabled={isReadOnly}
             >
               <MenuItem value="">Todos los usuarios</MenuItem>
               {seguimientoUsuarios.map(u => (
@@ -656,6 +695,7 @@ const UserManagement = () => {
               displayEmpty
               size="small"
               sx={{ minWidth: 160 }}
+              disabled={isReadOnly}
             >
               <MenuItem value="">Todos los módulos</MenuItem>
               {MODULOS_SEGUIMIENTO.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
@@ -667,6 +707,7 @@ const UserManagement = () => {
                 value={seguimientoFilters.desde}
                 onChange={e => setSeguimientoFilters(f => ({ ...f, desde: e.target.value }))}
                 style={{ border: '1px solid #ccc', borderRadius: 6, padding: '4px 8px', fontSize: 14 }}
+                disabled={isReadOnly}
               />
             </Box>
             <Box display="flex" alignItems="center" gap={1}>
@@ -676,6 +717,7 @@ const UserManagement = () => {
                 value={seguimientoFilters.hasta}
                 onChange={e => setSeguimientoFilters(f => ({ ...f, hasta: e.target.value }))}
                 style={{ border: '1px solid #ccc', borderRadius: 6, padding: '4px 8px', fontSize: 14 }}
+                disabled={isReadOnly}
               />
             </Box>
             <Button
@@ -684,6 +726,7 @@ const UserManagement = () => {
               size="small"
               sx={{ ml: 'auto', borderRadius: 2, fontWeight: 500 }}
               onClick={() => setSeguimientoFilters({ usuario: '', modulo: '', desde: '', hasta: '' })}
+              disabled={isReadOnly}
             >
               Limpiar filtros
             </Button>
@@ -769,7 +812,7 @@ const UserManagement = () => {
               >Siguiente</Button>
             </Box>
           )}
-          <Button onClick={handleCloseSeguimiento} variant="contained" color="primary" sx={{ borderRadius: 2, fontWeight: 600 }}>Cerrar</Button>
+          <Button onClick={handleCloseSeguimiento} variant="contained" color="primary" sx={{ borderRadius: 2, fontWeight: 600 }} disabled={isReadOnly}>Cerrar</Button>
         </DialogActions>
       </Dialog>
     </Box>

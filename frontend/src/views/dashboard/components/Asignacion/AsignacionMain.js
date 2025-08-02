@@ -6,10 +6,12 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import AsignacionForm from './AsignacionForm';
 import AsignacionTable from './AsignacionTable';
-import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [asignaciones, setAsignaciones] = useState([]);
@@ -17,13 +19,38 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingAsignacion, setEditingAsignacion] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosAsignacion = user?.permisos?.['Asignación'] || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('Asignación');
+  const canCreate = useCanCreate('Asignación');
+  const canEdit = useCanEdit('Asignación');
+  const canDelete = useCanDelete('Asignación');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('Asignación');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosAsignacion.eliminar;
-  const canEdit = isAdminOrEncargado || permisosAsignacion.editar;
-  const isReadOnly = !canEdit && permisosAsignacion.ver;
+
+
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de Asignación.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const fetchAsignaciones = useCallback(async () => {
     setLoading(true);
@@ -61,6 +88,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleSubmit = async (formData) => {
+    setSubmitLoading(true);
     const url = editingAsignacion 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${editingAsignacion._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/`;
@@ -70,8 +98,8 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
     const payload = {
       ...formData,
       maquinaria: maquinariaId,
-      fechaAsignacion: formData.fechaAsignacion ? new Date(formData.fechaAsignacion).toISOString().split('T')[0] : null,
-      fechaLiberacion: formData.fechaLiberacion ? new Date(formData.fechaLiberacion).toISOString().split('T')[0] : null,
+      fecha_asignacion: formData.fecha_asignacion ? new Date(formData.fecha_asignacion).toISOString().split('T')[0] : null,
+      fecha_liberacion: formData.fecha_liberacion ? new Date(formData.fecha_liberacion).toISOString().split('T')[0] : null,
       recorrido_km: Number(formData.recorrido_km) || 0,
       recorrido_entregado: Number(formData.recorrido_entregado) || 0,
       ...(editingAsignacion ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
@@ -106,11 +134,14 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${id}/`, {
         method: 'DELETE',
@@ -123,12 +154,12 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
       fetchAsignaciones();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a Asignación</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -166,7 +197,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={!canEdit}
+            disabled={!canCreate}
           >
             {showForm ? 'Cancelar' : 'Nueva Asignación'}
           </Button>
@@ -179,7 +210,8 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingAsignacion}
           isEditing={!!editingAsignacion}
-          isReadOnly={isReadOnly || !canEdit}
+          isReadOnly={editingAsignacion && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
@@ -189,8 +221,10 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

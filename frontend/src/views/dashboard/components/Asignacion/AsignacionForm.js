@@ -7,10 +7,11 @@ import {
   Button,
   Paper,
   Grid,
+  CircularProgress,
 } from '@mui/material';
 import { useUser } from '../../../../components/UserContext';
 
-const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
+const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
   const { user } = useUser();
@@ -19,10 +20,10 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'fechaAsignacion', label: 'Fecha Asignación', type: 'date', required: true },
-    { name: 'fechaLiberacion', label: 'Fecha Liberación', type: 'date' },
-    { name: 'recorrido_km', label: 'Recorrido Asignado (Km)', type: 'number', required: true },
-    { name: 'recorrido_entregado', label: 'Recorrido Entregado (Km)', type: 'number' },
+    { name: 'fecha_asignacion', label: 'Fecha de Asignación', type: 'date', required: false },
+    { name: 'fecha_liberacion', label: 'Fecha de Liberación', type: 'date', required: false },
+    { name: 'recorrido_km', label: 'Recorrido Asignado (Km)', type: 'number', required: false },
+    { name: 'recorrido_entregado', label: 'Recorrido Entregado (Km)', type: 'number', required: false },
     { name: 'encargado', label: 'Encargado', type: 'text', required: false },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
@@ -87,9 +88,10 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly }) => {
           variant="contained" 
           color="success"
           onClick={handleSubmit}
-          disabled={isReadOnly}
+          disabled={isReadOnly || submitLoading}
+          startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
         >
-          {isEditing ? 'Actualizar' : 'Guardar'}
+          {submitLoading ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar' : 'Guardar')}
         </Button>
       </Box>
     </Paper>

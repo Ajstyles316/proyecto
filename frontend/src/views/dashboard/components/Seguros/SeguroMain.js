@@ -6,10 +6,12 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
 } from '@mui/material';
 import SeguroForm from './SeguroForm';
 import SeguroTable from './SeguroTable';
-import { useIsReadOnly, useUser } from '../../../../components/UserContext';
+import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import BlockIcon from '@mui/icons-material/Block';
 
 const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [seguros, setSeguros] = useState([]);
@@ -17,13 +19,36 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
   const [editingSeguro, setEditingSeguro] = useState(null);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
-  const permisosSeguros = user?.permisos?.Seguros || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
+  const canView = useCanView('Seguros');
+  const canCreate = useCanCreate('Seguros');
+  const canEdit = useCanEdit('Seguros');
+  const canDelete = useCanDelete('Seguros');
+  const isReadOnly = useIsReadOnly();
+  const isPermissionDenied = useIsPermissionDenied('Seguros');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosSeguros.eliminar;
-  const canEdit = isAdminOrEncargado || permisosSeguros.editar;
-  const isReadOnly = !canEdit && permisosSeguros.ver;
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de Seguros.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const fetchSeguros = useCallback(async () => {
     if (!maquinariaId) return;
@@ -60,6 +85,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleSubmit = async (formData) => {
+    setSubmitLoading(true);
     const url = editingSeguro 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${editingSeguro._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`;
@@ -102,11 +128,14 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
         message: `Error: ${error.message}`, 
         severity: 'error' 
       });
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este seguro?')) return;
+    setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${id}/`, {
         method: 'DELETE',
@@ -119,12 +148,12 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
       fetchSeguros();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a Seguros</Typography>;
-  }
+  // Removed isDenied check as we're using new permission system
 
   return (
     <Box>
@@ -162,7 +191,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
                 setShowForm(true);
               }
             }}
-            disabled={!canEdit}
+            disabled={!canCreate}
           >
             {showForm ? 'Cancelar' : 'Nuevo Seguro'}
           </Button>
@@ -181,18 +210,21 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingSeguro}
           isEditing={!!editingSeguro}
-          isReadOnly={isReadOnly || !canEdit}
+          isReadOnly={editingSeguro && !canEdit && !isEncargado}
+          submitLoading={submitLoading}
         />
       )}
 
       <SeguroTable
         seguros={seguros}
         maquinariaPlaca={maquinariaPlaca}
-        onEdit={isReadOnly ? undefined : handleOpenEditForm}
-        onDelete={isReadOnly ? undefined : handleDelete}
+        onEdit={handleOpenEditForm}
+        onDelete={handleDelete}
         loading={loading}
-        isReadOnly={isReadOnly || !canEdit}
-        isEncargado={isEncargado}
+        isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
+        canEdit={canEdit}
+        canDelete={canDelete || isEncargado}
+        deleteLoading={deleteLoading}
       />
     </Box>
   );

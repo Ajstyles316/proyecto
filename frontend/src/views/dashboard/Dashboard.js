@@ -21,8 +21,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Determinar si el usuario es admin/encargado o técnico
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'encargado' || user?.Cargo?.toLowerCase() === 'admin';
+  // Determinar el cargo del usuario para mostrar contenido específico
+  const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isTecnico = user?.Cargo?.toLowerCase() === 'técnico' || user?.Cargo?.toLowerCase() === 'tecnico';
 
   useEffect(() => {
@@ -93,12 +94,9 @@ const Dashboard = () => {
           </Grid>
           <Grid item xs={12} lg={7}>
             {/* Mostrar contenido diferente según el cargo */}
-            {isAdminOrEncargado ? (
+            {isAdmin ? (
               <RegistroActividadMain />
-            ) : isTecnico ? (
-              <ActivosDashboardSimple />
             ) : (
-              // Fallback para otros cargos o usuarios sin cargo definido
               <ActivosDashboardSimple />
             )}
           </Grid>

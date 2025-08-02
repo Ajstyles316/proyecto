@@ -19,7 +19,7 @@ import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
 import PronosticoDashboard from "./PronosticoDashboard";
-import { useUser } from 'src/components/UserContext.jsx';
+import { useUser, useCanView, useCanEdit, useIsPermissionDenied } from 'src/components/UserContext.jsx';
 
 const Pronostico = () => {
   const [pronosticos, setPronosticos] = useState([]);
@@ -38,11 +38,24 @@ const Pronostico = () => {
   const [popoverRecs, setPopoverRecs] = useState([]);
 
   const { user } = useUser();
-  const permisosPronostico = user?.permisos?.['Pronóstico'] || {};
-  // Permitir acceso total a admin/encargado
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
-  const isDenied = !isAdminOrEncargado && permisosPronostico.eliminar;
-  const canEdit = isAdminOrEncargado || permisosPronostico.editar;
+  const canView = useCanView('Pronóstico');
+  const canEdit = useCanEdit('Pronóstico');
+  const isPermissionDenied = useIsPermissionDenied('Pronóstico');
+
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <h2 style={{ color: '#f44336' }}>Acceso Denegado</h2>
+        <p>No tienes permisos para acceder al módulo de Pronóstico.</p>
+      </div>
+    );
+  }
+
+  // Si no tiene permisos para ver, no mostrar nada
+  if (!canView) {
+    return null;
+  }
 
   const handleOpenPopover = (event, recs) => {
     setAnchorEl(event.currentTarget);
@@ -123,10 +136,6 @@ const Pronostico = () => {
         <Typography>Cargando datos...</Typography>
       </Box>
     );
-  }
-
-  if (isDenied) {
-    return <Typography variant="h6" color="error">Acceso denegado a Pronóstico</Typography>;
   }
 
   return (
