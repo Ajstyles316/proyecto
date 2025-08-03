@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useUser, useIsReadOnlyForModule } from '../../components/UserContext';
+import { useUser, useIsReadOnlyForModule } from '../../components/hooks';
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip } from '@mui/material';
 import RegistrosDesactivadosButton from '../dashboard/components/RegistrosDesactivados/RegistrosDesactivadosButton';
 import BlockIcon from '@mui/icons-material/Block';
@@ -213,6 +213,24 @@ function formatMessage(message, accion) {
   
   // Cambiar "Eliminó" por "Desactivó"
   formatted = formatted.replace(/Eliminó/gi, 'Desactivó');
+  
+  // Corregir capitalización de palabras que terminan en "ión"
+  formatted = formatted.replace(/sesióN/gi, 'Sesión');
+  formatted = formatted.replace(/asignacióN/gi, 'Asignación');
+  formatted = formatted.replace(/depreciacióN/gi, 'Depreciación');
+  formatted = formatted.replace(/inspeccióN/gi, 'Inspección');
+  formatted = formatted.replace(/pronósticO/gi, 'Pronóstico');
+  formatted = formatted.replace(/reporteS/gi, 'Reportes');
+  
+  // Cambiar "desactivar_control" por "Desactivar Control"
+  formatted = formatted.replace(/desactivar_control/gi, 'Desactivar Control');
+  formatted = formatted.replace(/desactivar_asignacion/gi, 'Desactivar Asignación');
+  formatted = formatted.replace(/desactivar_mantenimiento/gi, 'Desactivar Mantenimiento');
+  formatted = formatted.replace(/desactivar_seguro/gi, 'Desactivar Seguro');
+  formatted = formatted.replace(/desactivar_itv/gi, 'Desactivar ITV');
+  formatted = formatted.replace(/desactivar_soat/gi, 'Desactivar SOAT');
+  formatted = formatted.replace(/desactivar_impuesto/gi, 'Desactivar Impuesto');
+  formatted = formatted.replace(/desactivar_depreciacion/gi, 'Desactivar Depreciación');
   
   // Eliminar completamente los IDs y patrones específicos
   formatted = formatted.replace(/Con ID [a-f0-9]{24}/gi, '');
@@ -571,8 +589,7 @@ const UserManagement = () => {
               <TableRow>
                 <TableCell>#</TableCell>
                 <TableCell>Módulo</TableCell>
-                <TableCell>Ver</TableCell>
-                <TableCell>Editar</TableCell>
+                <TableCell>Habilitar</TableCell>
                 <TableCell>Denegar</TableCell>
               </TableRow>
             </TableHead>
@@ -582,32 +599,11 @@ const UserManagement = () => {
                   ? 'denegado'
                   : modalPermisos.permisos[mod]?.editar
                   ? 'editor'
-                  : modalPermisos.permisos[mod]?.ver
-                  ? 'lector'
                   : '';
                 return (
                   <TableRow key={mod}>
                     <TableCell>{idx + 1}</TableCell>
                     <TableCell>{mod}</TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={value === 'lector'}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setModalPermisos(prev => ({
-                              ...prev,
-                              permisos: {
-                                ...prev.permisos,
-                                [mod]: { ver: true, editar: false, eliminar: false },
-                              },
-                            }));
-                          }
-                        }}
-                        color="primary"
-                        disabled={isReadOnly}
-                      />
-                      Lector
-                    </TableCell>
                     <TableCell>
                       <Switch
                         checked={value === 'editor'}
@@ -620,12 +616,21 @@ const UserManagement = () => {
                                 [mod]: { ver: true, editar: true, eliminar: false },
                               },
                             }));
+                          } else {
+                            // Si se desmarca, poner en estado neutro (solo ver)
+                            setModalPermisos(prev => ({
+                              ...prev,
+                              permisos: {
+                                ...prev.permisos,
+                                [mod]: { ver: true, editar: false, eliminar: false },
+                              },
+                            }));
                           }
                         }}
                         color="primary"
                         disabled={isReadOnly}
                       />
-                      Editor
+                      Habilitar
                     </TableCell>
                     <TableCell>
                       <Switch
@@ -639,12 +644,21 @@ const UserManagement = () => {
                                 [mod]: { ver: false, editar: false, eliminar: true },
                               },
                             }));
+                          } else {
+                            // Si se desmarca, poner en estado neutro (solo ver)
+                            setModalPermisos(prev => ({
+                              ...prev,
+                              permisos: {
+                                ...prev.permisos,
+                                [mod]: { ver: true, editar: false, eliminar: false },
+                              },
+                            }));
                           }
                         }}
                         color="error"
                         disabled={isReadOnly}
                       />
-                      Denegado
+                      Denegar
                     </TableCell>
                   </TableRow>
                 );

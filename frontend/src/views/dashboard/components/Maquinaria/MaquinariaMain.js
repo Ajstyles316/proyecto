@@ -7,7 +7,7 @@ import useMaquinariaLogic from "./hooks/useMaquinariaLogic";
 import NuevoModalMaquinaria from "./components/NuevoModalMaquinaria";
 import MaquinariaTabla from "./components/MaquinariaTabla";
 import MaquinariaDetalle from "./components/MaquinariaDetalle";
-import { useIsReadOnly, useCanCreateMaquinaria, useUser } from '../../../../components/UserContext';
+import { useIsReadOnly, useCanCreateMaquinaria, useUser } from '../../../../components/hooks';
 
 const Maquinaria = () => {
   const {
@@ -53,11 +53,6 @@ const Maquinaria = () => {
   const { user } = useUser();
   
   // Debug logs
-  console.log('MaquinariaMain - isReadOnly:', isReadOnly);
-  console.log('MaquinariaMain - canCreateMaquinaria:', canCreateMaquinaria);
-  console.log('MaquinariaMain - user object:', user);
-  console.log('MaquinariaMain - user cargo:', user?.Cargo);
-
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       {/* Snackbar */}

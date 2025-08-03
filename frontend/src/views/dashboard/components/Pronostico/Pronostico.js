@@ -19,7 +19,8 @@ import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
 import PronosticoDashboard from "./PronosticoDashboard";
-import { useUser, useCanView, useCanEdit, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import { useUser } from 'src/components/UserContext.jsx';
+import { useCanView, useCanEdit, useIsPermissionDenied } from 'src/components/hooks';
 
 const Pronostico = () => {
   const [pronosticos, setPronosticos] = useState([]);

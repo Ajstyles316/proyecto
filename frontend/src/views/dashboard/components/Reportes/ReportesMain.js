@@ -21,7 +21,7 @@ import { maquinariaFields, depFields, proFields } from './fields';
 import exportPDF from './exportacionPDF';
 import exportXLS from './exportacionExcel';
 import { CircularProgress, Typography, Box, Divider, Tooltip} from '@mui/material';
-import { useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import { useCanView, useIsPermissionDenied } from 'src/components/hooks';
 
 const ReportesMain = () => {
   const canView = useCanView('Reportes');

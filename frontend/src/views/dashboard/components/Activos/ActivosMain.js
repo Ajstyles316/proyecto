@@ -9,7 +9,7 @@ import {
 import ActivosTabla from './ActivosTabla';
 import ActivosDashboard from './ActivosDashboard';
 import { fetchActivos } from './utils/api';
-import { useCanView } from 'src/components/UserContext.jsx';
+import { useCanView } from 'src/components/hooks';
 
 const ActivosMain = () => {
   const canView = useCanView('Activos');

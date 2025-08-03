@@ -1,5 +1,23 @@
 import PropTypes from 'prop-types';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Tooltip, Chip } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  Chip,
+  useTheme
+} from '@mui/material';
+import { 
+  Warning, 
+  CheckCircle, 
+  Info,
+  TableChart
+} from '@mui/icons-material';
 import { formatDateOnly } from './helpers';
 import { formatMethod } from './helpers';
 
@@ -12,8 +30,40 @@ const TablaGenericaAvanzada = ({
   ocultarCampos = [],
   reemplazos = {}
 }) => {
+  const theme = useTheme();
+
   if (!data || data.length === 0) {
-    return <Typography color="text.secondary" mb={2}>{emptyMessage || `No hay datos de ${title?.toLowerCase() || ''}`}</Typography>;
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column" 
+        alignItems="center" 
+        justifyContent="center" 
+        py={4}
+        px={2}
+        bgcolor="background.paper"
+        borderRadius={2}
+        boxShadow={1}
+        border={`1px solid ${theme.palette.divider}`}
+      >
+        <Info sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+        <Typography 
+          variant="h6" 
+          color="text.secondary" 
+          textAlign="center"
+          gutterBottom
+        >
+          {emptyMessage || `No hay datos de ${title?.toLowerCase() || ''}`}
+        </Typography>
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          textAlign="center"
+        >
+          Los datos aparecerán aquí cuando estén disponibles
+        </Typography>
+      </Box>
+    );
   }
 
   // Si no se pasan fields, los infiere del primer objeto, quitando los ocultos
@@ -31,104 +81,158 @@ const TablaGenericaAvanzada = ({
         return reemplazos[k] || k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       });
 
-  const renderRecomendaciones = (recomendaciones) => {
-    if (!recomendaciones) return '-';
-    
-    // Si es un array, tomar solo los primeros 3 elementos
-    if (Array.isArray(recomendaciones)) {
-      const items = recomendaciones.slice(0, 3);
-      const texto = recomendaciones.join('; ');
+  // Función para renderizar el contenido de la celda con mejor formato
+  const renderCellContent = (key, value, row) => {
+    if (customCellRender) {
+      return customCellRender(key, value, row);
+    }
+
+    // Si es un array
+    if (Array.isArray(value)) {
+      return value.map(v => typeof v === 'string' ? formatMethod(v) : v).join('; ');
+    }
+
+    // Si es una fecha
+    if (key.toLowerCase().includes('fecha') && value) {
       return (
-        <Tooltip title={texto} placement="top-start">
-          <Box sx={{ 
-            maxHeight: '100px', 
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: 'vertical',
-            lineHeight: '1.4',
-            fontSize: '0.875rem'
-          }}>
-            {items.map((item, index) => (
-              <Box key={index} sx={{ mb: 0.5 }}>
-                - {item}
-              </Box>
-            ))}
-          </Box>
-        </Tooltip>
+        <Chip
+          label={formatDateOnly(value)}
+          size="small"
+          variant="outlined"
+          color="primary"
+          sx={{ 
+            fontSize: '0.75rem',
+            height: '24px',
+            '& .MuiChip-label': { px: 1 }
+          }}
+        />
       );
     }
-    
-    // Si es un string, dividirlo por puntos y comas y tomar solo los primeros 3
-    if (typeof recomendaciones === 'string') {
-      const items = recomendaciones.split(';').map(item => item.trim()).filter(item => item).slice(0, 3);
+
+    // Si es método
+    if (key.toLowerCase() === 'método' || key.toLowerCase() === 'metodo') {
       return (
-        <Tooltip title={recomendaciones} placement="top-start">
-          <Box sx={{ 
-            maxHeight: '100px', 
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: 'vertical',
-            lineHeight: '1.4',
-            fontSize: '0.875rem'
-          }}>
-            {items.map((item, index) => (
-              <Box key={index} sx={{ mb: 0.5 }}>
-                - {item}
-              </Box>
-            ))}
-          </Box>
-        </Tooltip>
+        <Chip
+          label={formatMethod(value)}
+          size="small"
+          color="secondary"
+          sx={{ 
+            fontSize: '0.75rem',
+            height: '24px',
+            '& .MuiChip-label': { px: 1 }
+          }}
+        />
       );
     }
-    
-    return recomendaciones;
+
+    // Si es estado o activo
+    if (key.toLowerCase() === 'estado' || key.toLowerCase() === 'activo') {
+      const isActive = value === true || value === 'activo' || value === 'Activo';
+      return (
+        <Chip
+          label={isActive ? 'Activo' : 'Inactivo'}
+          size="small"
+          color={isActive ? 'success' : 'error'}
+          icon={isActive ? <CheckCircle /> : <Warning />}
+          sx={{ 
+            fontSize: '0.75rem',
+            height: '24px',
+            '& .MuiChip-label': { px: 1 }
+          }}
+        />
+      );
+    }
+
+    // Si es importe o costo
+    if (key.toLowerCase().includes('importe') || key.toLowerCase().includes('costo') || key.toLowerCase().includes('valor')) {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        return (
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              color: numValue > 0 ? 'success.main' : 'text.primary',
+              fontFamily: 'monospace'
+            }}
+          >
+            Bs. {numValue.toLocaleString('es-BO', { minimumFractionDigits: 2 })}
+          </Typography>
+        );
+      }
+    }
+
+    // Si es string, aplicar formato
+    if (typeof value === 'string') {
+      const formatted = value === 'linea_recta' ? 'Línea Recta' : formatMethod(value);
+      return (
+        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+          {formatted || '-'}
+        </Typography>
+      );
+    }
+
+    // Valor por defecto
+    return (
+      <Typography variant="body2" color="text.secondary">
+        {value ?? '-'}
+      </Typography>
+    );
   };
 
   return (
-    <Box mb={3}>
+    <Box mb={4}>
       {title && (
-        <Typography 
-          variant="subtitle1" 
-          mt={2} 
-          mb={1}
-          sx={{
-            fontWeight: 600,
-            color: '#1976d2',
-            fontSize: '1.1rem',
-            borderLeft: '4px solid #1976d2',
-            paddingLeft: 2
-          }}
+        <Box 
+          display="flex" 
+          alignItems="center" 
+          mb={2}
+          p={2}
+          bgcolor="primary.main"
+          color="primary.contrastText"
+          borderRadius={1}
+          boxShadow={2}
         >
-          {title}
-        </Typography>
+          <TableChart sx={{ mr: 1 }} />
+          <Typography variant="h6" fontWeight={600}>
+            {title}
+          </Typography>
+          <Chip
+            label={`${data.length} registro${data.length !== 1 ? 's' : ''}`}
+            size="small"
+            sx={{ 
+              ml: 'auto',
+              bgcolor: 'rgba(255,255,255,0.2)',
+              color: 'inherit',
+              fontWeight: 600
+            }}
+          />
+        </Box>
       )}
-      <TableContainer component={Paper} sx={{ 
-        maxHeight: '600px',
-        overflow: 'auto',
-        '& .MuiTableCell-root': {
-          borderRight: '1px solid rgba(224, 224, 224, 1)',
-          '&:last-child': {
-            borderRight: 'none'
-          }
-        }
-      }}>
-        <Table size="small" stickyHeader>
+      
+      <TableContainer 
+        component={Paper}
+        sx={{
+          borderRadius: 2,
+          boxShadow: 3,
+          border: `1px solid ${theme.palette.divider}`,
+          overflow: 'hidden'
+        }}
+      >
+        <Table size="medium">
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ bgcolor: theme.palette.grey[50] }}>
               {headers.map((header, i) => (
                 <TableCell 
-                  key={i} 
-                  sx={{ 
-                    backgroundColor: '#f5f5f5',
-                    fontWeight: 'bold',
+                  key={i}
+                  sx={{
+                    fontWeight: 700,
                     fontSize: '0.875rem',
-                    color: '#333',
-                    textAlign: 'center',
-                    minWidth: header === 'Recomendaciones' ? '300px' : 'auto'
+                    color: theme.palette.primary.main,
+                    borderBottom: `2px solid ${theme.palette.primary.main}`,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    py: 2
                   }}
                 >
                   {header}
@@ -138,25 +242,33 @@ const TablaGenericaAvanzada = ({
           </TableHead>
           <TableBody>
             {data.map((row, idx) => (
-              <TableRow key={idx}>
+              <TableRow 
+                key={idx}
+                sx={{
+                  '&:nth-of-type(odd)': {
+                    bgcolor: theme.palette.action.hover
+                  },
+                  '&:hover': {
+                    bgcolor: theme.palette.action.selected,
+                    transition: 'background-color 0.2s ease'
+                  },
+                  transition: 'all 0.2s ease'
+                }}
+              >
                 {keys.map((k, i) => (
-                  <TableCell key={k} sx={{ 
-                    maxWidth: k === 'recomendaciones' ? '300px' : 'auto',
-                    wordWrap: 'break-word',
-                    whiteSpace: 'normal',
-                    verticalAlign: 'top'
-                  }}>
-                    {customCellRender
-                      ? customCellRender(k, row[k], row)
-                      : k === 'recomendaciones'
-                        ? renderRecomendaciones(row[k])
-                        : Array.isArray(row[k])
-                          ? row[k].map(v => typeof v === 'string' ? formatMethod(v) : v).join('; ')
-                          : (k.toLowerCase().includes('fecha') && row[k])
-                            ? formatDateOnly(row[k])
-                            : (k.toLowerCase() === 'método' || k.toLowerCase() === 'metodo')
-                              ? formatMethod(row[k])
-                              : (typeof row[k] === 'string' ? formatMethod(row[k]) : (row[k] === 'linea_recta' ? 'Línea Recta' : (row[k] ?? '-')))}
+                  <TableCell 
+                    key={k}
+                    sx={{
+                      py: 1.5,
+                      px: 2,
+                      borderBottom: `1px solid ${theme.palette.divider}`,
+                      '&:first-of-type': {
+                        fontWeight: 600,
+                        color: theme.palette.primary.main
+                      }
+                    }}
+                  >
+                    {renderCellContent(k, row[k], row)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -180,112 +292,5 @@ TablaGenericaAvanzada.propTypes = {
 
 export default TablaGenericaAvanzada;
 
-// Componente TablaGenerica simple con el mismo estilo mejorado
-const TablaGenerica = ({
-  title,
-  data,
-  ocultarCampos = [],
-  reemplazos = {}
-}) => {
-  if (!data || data.length === 0) {
-    return <Typography color="text.secondary" mb={2}>{`No hay datos de ${title?.toLowerCase() || ''}`}</Typography>;
-  }
-
-  const keys = Object.keys(data[0] || {}).filter(k => 
-    !k.endsWith('_id') && 
-    k !== 'maquinaria' && 
-    !ocultarCampos.includes(k)
-  );
-
-  const headers = keys.map(k => {
-    if (k.toLowerCase() === 'ubicacion' || k.toLowerCase() === 'ubicacióN'.toLowerCase()) {
-      return 'Ubicación';
-    }
-    return reemplazos[k] || k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  });
-
-  return (
-    <Box mb={3}>
-      {title && (
-        <Typography 
-          variant="subtitle1" 
-          mt={2} 
-          mb={1}
-          sx={{
-            fontWeight: 600,
-            color: '#1976d2',
-            fontSize: '1.1rem',
-            borderLeft: '4px solid #1976d2',
-            paddingLeft: 2
-          }}
-        >
-          {title}
-        </Typography>
-      )}
-      <TableContainer component={Paper} sx={{ 
-        maxHeight: '600px',
-        overflow: 'auto',
-        '& .MuiTableCell-root': {
-          borderRight: '1px solid rgba(224, 224, 224, 1)',
-          '&:last-child': {
-            borderRight: 'none'
-          }
-        }
-      }}>
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow>
-              {headers.map((header, i) => (
-                <TableCell 
-                  key={i} 
-                  sx={{ 
-                    backgroundColor: '#f5f5f5',
-                    fontWeight: 'bold',
-                    fontSize: '0.875rem',
-                    color: '#333',
-                    textAlign: 'center'
-                  }}
-                >
-                  {header}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data.map((row, idx) => (
-              <TableRow key={idx}>
-                {keys.map((k, i) => (
-                  <TableCell key={k} sx={{ 
-                    wordWrap: 'break-word',
-                    whiteSpace: 'normal',
-                    verticalAlign: 'top',
-                    fontSize: '0.875rem'
-                  }}>
-                    {k === 'recomendaciones'
-                      ? renderRecomendaciones(row[k])
-                      : Array.isArray(row[k])
-                        ? row[k].map(v => typeof v === 'string' ? formatMethod(v) : v).join('; ')
-                        : (k.toLowerCase().includes('fecha') && row[k])
-                          ? formatDateOnly(row[k])
-                          : (k.toLowerCase() === 'método' || k.toLowerCase() === 'metodo')
-                            ? formatMethod(row[k])
-                            : (typeof row[k] === 'string' ? formatMethod(row[k]) : (row[k] === 'linea_recta' ? 'Línea Recta' : (row[k] ?? '-')))}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
-};
-
-TablaGenerica.propTypes = {
-  title: PropTypes.string,
-  data: PropTypes.array.isRequired,
-  ocultarCampos: PropTypes.array,
-  reemplazos: PropTypes.object,
-};
-
-export { TablaGenerica };
+// Exportación nombrada para compatibilidad
+export const TablaGenerica = TablaGenericaAvanzada;

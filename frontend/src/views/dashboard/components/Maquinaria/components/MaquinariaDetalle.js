@@ -9,7 +9,7 @@ import ITVMain from '../../ITV/ITVMain';
 import SOATMain from '../../SOAT/SOATMain';
 import ImpuestoMain from '../../Impuestos/ImpuestoMain';
 import { fieldLabels } from '../utils/fieldLabels';
-import { useIsReadOnly, useUser, useCanEditMaquinaria, useCanDeleteMaquinaria } from '../../../../../components/UserContext';
+import { useIsReadOnly, useUser, useCanEditMaquinaria, useCanDeleteMaquinaria } from '../../../../../components/hooks';
 import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 

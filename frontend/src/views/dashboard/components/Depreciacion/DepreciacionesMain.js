@@ -7,7 +7,7 @@ import {
   updateDepreciacion,
   fetchMaquinarias,
 } from './utils/api';
-import { useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import { useCanView, useIsPermissionDenied } from 'src/components/hooks';
 
 function normalizaFecha(fecha) {
   if (!fecha) return '';

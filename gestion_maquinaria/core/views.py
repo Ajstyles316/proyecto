@@ -4,12 +4,11 @@ from rest_framework import status, serializers
 from rest_framework.views import APIView
 from django.core.exceptions import ObjectDoesNotExist
 from bson import ObjectId, json_util
-import json, requests, logging, nbformat, os, traceback
+import json, requests, logging, os, traceback
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from nbconvert.preprocessors import ExecutePreprocessor
 from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento
 from .serializers import (
     MaquinariaSerializer,
@@ -27,7 +26,7 @@ from .serializers import (
     PronosticoInputSerializer
 )
 from django.conf import settings
-from .mongo_connection import get_collection, get_collection_from_activos_db # Asegúrate de importar la nueva función
+from .mongo_connection import get_collection, get_collection_from_activos_db
 import bcrypt
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.core.mail import send_mail, EmailMultiAlternatives
@@ -63,7 +62,7 @@ def create_default_admin():
                     "Impuestos": {"ver": True, "crear": False, "editar": False, "eliminar": False},
                     "Seguros": {"ver": True, "crear": False, "editar": False, "eliminar": False},
                     "Inspección Técnica Vehicular": {"ver": True, "crear": False, "editar": False, "eliminar": False},
-                    "Depreciaciones": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Depreciaciones": {"ver": True, "crear": True, "editar": True, "eliminar": False},
                     "Activos": {"ver": True, "crear": False, "editar": False, "eliminar": False},
                     "Pronóstico": {"ver": True, "crear": False, "editar": False, "eliminar": False},
                     "Reportes": {"ver": True, "crear": True, "editar": True, "eliminar": True},
@@ -81,18 +80,6 @@ def create_default_admin():
         return False
 
 def check_user_permissions(user, required_role=None, required_permission=None, module=None):
-    """
-    Verifica los permisos del usuario según el nuevo sistema de roles
-    
-    Args:
-        user: Usuario a verificar
-        required_role: Rol requerido ('admin', 'encargado', 'tecnico')
-        required_permission: Permiso requerido ('ver', 'crear', 'editar', 'eliminar')
-        module: Módulo específico para verificar permisos granulares
-    
-    Returns:
-        bool: True si tiene permisos, False en caso contrario
-    """
     if not user:
         return False
     
@@ -104,15 +91,13 @@ def check_user_permissions(user, required_role=None, required_permission=None, m
             return False
         elif required_role == 'encargado' and cargo not in ['admin', 'encargado']:
             return False
-        elif required_role == 'tecnico' and cargo not in ['admin', 'encargado', 'tecnico']:
+        elif required_role == 'tecnico' and cargo not in ['admin', 'encargado', 'tecnico', 'técnico']:
             return False
     
-    # Si es admin, tiene acceso completo excepto modificar maquinaria y depreciaciones
+    # Si es admin, tiene acceso completo excepto modificar maquinaria
     if cargo == 'admin':
         # Restricciones específicas del admin
         if module == 'Maquinaria' and required_permission in ['crear', 'editar', 'eliminar']:
-            return False
-        if module == 'Depreciaciones' and required_permission in ['crear', 'editar']:
             return False
         # Para todo lo demás, el admin tiene acceso completo
         return True
@@ -124,12 +109,36 @@ def check_user_permissions(user, required_role=None, required_permission=None, m
         return True
     
     # Si es técnico, verificar permisos granulares
-    if cargo == 'tecnico':
+    if cargo == 'tecnico' or cargo == 'técnico':
         if not module or not required_permission:
             return True
         
+        # Para maquinaria, el técnico solo puede crear, no editar ni eliminar
+        if module == 'Maquinaria':
+            if required_permission == 'crear':
+                logger.info(f"check_user_permissions - técnico puede crear maquinaria, returning True")
+                return True
+            elif required_permission in ['editar', 'eliminar']:
+                logger.info(f"check_user_permissions - técnico NO puede {required_permission} maquinaria, returning False")
+                return False
+        
+        # Para control, asignación, mantenimiento, seguros, ITV, impuestos, SOAT, el técnico solo puede crear
+        if module in ['HistorialControl', 'ActaAsignacion', 'Mantenimiento', 'Seguro', 'ITV', 'Impuesto', 'SOAT']:
+            if required_permission == 'crear':
+                logger.info(f"check_user_permissions - técnico puede crear {module}, returning True")
+                return True
+            elif required_permission in ['editar', 'eliminar']:
+                logger.info(f"check_user_permissions - técnico NO puede {required_permission} {module}, returning False")
+                return False
+        
         permisos = user.get('permisos', {})
         module_permissions = permisos.get(module, {})
+        
+        # Para depreciaciones, técnicos pueden crear por defecto
+        if module == 'Depreciaciones' and required_permission == 'crear':
+            # Técnicos pueden crear depreciaciones sin restricciones
+            return True
+        
         return module_permissions.get(required_permission, False)
     
     return False
@@ -192,8 +201,8 @@ def serialize_doc(doc):
     
     # Solo mapear campos que realmente necesitan ser renombrados
     mapeo_campos = {
-        'fecha_asignacion': 'fechaAsignacion',
-        'fecha_liberacion': 'fechaLiberacion'
+        'fecha_asignacion': 'fecha_asignacion',
+        'fecha_liberacion': 'fecha_liberacion'
     }
     
     # Aplicar mapeo de campos solo si existen
@@ -313,7 +322,7 @@ class MaquinariaListView(APIView):
                 # --- REGISTRO DE ACTIVIDAD ---
                 try:
                     actor_email = request.headers.get('X-User-Email')
-                    mensaje = f"Creó maquinaria con placa {validated_data.get('placa', '')}"
+                    mensaje = f"Creó Maquinaria con placa {validated_data.get('placa', '')}"
                     registrar_actividad(
                         actor_email,
                         'crear_maquinaria',
@@ -461,7 +470,7 @@ class MaquinariaDetailView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó maquinaria con placa {existing_maquinaria.get('placa', id)}"
+                mensaje = f"Editó Maquinaria con placa {existing_maquinaria.get('placa', id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_maquinaria',
@@ -726,7 +735,8 @@ class BaseSectionDetailAPIView(APIView):
                 logger.error(f"Error al registrar actividad de edición de {self.collection_class.__name__}: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -892,7 +902,7 @@ class HistorialControlListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó Control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_control',
@@ -953,6 +963,9 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
 
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
+        # Solo deja los campos válidos para el serializer
+        valid_fields = set(self.serializer_class().get_fields().keys())
+        data = {k: v for k, v in data.items() if k in valid_fields}
         maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
         serializer = self.serializer_class(existing_record, data=data, partial=True)
@@ -967,7 +980,7 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó Control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_control',
@@ -985,7 +998,8 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de control: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1040,7 +1054,7 @@ class ActaAsignacionListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('acta_asignacion')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1076,7 +1090,7 @@ class ActaAsignacionListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó Asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_asignacion',
@@ -1153,7 +1167,7 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó Asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_asignacion',
@@ -1171,7 +1185,8 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de asignación: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1208,12 +1223,25 @@ class MantenimientoListView(BaseSectionAPIView):
     serializer_class = MantenimientoSerializer
     projection = None  # Incluir todos los campos
 
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('mantenimiento')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1221,32 +1249,45 @@ class MantenimientoListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            logger.info(f"Datos recibidos en POST: {request.data}")
+            logger.info(f"Mantenimiento POST - Datos recibidos: {request.data}")
+            logger.info(f"Mantenimiento POST - Headers: {request.headers}")
             
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
-            logger.info(f"Datos preparados: {data}")
-            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-
+            logger.info(f"Mantenimiento POST - Datos preparados: {data}")
+            
+            # Verificar conexión a MongoDB
+            try:
+                collection = get_collection('mantenimiento')
+                logger.info("Conexión a MongoDB exitosa")
+            except Exception as mongo_error:
+                logger.error(f"Error de conexión a MongoDB: {str(mongo_error)}")
+                return Response({"error": f"Error de conexión a base de datos: {str(mongo_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
-                logger.error(f"Errores de validación: {serializer.errors}")
+                logger.error(f"Mantenimiento POST - Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             validated_data = serializer.validated_data
-            logger.info(f"Datos validados: {validated_data}")
+            logger.info(f"Mantenimiento POST - Datos validados: {validated_data}")
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
 
-            collection = get_collection('mantenimiento')
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"Mantenimiento POST - Datos convertidos: {validated_data}")
+
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+            logger.info(f"Mantenimiento POST - Datos finales para MongoDB: {validated_data}")
+            
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó Mantenimiento para maquinaria {maquinaria_id}"
                 registrar_actividad(
                     actor_email,
                     'crear_mantenimiento',
@@ -1254,7 +1295,6 @@ class MantenimientoListView(BaseSectionAPIView):
                     mensaje,
                     {
                         'maquinaria_id': str(maquinaria_id),
-                        'placa': maquinaria_doc.get('placa'),
                         'mantenimiento_id': str(result.inserted_id),
                         'datos': serialize_doc(new_record)
                     }
@@ -1262,11 +1302,12 @@ class MantenimientoListView(BaseSectionAPIView):
             except Exception as e:
                 logger.error(f"Error al registrar actividad de creación de mantenimiento: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
+            
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Error al crear mantenimiento: {str(e)}\n{traceback.format_exc()}")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MantenimientoDetailView(BaseSectionDetailAPIView):
     collection_class = Mantenimiento
@@ -1308,7 +1349,7 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó Mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_mantenimiento',
@@ -1326,7 +1367,8 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de mantenimiento: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1363,12 +1405,25 @@ class SeguroListView(BaseSectionAPIView):
     serializer_class = SeguroSerializer
     projection = None  # Incluir todos los campos
 
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('seguro')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1376,32 +1431,45 @@ class SeguroListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            logger.info(f"Datos recibidos en POST: {request.data}")
+            logger.info(f"Seguro POST - Datos recibidos: {request.data}")
+            logger.info(f"Seguro POST - Headers: {request.headers}")
             
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
-            logger.info(f"Datos preparados: {data}")
-            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-
+            logger.info(f"Seguro POST - Datos preparados: {data}")
+            
+            # Verificar conexión a MongoDB
+            try:
+                collection = get_collection('seguro')
+                logger.info("Conexión a MongoDB exitosa")
+            except Exception as mongo_error:
+                logger.error(f"Error de conexión a MongoDB: {str(mongo_error)}")
+                return Response({"error": f"Error de conexión a base de datos: {str(mongo_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
-                logger.error(f"Errores de validación: {serializer.errors}")
+                logger.error(f"Seguro POST - Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             validated_data = serializer.validated_data
-            logger.info(f"Datos validados: {validated_data}")
+            logger.info(f"Seguro POST - Datos validados: {validated_data}")
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
 
-            collection = get_collection('seguro')
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"Seguro POST - Datos convertidos: {validated_data}")
+
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+            logger.info(f"Seguro POST - Datos finales para MongoDB: {validated_data}")
+            
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó Seguro para maquinaria {maquinaria_id}"
                 registrar_actividad(
                     actor_email,
                     'crear_seguro',
@@ -1409,7 +1477,6 @@ class SeguroListView(BaseSectionAPIView):
                     mensaje,
                     {
                         'maquinaria_id': str(maquinaria_id),
-                        'placa': maquinaria_doc.get('placa'),
                         'seguro_id': str(result.inserted_id),
                         'datos': serialize_doc(new_record)
                     }
@@ -1417,11 +1484,12 @@ class SeguroListView(BaseSectionAPIView):
             except Exception as e:
                 logger.error(f"Error al registrar actividad de creación de seguro: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
+            
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Error al crear seguro: {str(e)}\n{traceback.format_exc()}")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SeguroDetailView(BaseSectionDetailAPIView):
     collection_class = Seguro
@@ -1463,7 +1531,7 @@ class SeguroDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó Seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_seguro',
@@ -1481,7 +1549,8 @@ class SeguroDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de seguro: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1518,12 +1587,25 @@ class ITVListView(BaseSectionAPIView):
     serializer_class = ITVSerializer
     projection = None  # Incluir todos los campos
 
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('itv')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1636,7 +1718,8 @@ class ITVDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de ITV: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1673,12 +1756,25 @@ class SOATListView(BaseSectionAPIView):
     serializer_class = SOATSerializer
     projection = None  # Incluir todos los campos
 
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('soat')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1686,32 +1782,45 @@ class SOATListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            logger.info(f"Datos recibidos en POST: {request.data}")
+            logger.info(f"SOAT POST - Datos recibidos: {request.data}")
+            logger.info(f"SOAT POST - Headers: {request.headers}")
             
             data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
-            logger.info(f"Datos preparados: {data}")
-            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-
+            logger.info(f"SOAT POST - Datos preparados: {data}")
+            
+            # Verificar conexión a MongoDB
+            try:
+                collection = get_collection('soat')
+                logger.info("Conexión a MongoDB exitosa")
+            except Exception as mongo_error:
+                logger.error(f"Error de conexión a MongoDB: {str(mongo_error)}")
+                return Response({"error": f"Error de conexión a base de datos: {str(mongo_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
-                logger.error(f"Errores de validación: {serializer.errors}")
+                logger.error(f"SOAT POST - Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             validated_data = serializer.validated_data
-            logger.info(f"Datos validados: {validated_data}")
+            logger.info(f"SOAT POST - Datos validados: {validated_data}")
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
 
-            collection = get_collection('soat')
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"SOAT POST - Datos convertidos: {validated_data}")
+
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+            logger.info(f"SOAT POST - Datos finales para MongoDB: {validated_data}")
+            
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id})
+            
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó SOAT para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó SOAT para maquinaria {maquinaria_id}"
                 registrar_actividad(
                     actor_email,
                     'crear_soat',
@@ -1719,7 +1828,6 @@ class SOATListView(BaseSectionAPIView):
                     mensaje,
                     {
                         'maquinaria_id': str(maquinaria_id),
-                        'placa': maquinaria_doc.get('placa'),
                         'soat_id': str(result.inserted_id),
                         'datos': serialize_doc(new_record)
                     }
@@ -1727,11 +1835,12 @@ class SOATListView(BaseSectionAPIView):
             except Exception as e:
                 logger.error(f"Error al registrar actividad de creación de SOAT: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
+            
             return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
 
         except Exception as e:
             logger.error(f"Error al crear SOAT: {str(e)}\n{traceback.format_exc()}")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SOATDetailView(BaseSectionDetailAPIView):
     collection_class = SOAT
@@ -1791,7 +1900,8 @@ class SOATDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de SOAT: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1832,12 +1942,25 @@ class ImpuestoListView(BaseSectionAPIView):
     serializer_class = ImpuestoSerializer
     projection = None  # Incluir todos los campos
 
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         collection = get_collection('impuesto')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         return Response(serialize_list(records))
 
     def post(self, request, maquinaria_id):
@@ -1870,7 +1993,7 @@ class ImpuestoListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó Impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_impuesto',
@@ -1932,7 +2055,7 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó Impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_impuesto',
@@ -1950,7 +2073,8 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de impuesto: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -2079,7 +2203,7 @@ class DepreciacionesListView(APIView):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         collection = get_collection('depreciaciones')
-        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id)}))
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
         
         # Serializar sin mapeo de campos para depreciaciones
         def serialize_depreciaciones(doc):
@@ -2112,12 +2236,7 @@ class DepreciacionesListView(APIView):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Verificar permisos
-        actor_email = request.headers.get('X-User-Email')
-        user = get_collection(Usuario).find_one({"Email": actor_email})
-        
-        if not check_user_permissions(user, required_permission='crear', module='Depreciaciones'):
-            return Response({"error": "No tienes permisos para crear depreciaciones"}, status=status.HTTP_403_FORBIDDEN)
+        # Todos los usuarios pueden crear depreciaciones sin restricciones
         
         data = request.data.copy()
         data['maquinaria'] = str(maquinaria_id)
@@ -2143,7 +2262,7 @@ class DepreciacionesListView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó Depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_depreciacion',
@@ -2181,7 +2300,13 @@ class DepreciacionesDetailView(APIView):
         if not existing_record:
             return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
         data = request.data.copy()
-        data['maquinaria'] = str(maquinaria_id)
+        # Parche: aceptar fecha_compra en formato DD/MM/YYYY y convertir a YYYY-MM-DD
+        fecha = data.get('fecha_compra')
+        if fecha and '/' in fecha:
+            try:
+                data['fecha_compra'] = datetime.strptime(fecha, '%d/%m/%Y').strftime('%Y-%m-%d')
+            except Exception as e:
+                print(f"Error al convertir fecha_compra: {e}")
         serializer = DepreciacionSerializer(existing_record, data=data, partial=True)
         maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         if serializer.is_valid():
@@ -2194,7 +2319,7 @@ class DepreciacionesDetailView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó Depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_depreciacion',
@@ -2212,7 +2337,8 @@ class DepreciacionesDetailView(APIView):
                 logger.error(f"Error al registrar actividad de edición de depreciación: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Responder el error exacto del serializer en el JSON
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -2353,8 +2479,9 @@ class LoginView(APIView):
                 return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
             if not bcrypt.checkpw(data["Password"].encode("utf-8"), user["Password"].encode("utf-8")):
                 return Response({"error": "Contraseña inválida"}, status=status.HTTP_401_UNAUTHORIZED)
-            if user.get("Permiso", "Editor").lower() == "denegado":
-                return Response({"error": "Acceso denegado por el administrador"}, status=status.HTTP_403_FORBIDDEN)
+            # Comentado temporalmente para debugging
+            # if user.get("Permiso", "Editor").lower() == "denegado":
+            #     return Response({"error": "Acceso denegado por el administrador"}, status=status.HTTP_403_FORBIDDEN)
             
             # Registrar actividad de login con fecha de login
             fecha_login = datetime.now()
@@ -2362,8 +2489,8 @@ class LoginView(APIView):
                 user["Email"], 
                 "login", 
                 "Autenticación", 
-                "Inicio de sesión exitoso", 
-                "Inicio de sesión exitoso",
+                                "Inicio de Sesión Exitoso",
+                "Inicio de Sesión Exitoso",
                 fecha_login=fecha_login
             )
             
@@ -2396,8 +2523,8 @@ class LogoutView(APIView):
                 email, 
                 "logout", 
                 "Autenticación", 
-                "Cierre de sesión exitoso", 
-                "Cierre de sesión exitoso",
+                "Cierre de Sesión Exitoso", 
+                "Cierre de Sesión Exitoso",
                 fecha_logout=fecha_logout
             )
             
@@ -2680,7 +2807,7 @@ class PronosticoAPIView(APIView):
 
     def get(self, request):
         # Devolver todos los pronósticos sin paginación
-        cursor = Pronostico().collection.find({}, {
+        cursor = Pronostico().collection.find({'activo': {'$ne': False}}, {
             "_id": 1, "placa": 1, "fecha_asig": 1, "horas_op": 1, "recorrido": 1, "resultado": 1, "creado_en": 1, "recomendaciones": 1, "fechas_futuras": 1,
             "riesgo": 1, "probabilidad": 1, "fecha_sugerida": 1
         })
@@ -2693,6 +2820,9 @@ class PronosticoSummaryView(APIView):
         try:
             pronostico_collection = get_collection(Pronostico)
             pipeline = [
+                {
+                    "$match": {"activo": {"$ne": False}}
+                },
                 {
                     "$group": {
                         "_id": "$resultado",
@@ -2727,7 +2857,12 @@ class MaquinariaViewSet(viewsets.ViewSet):
     """
     def list(self, request):
         maquinaria_collection = get_collection(Maquinaria)
-        maquinarias = list(maquinaria_collection.find())
+        maquinarias = list(maquinaria_collection.find({
+            "$or": [
+                {"activo": True},
+                {"activo": {"$exists": False}}
+            ]
+        }))
         return Response([serialize_doc(m) for m in maquinarias])
 
     def retrieve(self, request, pk=None):

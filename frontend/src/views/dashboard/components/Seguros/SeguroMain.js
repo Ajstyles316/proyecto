@@ -10,7 +10,8 @@ import {
 } from '@mui/material';
 import SeguroForm from './SeguroForm';
 import SeguroTable from './SeguroTable';
-import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
+import { useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/hooks';
 import BlockIcon from '@mui/icons-material/Block';
 
 const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {

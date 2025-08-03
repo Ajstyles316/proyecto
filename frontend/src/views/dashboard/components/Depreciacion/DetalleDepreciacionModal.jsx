@@ -19,7 +19,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
-import { useCanEdit } from 'src/components/UserContext.jsx';
+import { useCanEdit } from 'src/components/hooks';
 
 const BIENES_DE_USO = [
   {

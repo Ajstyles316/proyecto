@@ -10,7 +10,8 @@ import {
 } from '@mui/material';
 import ITVForm from './ITVForm';
 import ITVTable from './ITVTable';
-import { useIsReadOnly, useUser, useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/UserContext.jsx';
+import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
+import { useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/hooks';
 import BlockIcon from '@mui/icons-material/Block';
 
 const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {

@@ -4,7 +4,7 @@ import exportXLS from './exportacionExcel';
 import exportPDF, { exportPDFMasivo } from './exportacionPDF';
 import { maquinariaFields } from './fields';
 import { fetchMaquinarias, fetchControl, fetchITV, fetchDepreciaciones, fetchPronosticos, fetchAsignacion, fetchMantenimiento, fetchSOAT, fetchSeguros, fetchImpuestos } from './serviciosAPI';
-import { useIsReadOnlyForModule } from 'src/components/UserContext.jsx';
+import { useIsReadOnlyForModule } from 'src/components/hooks';
 
 const tablas = [
   { key: 'maquinaria', label: 'Maquinaria' },
