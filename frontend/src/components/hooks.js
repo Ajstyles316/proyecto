@@ -1,5 +1,6 @@
 import { useContext } from 'react';
 import { UserContext } from './UserContext';
+import { useMediaQuery } from '@mui/material';
 
 export const useUser = () => useContext(UserContext);
 
@@ -415,4 +416,241 @@ export const useCanDelete = (module) => {
     return false;
   }
   return false;
+}; 
+
+// Hook para detectar el tamaño de pantalla
+export const useResponsive = () => {
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery((theme) => theme.breakpoints.between('sm', 'md'));
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'));
+  const isLargeDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'));
+  const isExtraLarge = useMediaQuery((theme) => theme.breakpoints.up('xl'));
+
+  return {
+    isMobile,
+    isTablet,
+    isDesktop,
+    isLargeDesktop,
+    isExtraLarge,
+    // Breakpoints específicos
+    isSmallMobile: useMediaQuery((theme) => theme.breakpoints.down('xs')),
+    isMediumMobile: useMediaQuery((theme) => theme.breakpoints.between('xs', 'sm')),
+    isSmallTablet: useMediaQuery((theme) => theme.breakpoints.between('sm', 'md')),
+    isLargeTablet: useMediaQuery((theme) => theme.breakpoints.between('md', 'lg')),
+  };
+};
+
+// Hook para obtener estilos responsivos
+export const useResponsiveStyles = () => {
+  const { isMobile, isTablet, isDesktop } = useResponsive();
+
+  return {
+    // Espaciado responsivo
+    spacing: {
+      xs: isMobile ? 1 : isTablet ? 1.5 : 2,
+      sm: isMobile ? 1.5 : isTablet ? 2 : 3,
+      md: isMobile ? 2 : isTablet ? 3 : 4,
+      lg: isMobile ? 3 : isTablet ? 4 : 5,
+    },
+    
+    // Tamaños de fuente responsivos
+    typography: {
+      h1: isMobile ? '1.5rem' : isTablet ? '2rem' : '2.5rem',
+      h2: isMobile ? '1.25rem' : isTablet ? '1.75rem' : '2rem',
+      h3: isMobile ? '1.125rem' : isTablet ? '1.5rem' : '1.75rem',
+      h4: isMobile ? '1rem' : isTablet ? '1.25rem' : '1.5rem',
+      h5: isMobile ? '0.875rem' : isTablet ? '1rem' : '1.25rem',
+      h6: isMobile ? '0.8rem' : isTablet ? '0.875rem' : '1rem',
+      body1: isMobile ? '0.875rem' : isTablet ? '0.9rem' : '1rem',
+      body2: isMobile ? '0.8rem' : isTablet ? '0.875rem' : '0.9rem',
+    },
+    
+    // Tamaños de componentes responsivos
+    components: {
+      button: {
+        fontSize: isMobile ? '0.875rem' : isTablet ? '0.9rem' : '1rem',
+        padding: isMobile ? '8px 16px' : isTablet ? '10px 20px' : '12px 24px',
+        minHeight: isMobile ? '44px' : isTablet ? '48px' : '52px',
+      },
+      chip: {
+        fontSize: isMobile ? '0.7rem' : isTablet ? '0.75rem' : '0.8rem',
+        height: isMobile ? '24px' : isTablet ? '28px' : '32px',
+      },
+      icon: {
+        fontSize: isMobile ? '1rem' : isTablet ? '1.2rem' : '1.5rem',
+      },
+      table: {
+        fontSize: isMobile ? '0.75rem' : isTablet ? '0.8rem' : '0.875rem',
+        padding: isMobile ? '8px 4px' : isTablet ? '10px 6px' : '12px 8px',
+      },
+    },
+    
+    // Layout responsivo
+    layout: {
+      container: {
+        padding: isMobile ? '8px' : isTablet ? '16px' : '24px',
+        maxWidth: isMobile ? '100%' : isTablet ? '900px' : '1200px',
+      },
+      card: {
+        padding: isMobile ? '12px' : isTablet ? '16px' : '24px',
+        margin: isMobile ? '4px' : isTablet ? '8px' : '12px',
+        borderRadius: isMobile ? '8px' : isTablet ? '12px' : '16px',
+      },
+      table: {
+        maxHeight: isMobile ? '400px' : isTablet ? '500px' : '600px',
+      },
+    },
+  };
+};
+
+// Hook para obtener configuraciones de grid responsivas
+export const useResponsiveGrid = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    // Configuraciones de grid para diferentes componentes
+    stats: {
+      xs: 12, // Móvil: 1 columna
+      sm: 6,  // Tablet: 2 columnas
+      md: 3,  // Desktop: 4 columnas
+    },
+    
+    forms: {
+      xs: 12, // Móvil: 1 columna
+      sm: 6,  // Tablet: 2 columnas
+      md: 4,  // Desktop: 3 columnas
+      lg: 3,  // Desktop grande: 4 columnas
+    },
+    
+    tables: {
+      xs: 12, // Siempre ancho completo
+    },
+    
+    charts: {
+      xs: 12, // Móvil: ancho completo
+      sm: 12, // Tablet: ancho completo
+      md: 6,  // Desktop: 2 columnas
+      lg: 5,  // Desktop grande: ajuste específico
+    },
+    
+    actions: {
+      xs: 12, // Móvil: ancho completo
+      sm: 6,  // Tablet: 2 columnas
+      md: 3,  // Desktop: 4 columnas
+    },
+  };
+};
+
+// Hook para obtener configuraciones de breakpoints
+export const useBreakpoints = () => {
+  return {
+    xs: 0,
+    sm: 600,
+    md: 900,
+    lg: 1200,
+    xl: 1536,
+  };
+};
+
+// Hook para obtener configuraciones de sidebar responsivas
+export const useSidebarConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    width: isMobile ? '85vw' : isTablet ? '280px' : '270px',
+    maxWidth: isMobile ? '320px' : '270px',
+    variant: isMobile ? 'temporary' : 'permanent',
+    anchor: 'left',
+    elevation: isMobile ? 8 : 0,
+  };
+};
+
+// Hook para obtener configuraciones de header responsivas
+export const useHeaderConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    height: isMobile ? '60px' : isTablet ? '65px' : '70px',
+    padding: isMobile ? '0 8px' : isTablet ? '0 16px' : '0 24px',
+    showMenuButton: isMobile || isTablet,
+  };
+};
+
+// Hook para obtener configuraciones de tabla responsivas
+export const useTableConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    size: isMobile ? 'small' : isTablet ? 'medium' : 'medium',
+    stickyHeader: true,
+    maxHeight: isMobile ? '400px' : isTablet ? '500px' : '600px',
+    overflow: 'auto',
+    fontSize: isMobile ? '0.75rem' : isTablet ? '0.8rem' : '0.875rem',
+    padding: isMobile ? '8px 4px' : isTablet ? '10px 6px' : '12px 8px',
+  };
+};
+
+// Hook para obtener configuraciones de formulario responsivas
+export const useFormConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    size: isMobile ? 'small' : 'medium',
+    fullWidth: true,
+    margin: 'normal',
+    variant: 'outlined',
+    fontSize: isMobile ? '0.875rem' : '1rem',
+    spacing: isMobile ? 2 : 3,
+  };
+};
+
+// Hook para obtener configuraciones de paginación responsivas
+export const usePaginationConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    size: isMobile ? 'small' : 'medium',
+    showFirstButton: true,
+    showLastButton: true,
+    color: 'primary',
+    fontSize: isMobile ? '0.7rem' : '0.875rem',
+    spacing: isMobile ? 1 : 2,
+  };
+};
+
+// Hook para obtener configuraciones de modal responsivas
+export const useModalConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    maxWidth: isMobile ? 'calc(100vw - 32px)' : isTablet ? '600px' : '800px',
+    maxHeight: isMobile ? 'calc(100vh - 32px)' : '80vh',
+    margin: isMobile ? '16px' : '32px',
+    padding: isMobile ? '16px' : '24px',
+  };
+};
+
+// Hook para obtener configuraciones de gráfico responsivas
+export const useChartConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    height: isMobile ? '250px' : isTablet ? '300px' : '400px',
+    width: '100%',
+    padding: isMobile ? '8px' : '16px',
+    margin: isMobile ? '4px' : '8px',
+  };
+};
+
+// Hook para obtener configuraciones de tarjeta responsivas
+export const useCardConfig = () => {
+  const { isMobile, isTablet } = useResponsive();
+
+  return {
+    padding: isMobile ? '12px' : isTablet ? '16px' : '24px',
+    margin: isMobile ? '4px' : isTablet ? '8px' : '12px',
+    borderRadius: isMobile ? '8px' : isTablet ? '12px' : '16px',
+    elevation: isMobile ? 2 : isTablet ? 3 : 4,
+    minHeight: isMobile ? '80px' : isTablet ? '100px' : '120px',
+  };
 }; 

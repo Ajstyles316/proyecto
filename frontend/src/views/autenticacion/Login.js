@@ -8,6 +8,7 @@ import {
   IconButton,
   Stack,
   CircularProgress,
+  useMediaQuery,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Link } from "react-router-dom";
@@ -29,6 +30,8 @@ const Login = () => {
   const [denied, setDenied] = useState("");
   const [showResetModal, setShowResetModal] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery((theme) => theme.breakpoints.between('sm', 'md'));
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -89,28 +92,37 @@ const Login = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "100vh",
+        minHeight: "100vh",
         bgcolor: "#f5f5f5",
-        p: 2,
+        p: { xs: 1, sm: 2 },
+        py: { xs: 2, sm: 3 },
       }}
     >
       <Box
         sx={{
-          width: { xs: "90%", sm: "400px" },
-          p: 3,
+          width: { xs: "95%", sm: "400px", md: "450px" },
+          p: { xs: 2, sm: 3, md: 4 },
           bgcolor: "background.paper",
-          borderRadius: 2,
-          boxShadow: 3,
+          borderRadius: { xs: 1, sm: 2 },
+          boxShadow: { xs: 2, sm: 3, md: 4 },
+          maxWidth: "100%",
         }}
       >
         {/* Contenedor del título e imagen */}
-        <Box display="flex" flexDirection="column" alignItems="center" mb={3}>
-          <Typography variant="h5" textAlign="center">
+        <Box display="flex" flexDirection="column" alignItems="center" mb={{ xs: 2, sm: 3 }}>
+          <Typography variant={isMobile ? "h6" : "h5"} textAlign="center" sx={{
+            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+            fontWeight: 600,
+          }}>
             Bienvenido
           </Typography>
           
           {/* Imagen */}
-          <Box mt={1} sx={{ width: "80%", maxWidth: "250px" }}>
+          <Box mt={1} sx={{ 
+            width: { xs: "70%", sm: "80%", md: "80%" }, 
+            maxWidth: { xs: "200px", sm: "250px", md: "250px" },
+            mb: { xs: 1, sm: 2 },
+          }}>
             <img 
               src="../../../src/assets/images/logos/logo_login.png"
               alt="Logo Login"
@@ -124,9 +136,11 @@ const Login = () => {
         </Box>
 
         <form onSubmit={handleSubmit}>
-          <Stack spacing={2}>
+          <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
             {denied && (
-              <Typography color="error" textAlign="center">{denied}</Typography>
+              <Typography color="error" textAlign="center" sx={{
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              }}>{denied}</Typography>
             )}
             <TextField
               label="Correo electrónico"
@@ -136,6 +150,15 @@ const Login = () => {
               fullWidth
               error={!!errors.Email}
               helperText={errors.Email}
+              size={isMobile ? "small" : "medium"}
+              sx={{
+                '& .MuiInputBase-input': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+              }}
             />
 
             <TextField
@@ -147,14 +170,26 @@ const Login = () => {
               fullWidth
               error={!!errors.Password}
               helperText={errors.Password}
+              size={isMobile ? "small" : "medium"}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                    <IconButton 
+                      onClick={() => setShowPassword(!showPassword)}
+                      size={isMobile ? "small" : "medium"}
+                    >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 ),
+              }}
+              sx={{
+                '& .MuiInputBase-input': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
+                '& .MuiInputLabel-root': {
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                },
               }}
             />
 
@@ -163,29 +198,43 @@ const Login = () => {
               color="primary" 
               type="submit" 
               fullWidth 
-              sx={{ mt: 2 }}
+              sx={{ 
+                mt: { xs: 1, sm: 2 },
+                py: { xs: 1, sm: 1.5 },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+              }}
               disabled={loginLoading}
-              startIcon={loginLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              startIcon={loginLoading ? <CircularProgress size={isMobile ? 16 : 20} color="inherit" /> : null}
             >
               {loginLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
           </Stack>
         </form>
 
-        <Box mt={2} textAlign="center">
-          <Typography variant="body2" sx={{ mb: 1 }}>
+        <Box mt={{ xs: 1.5, sm: 2 }} textAlign="center">
+          <Typography variant="body2" sx={{ 
+            mb: { xs: 0.5, sm: 1 },
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+          }}>
             ¿No tienes cuenta?{" "}
             <Link to="/registro" style={{ textDecoration: "none", color: "primary.main" }}>
               Regístrate
             </Link>
           </Typography>
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+          }}>
             ¿Olvidaste tu contraseña?{" "}
             <Button 
               variant="text" 
               size="small" 
               onClick={() => setShowResetModal(true)}
-              sx={{ p: 0, minWidth: 'auto', textTransform: 'none' }}
+              sx={{ 
+                p: 0, 
+                minWidth: 'auto', 
+                textTransform: 'none',
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              }}
             >
               Restablecer contraseña
             </Button>

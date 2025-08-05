@@ -5,12 +5,56 @@ import { formatDateOnly, cleanRow, formatHeader, formatCurrency, calcularDepreci
 function exportXLS(data, filename = 'reporte') {
   const wb = XLSX.utils.book_new();
 
-  // Helper para crear hoja horizontal
+  // Helper para crear hoja horizontal con formato de dos columnas
   function horizontalSheet(title, rows, fields = null) {
     if (!rows || rows.length === 0) return null;
     let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
-    const header = fields ? fields.map(f => f.label) : keys.map(formatHeader);
-    const body = rows.map(r => keys.map(k => r[k] ?? ''));
+    
+    // Para pronósticos usar formato vertical, para el resto horizontal
+    let header, body;
+    if (tablaKey === 'pronosticos') {
+      // Formato vertical solo para pronósticos
+      header = ['Campo', 'Valor'];
+      body = rows.map(r => {
+        const campos = [];
+        keys.forEach(k => {
+          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+            // Formatear fechas correctamente
+            let valor = r[k];
+            if (k.toLowerCase().includes('fecha') && valor) {
+              valor = formatDateOnly(valor);
+            }
+            // Para recomendaciones, mostrar solo las primeras 3
+            if (k === 'recomendaciones' && valor) {
+              if (Array.isArray(valor)) {
+                valor = valor.slice(0, 3).map(rec => `- ${rec}`).join('\n');
+              } else if (typeof valor === 'string') {
+                valor = valor.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
+              }
+            }
+            campos.push([formatHeader(k), valor]);
+          }
+        });
+        return campos;
+      }).flat();
+    } else {
+      // Formato horizontal para el resto de tablas
+      header = keys.map(formatHeader);
+      body = rows.map(r => {
+        return keys.map(k => {
+          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+            // Formatear fechas correctamente
+            let valor = r[k];
+            if (k.toLowerCase().includes('fecha') && valor) {
+              valor = formatDateOnly(valor);
+            }
+            return valor;
+          }
+          return '';
+        });
+      });
+    }
+    
     return XLSX.utils.aoa_to_sheet([
       header,
       ...body
@@ -73,44 +117,74 @@ function exportXLS(data, filename = 'reporte') {
   ];
   for (const t of tablas) {
     if (data[t.key] && data[t.key].length > 0) {
-      // Solo incluir placa y detalle, más los campos propios de la tabla (excluyendo campos de maquinaria e IDs)
-      const allKeys = Array.from(
-        data[t.key].reduce((set, row) => {
-          Object.keys(row).forEach(k => {
-            if (
-              k === 'placa' ||
-              k === 'detalle' ||
-              (k !== 'id' &&
-                k !== '_id' &&
-                k !== 'maquinaria' &&
-                k !== 'maquinaria_id' &&
-                k !== 'bien_de_uso' &&
-                k !== 'bien_uso' &&
-                k !== 'vida_util' &&
-                k !== 'costo_activo' &&
-                k !== 'unidad' &&
-                k !== 'codigo' &&
-                k !== 'tipo' &&
-                k !== 'marca' &&
-                k !== 'modelo' &&
-                k !== 'color' &&
-                k !== 'nro_motor' &&
-                k !== 'nro_chasis' &&
-                k !== 'gestion' &&
-                k !== 'adqui')
-            ) {
-              set.add(k);
+      // Solo incluir placa y detalle, más los campos específicos de cada tabla
+      const camposPermitidos = {
+        control: ['placa', 'detalle', 'ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
+        asignacion: ['placa', 'detalle', 'fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
+        mantenimiento: ['placa', 'detalle', 'tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
+        soat: ['placa', 'detalle', 'importe_2024', 'importe_2025'],
+        seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle'],
+        itv: ['placa', 'detalle', 'detalle', 'importe'],
+        impuestos: ['placa', 'detalle', 'importe_2023', 'importe_2024'],
+        pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fechas_futuras']
+      };
+      
+      // Obtener los campos permitidos para esta tabla
+      const camposTabla = camposPermitidos[t.key] || ['placa', 'detalle'];
+      
+      // Filtrar solo los campos que existen en los datos y excluir fechas
+      const allKeys = camposTabla.filter(campo => 
+        data[t.key].some(row => row[campo] !== undefined) &&
+        campo !== 'fecha_creacion' &&
+        campo !== 'fecha_actualizacion'
+      );
+      
+      
+      // Para pronósticos usar formato vertical, para el resto horizontal
+      let header, body;
+      if (t.key === 'pronosticos') {
+        // Formato vertical solo para pronósticos
+        header = ['Campo', 'Valor'];
+        body = data[t.key].map(r => {
+          const campos = [];
+          allKeys.forEach(k => {
+            if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+              // Formatear fechas correctamente
+              let valor = r[k];
+              if (k.toLowerCase().includes('fecha') && valor) {
+                valor = formatDateOnly(valor);
+              }
+              // Para recomendaciones, mostrar solo las primeras 3
+              if (k === 'recomendaciones' && valor) {
+                if (Array.isArray(valor)) {
+                  valor = valor.slice(0, 3).map(rec => `- ${rec}`).join('\n');
+                } else if (typeof valor === 'string') {
+                  valor = valor.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
+                }
+              }
+              campos.push([formatHeader(k), valor]);
             }
           });
-          return set;
-        }, new Set())
-      );
-      // Asegurar que placa y detalle estén al inicio
-      let keys = allKeys;
-      if (keys.includes('placa')) keys = ['placa', ...keys.filter(k => k !== 'placa')];
-      if (keys.includes('detalle')) keys = ['detalle', ...keys.filter(k => k !== 'detalle')];
-      const header = keys.map(formatHeader);
-      const body = data[t.key].map(r => keys.map(k => r[k] ?? ''));
+          return campos;
+        }).flat();
+      } else {
+        // Formato horizontal para el resto de tablas
+        header = allKeys.map(formatHeader);
+        body = data[t.key].map(r => {
+          return allKeys.map(k => {
+            if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+              // Formatear fechas correctamente
+              let valor = r[k];
+              if (k.toLowerCase().includes('fecha') && valor) {
+                valor = formatDateOnly(valor);
+              }
+              return valor;
+            }
+            return '';
+          });
+        });
+      }
+      
       const sheet = XLSX.utils.aoa_to_sheet([
         header,
         ...body

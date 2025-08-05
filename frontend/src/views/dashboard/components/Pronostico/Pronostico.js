@@ -19,6 +19,7 @@ import ModalPronostico from "./ModalPronostico";
 import GraficoPronosticos from "./GraficoPronosticos";
 import HistorialPronosticos from "./HistorialPronosticos";
 import PronosticoDashboard from "./PronosticoDashboard";
+import CSVButtons from "./CSVButtons";
 import { useUser } from 'src/components/UserContext.jsx';
 import { useCanView, useCanEdit, useIsPermissionDenied } from 'src/components/hooks';
 
@@ -69,6 +70,18 @@ const Pronostico = () => {
   };
 
   const openPopover = Boolean(anchorEl);
+
+  const handleDataUpdated = () => {
+    // Recargar datos cuando se actualicen desde CSV
+    fetch("http://localhost:8000/api/pronostico/")
+      .then((res) => res.json())
+      .then((data) => {
+        setPronosticos(data);
+        if (mainTab === 1) {
+          setAllForecasts(data);
+        }
+      });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -170,6 +183,7 @@ const Pronostico = () => {
 
       {mainTab === 1 && (
         <Box display="flex" flexDirection="column" alignItems="center">
+          <CSVButtons onDataUpdated={handleDataUpdated} />
           <GraficoPronosticos data={allForecasts} />
           <HistorialPronosticos
             data={allForecasts}

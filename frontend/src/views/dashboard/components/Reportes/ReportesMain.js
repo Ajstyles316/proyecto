@@ -24,6 +24,20 @@ import { CircularProgress, Typography, Box, Divider, Tooltip} from '@mui/materia
 import { useCanView, useIsPermissionDenied } from 'src/components/hooks';
 
 const ReportesMain = () => {
+  const [maquinaria, setMaquinaria] = useState(null);
+  const [depreciaciones, setDepreciaciones] = useState([]);
+  const [pronosticos, setPronosticos] = useState([]);
+  const [control, setControl] = useState([]);
+  const [asignacion, setAsignacion] = useState([]);
+  const [mantenimiento, setMantenimiento] = useState([]);
+  const [soat, setSOAT] = useState([]);
+  const [seguros, setSeguros] = useState([]);
+  const [itv, setITV] = useState([]);
+  const [impuestos, setImpuestos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [searched, setSearched] = useState(false);
+
   const canView = useCanView('Reportes');
   const isPermissionDenied = useIsPermissionDenied('Reportes');
   
@@ -41,20 +55,6 @@ const ReportesMain = () => {
   if (!canView) {
     return null;
   }
-  
-  const [maquinaria, setMaquinaria] = useState(null);
-  const [depreciaciones, setDepreciaciones] = useState([]);
-  const [pronosticos, setPronosticos] = useState([]);
-  const [control, setControl] = useState([]);
-  const [asignacion, setAsignacion] = useState([]);
-  const [mantenimiento, setMantenimiento] = useState([]);
-  const [soat, setSOAT] = useState([]);
-  const [seguros, setSeguros] = useState([]);
-  const [itv, setITV] = useState([]);
-  const [impuestos, setImpuestos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [searched, setSearched] = useState(false);
 
   const handleBuscar = async (search) => {
     setLoading(true);
@@ -103,6 +103,10 @@ const ReportesMain = () => {
       if (filteredPros.length > 0 && maq.placa) {
         filteredPros = filteredPros.filter(p => p.placa && p.placa.toLowerCase() === maq.placa.toLowerCase());
       }
+      console.log('🔍 DATOS DE PRONÓSTICOS:', JSON.stringify(filteredPros, null, 2));
+      if (filteredPros.length > 0) {
+        console.log('🔍 CAMPOS DISPONIBLES:', Object.keys(filteredPros[0]));
+      }
       setPronosticos(filteredPros);
       setControl(ctrl);
       setAsignacion(asig);
@@ -118,7 +122,7 @@ const ReportesMain = () => {
     }
   };
 
-  const ocultarCampos = ['bien_de_uso', 'vida_util', 'costo_activo'];
+  const ocultarCampos = ['bien_de_uso', 'vida_util', 'costo_activo', 'fecha_creacion', 'fecha_actualizacion', 'created_at', 'updated_at'];
 
   // Función para renderizar recomendaciones con formato mejorado
   const renderRecomendaciones = (recomendaciones) => {
@@ -192,10 +196,17 @@ const ReportesMain = () => {
           searched={searched}
         />
         
-        {loading && <Box p={3} textAlign="center"><CircularProgress /></Box>}
+        {loading && (
+          <Box p={3} textAlign="center">
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>
+              Buscando maquinaria...
+            </Typography>
+          </Box>
+        )}
         {error && <Typography color="error" mb={2}>{error}</Typography>}
         
-        {maquinaria && (
+        {maquinaria && !loading && (
           <>
             <Divider sx={{ my: 4 }} />
             <Typography variant="h5" sx={{ 
@@ -227,19 +238,43 @@ const ReportesMain = () => {
                 data={depreciaciones}
                 fields={depFields}
                 emptyMessage="No hay depreciaciones para esta maquinaria"
-                customCellRender={(key, value) => key.toLowerCase().includes('fecha') ? (value ? value.split('T')[0] : '-') : (value ?? '-')}
+                customCellRender={(key, value) => {
+                  if (key.toLowerCase().includes('fecha')) {
+                    if (value && typeof value === 'string') {
+                      // Manejar tanto formato ISO (T) como formato con espacios (00:00:00)
+                      if (value.includes('T')) {
+                        return value.split('T')[0];
+                      } else if (value.includes(' ')) {
+                        return value.split(' ')[0];
+                      }
+                      return value;
+                    }
+                    return value ?? '-';
+                  }
+                  return value ?? '-';
+                }}
               />
               <TablaGenericaAvanzada
                 title="Pronósticos"
                 data={pronosticos}
                 fields={proFields}
                 emptyMessage="No hay pronósticos para esta maquinaria"
+                ocultarCampos={['placa']}
                 customCellRender={(key, value, row) => {
                   if (key === 'recomendaciones') {
                     return renderRecomendaciones(value);
                   }
                   if (key.toLowerCase().includes('fecha')) {
-                    return value ? value.split('T')[0] : '-';
+                    if (value && typeof value === 'string') {
+                      // Manejar tanto formato ISO (T) como formato con espacios (00:00:00)
+                      if (value.includes('T')) {
+                        return value.split('T')[0];
+                      } else if (value.includes(' ')) {
+                        return value.split(' ')[0];
+                      }
+                      return value;
+                    }
+                    return value ?? '-';
                   }
                   return value ?? '-';
                 }}

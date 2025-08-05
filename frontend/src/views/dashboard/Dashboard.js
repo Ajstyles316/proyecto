@@ -1,4 +1,4 @@
-import { Grid, Box, CircularProgress, Typography } from "@mui/material";
+import { Grid, Box, CircularProgress, Typography, useMediaQuery } from "@mui/material";
 import PageContainer from "src/components/container/PageContainer";
 import { useEffect, useState } from "react";
 import PronosticoChart from './components/PronosticoChart';
@@ -20,6 +20,8 @@ const Dashboard = () => {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery((theme) => theme.breakpoints.between('sm', 'md'));
 
   // Determinar el cargo del usuario para mostrar contenido específico
   const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
@@ -60,7 +62,7 @@ const Dashboard = () => {
     <PageContainer title="Dashboard" description="this is Dashboard">
       <Box>
         {/* Sección de Estadísticas */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={{ xs: 1, sm: 2, md: 3 }} sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
           {loading ? (
             <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", py: 5 }}>
               <CircularProgress />
@@ -88,7 +90,7 @@ const Dashboard = () => {
         </Grid>
 
         {/* Gráficos y otros componentes */}
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
           <Grid item xs={12} lg={5}>
             <PronosticoChart />
           </Grid>

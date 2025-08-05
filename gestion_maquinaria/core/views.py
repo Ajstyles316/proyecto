@@ -153,15 +153,15 @@ def serialize_doc(doc):
         if isinstance(value, ObjectId):
             return str(value)
         elif isinstance(value, (datetime, date)):
-            # Formato más legible: dd/mm/yyyy HH:MM:SS
+            # Formato consistente: yyyy-mm-dd
             if isinstance(value, datetime):
                 # Si es solo fecha sin hora específica, mostrar solo fecha
                 if value.hour == 0 and value.minute == 0 and value.second == 0:
-                    return value.strftime('%d/%m/%Y')
+                    return value.strftime('%Y-%m-%d')
                 else:
-                    return value.strftime('%d/%m/%Y %H:%M:%S')
+                    return value.strftime('%Y-%m-%d')
             else:
-                return value.strftime('%d/%m/%Y')
+                return value.strftime('%Y-%m-%d')
         elif isinstance(value, dict):
             return {k: convert(v) for k, v in value.items()}
         elif isinstance(value, list):
@@ -228,7 +228,7 @@ def convert_dates_to_str(obj):
     elif isinstance(obj, list):
         return [convert_dates_to_str(item) for item in obj]
     elif isinstance(obj, (datetime, date)):
-        return obj.isoformat()
+        return obj.strftime('%Y-%m-%d')
     else:
         return obj
 
@@ -2699,6 +2699,7 @@ def enviar_correo_a_todos_usuarios_html(maquinaria, pronostico):
     riesgo = pronostico.get('riesgo', 'N/A')
     probabilidad = pronostico.get('probabilidad', 'N/A')
     fecha_prediccion = pronostico.get('fecha_prediccion', 'N/A')
+    urgencia = pronostico.get('urgencia', 'N/A')
     # Fechas futuras como lista
     fechas_futuras = pronostico.get('fechas_futuras', [])
     if isinstance(fechas_futuras, str):
@@ -2744,13 +2745,7 @@ def enviar_correo_a_todos_usuarios_html(maquinaria, pronostico):
       <tr><td><b>Tipo de Mantenimiento:</b></td><td>{tipo}</td></tr>
       <tr><td><b>Riesgo:</b></td><td style='color:red;'><b>{riesgo}</b></td></tr>
       <tr><td><b>Probabilidad:</b></td><td>{probabilidad}</td></tr>
-      <tr><td><b>Fechas Futuras:</b></td>
-        <td>
-          <ul>
-            {''.join(f'<li>{f}</li>' for f in fechas_futuras if f)}
-          </ul>
-        </td>
-      </tr>
+      <tr><td><b>Nivel de Urgencia:</b></td><td>{urgencia}</td></tr>
       <tr><td><b>Recomendaciones:</b></td>
         <td>
           <ul>
@@ -2778,15 +2773,18 @@ class PronosticoAPIView(APIView):
             resultado_dict = predecir_mantenimiento(data)
             data['resultado'] = resultado_dict.get('resultado')
             data['recomendaciones'] = resultado_dict.get('recomendaciones')
-            data['fechas_futuras'] = resultado_dict.get('fechas_futuras', [])
             data['riesgo'] = resultado_dict.get('riesgo')
             data['probabilidad'] = resultado_dict.get('probabilidad')
             data['fecha_prediccion'] = resultado_dict.get('fecha_prediccion')
             data['fecha_sugerida'] = resultado_dict.get('fecha_sugerida')
+            data['fecha_mantenimiento'] = resultado_dict.get('fecha_mantenimiento')
+            data['fecha_recordatorio'] = resultado_dict.get('fecha_recordatorio')
+            data['dias_hasta_mantenimiento'] = resultado_dict.get('dias_hasta_mantenimiento')
+            data['urgencia'] = resultado_dict.get('urgencia')
             placa = data.get('placa')
             fecha_asig = data.get('fecha_asig')
             if isinstance(fecha_asig, (datetime, date)):
-                fecha_asig = fecha_asig.isoformat()
+                fecha_asig = fecha_asig.strftime('%Y-%m-%d')
             data['fecha_asig'] = fecha_asig
             collection = get_collection(Pronostico)
             data = convert_dates_to_str(data)
@@ -2808,12 +2806,221 @@ class PronosticoAPIView(APIView):
     def get(self, request):
         # Devolver todos los pronósticos sin paginación
         cursor = Pronostico().collection.find({'activo': {'$ne': False}}, {
-            "_id": 1, "placa": 1, "fecha_asig": 1, "horas_op": 1, "recorrido": 1, "resultado": 1, "creado_en": 1, "recomendaciones": 1, "fechas_futuras": 1,
-            "riesgo": 1, "probabilidad": 1, "fecha_sugerida": 1
+            "_id": 1, "placa": 1, "fecha_asig": 1, "horas_op": 1, "recorrido": 1, "resultado": 1, "creado_en": 1, "recomendaciones": 1,
+            "riesgo": 1, "probabilidad": 1, "fecha_sugerida": 1, "fecha_mantenimiento": 1, "fecha_recordatorio": 1, "dias_hasta_mantenimiento": 1, "urgencia": 1
         })
         registros = list(cursor)
         registros_serializados = [serialize_doc(r) for r in registros]
         return Response(registros_serializados, status=status.HTTP_200_OK)
+
+class PronosticoExcelUploadView(APIView):
+    def post(self, request):
+        try:
+            # Verificar si se envió un archivo
+            if 'excel_file' not in request.FILES:
+                return Response(
+                    {'error': 'No se proporcionó ningún archivo Excel'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            excel_file = request.FILES['excel_file']
+            
+            # Verificar que sea un archivo Excel
+            if not (excel_file.name.endswith('.xlsx') or excel_file.name.endswith('.xls')):
+                return Response(
+                    {'error': 'El archivo debe ser un Excel válido (.xlsx o .xls)'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Leer el archivo Excel
+            import pandas as pd
+            from datetime import datetime, date
+            
+            try:
+                excel_file.seek(0)  # Reset file pointer
+                df = pd.read_excel(excel_file)
+                print(f"✅ Archivo Excel leído correctamente")
+            except Exception as e:
+                print(f"❌ Error leyendo archivo Excel: {str(e)}")
+                return Response(
+                    {'error': f'No se pudo leer el archivo Excel: {str(e)}'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Verificar las columnas requeridas con mejor debug
+            required_columns = ['placa', 'fecha_asig', 'horas_op', 'recorrido']
+            
+            # Debug: mostrar las columnas que pandas detectó
+            print(f"🔍 Columnas detectadas en el Excel: {list(df.columns)}")
+            print(f"🔍 Tipos de columnas: {df.dtypes.to_dict()}")
+            
+            # Normalizar nombres de columnas (eliminar espacios, convertir a minúsculas)
+            import re
+            df.columns = df.columns.str.strip().str.lower()
+            # Eliminar espacios múltiples y caracteres especiales
+            df.columns = df.columns.str.replace(r'\s+', '', regex=True)
+            print(f"🔍 Columnas normalizadas: {list(df.columns)}")
+            
+            # Debug adicional: mostrar cada columna individualmente
+            print("🔍 Análisis detallado de columnas:")
+            for i, col in enumerate(df.columns):
+                print(f"   Columna {i+1}: '{col}' (longitud: {len(col)})")
+            
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                return Response({
+                    'error': f'Columnas faltantes en el Excel: {", ".join(missing_columns)}',
+                    'debug_info': {
+                        'columnas_detectadas': list(df.columns),
+                        'columnas_requeridas': required_columns,
+                        'columnas_faltantes': missing_columns
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Importar el modelo de pronóstico
+            import sys, os
+            pronostico_dir = os.path.join(os.path.dirname(__file__), '../pronostico-v1')
+            if pronostico_dir not in sys.path:
+                sys.path.insert(0, pronostico_dir)
+            from pronostico_model import predecir_mantenimiento
+            
+            # Procesar cada fila del CSV
+            collection = get_collection(Pronostico)
+            maquinaria_collection = get_collection(Maquinaria)
+            
+            resultados = []
+            exitosos = 0
+            errores = 0
+            
+            for index, row in df.iterrows():
+                try:
+                    # Preparar datos para el pronóstico
+                    fecha_asig_raw = row['fecha_asig']
+                    
+                    # Procesar fecha de asignación para asegurar formato YYYY-MM-DD
+                    if isinstance(fecha_asig_raw, (datetime, date)):
+                        fecha_asig = fecha_asig_raw.strftime('%Y-%m-%d')
+                    elif isinstance(fecha_asig_raw, str):
+                        # Si es string, intentar parsear y formatear
+                        try:
+                            # Intentar diferentes formatos de fecha
+                            for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%d/%m/%Y', '%m/%d/%Y']:
+                                try:
+                                    parsed_date = datetime.strptime(fecha_asig_raw, fmt)
+                                    fecha_asig = parsed_date.strftime('%Y-%m-%d')
+                                    break
+                                except ValueError:
+                                    continue
+                            else:
+                                fecha_asig = str(fecha_asig_raw).strip()
+                        except:
+                            fecha_asig = str(fecha_asig_raw).strip()
+                    else:
+                        fecha_asig = str(fecha_asig_raw).strip()
+                    
+                    datos = {
+                        'placa': str(row['placa']).strip(),
+                        'fecha_asig': fecha_asig,
+                        'horas_op': float(row['horas_op']),
+                        'recorrido': float(row['recorrido'])
+                    }
+                    
+                    # Generar pronóstico
+                    resultado_dict = predecir_mantenimiento(datos)
+                    
+                    # Preparar datos para guardar
+                    data = datos.copy()
+                    data['resultado'] = resultado_dict.get('resultado')
+                    data['recomendaciones'] = resultado_dict.get('recomendaciones')
+                    data['riesgo'] = resultado_dict.get('riesgo')
+                    data['probabilidad'] = resultado_dict.get('probabilidad')
+                    data['fecha_prediccion'] = resultado_dict.get('fecha_prediccion')
+                    data['fecha_sugerida'] = resultado_dict.get('fecha_sugerida')
+                    data['fecha_mantenimiento'] = resultado_dict.get('fecha_mantenimiento')
+                    data['fecha_recordatorio'] = resultado_dict.get('fecha_recordatorio')
+                    data['dias_hasta_mantenimiento'] = resultado_dict.get('dias_hasta_mantenimiento')
+                    data['urgencia'] = resultado_dict.get('urgencia')
+                    
+                    # Formatear fecha de asignación para asegurar formato YYYY-MM-DD
+                    fecha_asig = data.get('fecha_asig')
+                    if isinstance(fecha_asig, (datetime, date)):
+                        fecha_asig = fecha_asig.strftime('%Y-%m-%d')
+                    elif isinstance(fecha_asig, str):
+                        # Si es string, intentar parsear y formatear
+                        try:
+                            # Intentar diferentes formatos de fecha
+                            for fmt in ['%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%d/%m/%Y', '%m/%d/%Y']:
+                                try:
+                                    parsed_date = datetime.strptime(fecha_asig, fmt)
+                                    fecha_asig = parsed_date.strftime('%Y-%m-%d')
+                                    break
+                                except ValueError:
+                                    continue
+                        except:
+                            # Si no se puede parsear, mantener como está
+                            pass
+                    data['fecha_asig'] = fecha_asig
+                    
+                    # Convertir fechas a string
+                    data = convert_dates_to_str(data)
+                    
+                    # Verificar si ya existe un pronóstico para esta placa y fecha
+                    existing = collection.find_one({'placa': data['placa'], 'fecha_asig': data['fecha_asig']})
+                    
+                    # Obtener información de la maquinaria
+                    maquinaria_doc = maquinaria_collection.find_one({'placa': data['placa']}) or {}
+                    
+                    if existing:
+                        # Actualizar pronóstico existente
+                        collection.update_one({'_id': existing['_id']}, {'$set': data})
+                        updated = collection.find_one({'_id': existing['_id']})
+                        enviar_correo_a_todos_usuarios_html(maquinaria_doc, data)
+                        resultados.append({
+                            'fila': index + 1,
+                            'placa': data['placa'],
+                            'estado': 'actualizado',
+                            'resultado': data['resultado']
+                        })
+                    else:
+                        # Crear nuevo pronóstico
+                        result = collection.insert_one(data)
+                        new_doc = collection.find_one({'_id': result.inserted_id})
+                        enviar_correo_a_todos_usuarios_html(maquinaria_doc, data)
+                        resultados.append({
+                            'fila': index + 1,
+                            'placa': data['placa'],
+                            'estado': 'creado',
+                            'resultado': data['resultado']
+                        })
+                    
+                    exitosos += 1
+                    
+                except Exception as e:
+                    errores += 1
+                    resultados.append({
+                        'fila': index + 1,
+                        'placa': str(row.get('placa', 'N/A')),
+                        'estado': 'error',
+                        'error': str(e)
+                    })
+            
+            return Response({
+                'mensaje': f'Procesamiento completado. {exitosos} pronósticos procesados exitosamente, {errores} errores.',
+                'resumen': {
+                    'total_filas': len(df),
+                    'exitosos': exitosos,
+                    'errores': errores
+                },
+                'resultados': resultados
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en PronosticoCSVUploadView: {str(e)}")
+            return Response(
+                {'error': f'Error al procesar el archivo CSV: {str(e)}'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class PronosticoSummaryView(APIView):
     def get(self, request):

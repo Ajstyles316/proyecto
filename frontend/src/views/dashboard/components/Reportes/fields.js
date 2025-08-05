@@ -21,7 +21,6 @@ export const depFields = [
 ];
 
 export const proFields = [
-  { key: 'placa', label: 'Placa' },
   { key: 'riesgo', label: 'Riesgo' },
   { key: 'resultado', label: 'Resultado' },
   { key: 'probabilidad', label: 'Probabilidad (%)' },
@@ -29,4 +28,5 @@ export const proFields = [
   { key: 'recorrido', label: 'Recorrido' },
   { key: 'horas_op', label: 'Horas de Operación' },
   { key: 'recomendaciones', label: 'Recomendaciones' },
+  { key: 'urgencia', label: 'Nivel de Urgencia' },
 ];

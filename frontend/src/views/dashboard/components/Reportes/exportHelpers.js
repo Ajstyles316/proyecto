@@ -26,7 +26,11 @@ export function cleanRow(row, section = '') {
       k === 'fecha_ingreso' ||
       k === 'bien_de_uso' ||
       k === 'vida_util' ||
-      k === 'costo_activo'
+      k === 'costo_activo' ||
+      k === 'fecha_creacion' ||
+      k === 'fecha_actualizacion' ||
+      k === 'created_at' ||
+      k === 'updated_at'
     )
       return;
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { styled, Container, Box } from '@mui/material';
+import { styled, Container, Box, useMediaQuery } from '@mui/material';
 
 
 
@@ -27,7 +27,17 @@ const FullLayout = () => {
 
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  // const lgUp = useMediaQuery((theme) => theme.breakpoints.up("lg"));
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
+  const isTablet = useMediaQuery((theme) => theme.breakpoints.between('md', 'lg'));
+
+  // Ajustar sidebar automáticamente en móviles
+  React.useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    } else {
+      setSidebarOpen(true);
+    }
+  }, [isMobile]);
 
   return (
     <>
@@ -61,14 +71,19 @@ const FullLayout = () => {
           {/* PageContent */}
           {/* ------------------------------------------- */}
           <Container sx={{
-            paddingTop: "20px",
+            paddingTop: { xs: "10px", sm: "15px", md: "20px" },
+            paddingBottom: { xs: "10px", sm: "15px", md: "20px" },
             maxWidth: '1200px',
+            px: { xs: 1, sm: 2, md: 3 },
           }}
           >
             {/* ------------------------------------------- */}
             {/* Page Route */}
             {/* ------------------------------------------- */}
-            <Box sx={{ minHeight: 'calc(100vh - 170px)' }}>
+            <Box sx={{ 
+              minHeight: { xs: 'calc(100vh - 140px)', sm: 'calc(100vh - 160px)', md: 'calc(100vh - 170px)' },
+              width: '100%',
+            }}>
               <Outlet />
             </Box>
             {/* ------------------------------------------- */}

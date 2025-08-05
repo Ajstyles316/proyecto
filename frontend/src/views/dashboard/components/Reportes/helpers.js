@@ -16,7 +16,7 @@ export function formatCurrency(value) {
 export function cleanRow(row) {
   const cleaned = {};
   Object.entries(row).forEach(([k, v]) => {
-    if (k.endsWith('_id') || k === 'maquinaria' || k === 'fecha_ingreso') return;
+    if (k.endsWith('_id') || k === 'maquinaria' || k === 'fecha_ingreso' || k === 'fecha_creacion' || k === 'fecha_actualizacion' || k === 'created_at' || k === 'updated_at') return;
     if (k.toLowerCase().includes('fecha') && v) {
       cleaned[k] = formatDateOnly(v);
     } else {

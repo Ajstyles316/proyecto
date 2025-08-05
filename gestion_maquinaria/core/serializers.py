@@ -70,7 +70,7 @@ class MantenimientoSerializer(serializers.Serializer):
     tipo = serializers.CharField(max_length=20)
     cantidad = serializers.IntegerField(allow_null=True)  # Nuevo campo
     gestion = serializers.CharField(max_length=100)
-    ubicación = serializers.CharField(max_length=200)
+    ubicacion = serializers.CharField(max_length=200)
 
     def validate_maquinaria(self, value):
         try:

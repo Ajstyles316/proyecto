@@ -4,6 +4,15 @@ import { shadows } from "./Shadows";
 
 const baselightTheme = createTheme({
   direction: 'ltr',
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
   palette: {
     primary: {
       main: "#1e4db7",
@@ -79,13 +88,37 @@ const baselightTheme = createTheme({
         {
           clipPath: "inset(0 0 5% 0 round 20px)",
         },
+        // Mejoras responsivas globales
+        '@media (max-width: 600px)': {
+          '.MuiContainer-root': {
+            paddingLeft: '8px !important',
+            paddingRight: '8px !important',
+          },
+          '.MuiTableCell-root': {
+            padding: '8px 4px !important',
+            fontSize: '0.75rem !important',
+          },
+          '.MuiTableHead-root .MuiTableCell-root': {
+            fontSize: '0.7rem !important',
+            fontWeight: '600 !important',
+          },
+        },
+        '@media (max-width: 900px)': {
+          '.MuiTableContainer-root': {
+            overflowX: 'auto !important',
+          },
+        },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
           borderRadius: "20px",
-          boxShadow: '0px 7px 30px 0px rgba(90, 114, 123, 0.11)'
+          boxShadow: '0px 7px 30px 0px rgba(90, 114, 123, 0.11)',
+          '@media (max-width: 600px)': {
+            borderRadius: "12px",
+            margin: '8px',
+          },
         },
       },
     },
@@ -152,6 +185,45 @@ const baselightTheme = createTheme({
           },
           '& .MuiSelect-select': {
             color: '#2A3547',
+          },
+        },
+      },
+    },
+    MuiTable: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            minWidth: '100%',
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            padding: '8px 4px',
+            fontSize: '0.75rem',
+          },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            fontSize: '0.75rem',
+            padding: '6px 12px',
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            fontSize: '0.7rem',
+            height: '24px',
           },
         },
       },

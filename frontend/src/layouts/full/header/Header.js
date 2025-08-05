@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Box, AppBar, Toolbar, styled, Stack, IconButton, Badge, Button, Menu,
-  MenuItem, Typography
+  MenuItem, Typography, useMediaQuery
 
 } from '@mui/material';
 import PropTypes from 'prop-types';
@@ -15,6 +15,7 @@ const Header = (props) => {
   const [anchorEl, setAnchorEl] = useState(null);
 
   const [menuPosition, setMenuPosition] = useState(null);
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
 
   const handleClick = (event) => {
     const rect = event.currentTarget.getBoundingClientRect(); // Get exact position
@@ -37,10 +38,17 @@ const Header = (props) => {
     [theme.breakpoints.up('lg')]: {
       minHeight: '70px',
     },
+    [theme.breakpoints.down('md')]: {
+      minHeight: '60px',
+    },
   }));
   const ToolbarStyled = styled(Toolbar)(({ theme }) => ({
     width: '100%',
     color: theme.palette.text.secondary,
+    padding: theme.spacing(0, 2),
+    [theme.breakpoints.down('sm')]: {
+      padding: theme.spacing(0, 1),
+    },
   }));
 
   return (
@@ -55,9 +63,10 @@ const Header = (props) => {
               lg: "none",
               xs: "inline",
             },
+            mr: { xs: 1, sm: 2 },
           }}
         >
-          <IconMenu width="20" height="20" />
+          <IconMenu width={isMobile ? "18" : "20"} height={isMobile ? "18" : "20"} />
         </IconButton>
 
 

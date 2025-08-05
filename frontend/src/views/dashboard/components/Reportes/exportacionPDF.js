@@ -468,10 +468,22 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     });
     let keys = Object.keys(cleanedData[0] || {});
     keys = keys.filter(k => k !== 'id' && k !== '_id' && !k.endsWith('_id'));
+    // Formato vertical para pronósticos
+    const header = ['Campo', 'Valor'];
+    const body = cleanedData.map(r => {
+      const campos = [];
+      keys.forEach(k => {
+        if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+          campos.push([formatHeader(k), r[k]]);
+        }
+      });
+      return campos;
+    }).flat();
+    
     autoTable(doc, {
       startY: y,
-      head: [keys.map(formatHeader)],
-      body: cleanedData.map(r => keys.map(k => r[k])),
+      head: [header],
+      body,
       styles: { fontSize: 10, cellPadding: 2 },
       headStyles: { fillColor: [30, 77, 183], textColor: 255 },
       bodyStyles: { textColor: 33 },
@@ -479,7 +491,18 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       tableLineColor: [30, 77, 183],
       tableLineWidth: 0.2,
       columnStyles: {
-        recomendaciones: { cellWidth: 120 }
+        0: { cellWidth: '40%' },
+        1: { cellWidth: '60%' }
+      },
+      didParseCell: function (data) {
+        // Permitir saltos de línea en las celdas de recomendaciones
+        if (data.section === 'body' && data.column.dataKey === 1) {
+          const cellValue = data.cell.raw;
+          if (typeof cellValue === 'string' && cellValue.includes('\n')) {
+            data.cell.styles.cellPadding = 3;
+            data.cell.text = cellValue.split('\n');
+          }
+        }
       }
     });
     y = doc.lastAutoTable.finalY + 6;
@@ -514,7 +537,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
   const doc = new jsPDF({ orientation: 'landscape' });
   let page = 0;
 
-  // Helper para crear tabla horizontal
+  // Helper para crear tabla horizontal con formato de dos columnas
   function addTable(title, rows, fields = null, tablaKey = '') {
     if (!rows || rows.length === 0) return;
     if (page > 0) doc.addPage();
@@ -524,59 +547,107 @@ function exportPDFMasivo(data, filename = 'reporte') {
     doc.setTextColor(30, 77, 183);
     doc.setFont('helvetica', 'bold');
     doc.text(title, 14, 18);
+    
     let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
-    // Para tablas que no son maquinaria, omitir ids y mostrar placa/detalle
+    // Para tablas que no son maquinaria, usar solo campos específicos
     if (tablaKey && tablaKey !== 'maquinaria') {
-      keys = keys.filter(k =>
-        k === 'placa' ||
-        k === 'detalle' ||
-        (k !== 'id' &&
-          k !== '_id' &&
-          k !== 'maquinaria' &&
-          k !== 'maquinaria_id' &&
-          k !== 'bien_de_uso' &&
-          k !== 'bien_uso' &&
-          k !== 'vida_util' &&
-          k !== 'costo_activo' &&
-          k !== 'unidad' &&
-          k !== 'codigo' &&
-          k !== 'tipo' &&
-          k !== 'marca' &&
-          k !== 'modelo' &&
-          k !== 'color' &&
-          k !== 'nro_motor' &&
-          k !== 'nro_chasis' &&
-          k !== 'gestion' &&
-          k !== 'adqui')
+      const camposPermitidos = {
+        control: ['placa', 'detalle', 'ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
+        asignacion: ['placa', 'detalle', 'fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
+        mantenimiento: ['placa', 'detalle', 'tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
+        soat: ['placa', 'detalle', 'importe_2024', 'importe_2025'],
+        seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle'],
+        itv: ['placa', 'detalle', 'detalle', 'importe'],
+        impuestos: ['placa', 'detalle', 'importe_2023', 'importe_2024'],
+        pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
+      };
+      
+      // Obtener los campos permitidos para esta tabla
+      const camposTabla = camposPermitidos[tablaKey] || ['placa', 'detalle'];
+      
+      // Filtrar solo los campos que existen en los datos y excluir fechas
+      keys = camposTabla.filter(campo => 
+        rows.some(row => row[campo] !== undefined) &&
+        campo !== 'fecha_creacion' &&
+        campo !== 'fecha_actualizacion'
       );
-      // Asegurar que placa y detalle estén presentes y al inicio
-      if (keys.includes('placa')) {
-        keys = ['placa', ...keys.filter(k => k !== 'placa')];
-      }
-      if (keys.includes('detalle')) {
-        keys = ['detalle', ...keys.filter(k => k !== 'detalle')];
-      }
     }
-    const header = fields ? fields.map(f => f.label) : keys.map(formatHeader);
-    const body = rows.map(r => keys.map(k => r[k] ?? ''));
-    autoTable(doc, {
-      startY: 24,
-      head: [header],
-      body,
-      styles: { fontSize: 8, cellPadding: 1 },
-      headStyles: { fillColor: [30, 77, 183], textColor: 255 },
-      bodyStyles: { textColor: 33 },
-      margin: { left: 10, right: 10 },
-      tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2,
-      pageBreak: 'auto',
-      theme: 'grid',
-      didDrawCell: (data) => {
-        if (data.section === 'head' && data.cell.width < 30) {
-          data.cell.width = 30;
-        }
-      },
-    });
+    
+    // Para pronósticos usar formato vertical, para el resto horizontal
+    let header, body;
+    if (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) {
+      // Formato vertical solo para pronósticos
+      header = ['Campo', 'Valor'];
+      body = [];
+      
+      // Procesar cada registro individualmente
+      rows.forEach(r => {
+        const campos = [];
+        keys.forEach(k => {
+          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+            // Formatear fechas correctamente
+            let valor = r[k];
+            if (k.toLowerCase().includes('fecha') && valor) {
+              valor = formatDateOnly(valor);
+            }
+            // Para recomendaciones, mostrar solo las primeras 3 con formato de lista
+            if (k === 'recomendaciones' && valor) {
+              if (Array.isArray(valor)) {
+                valor = valor.slice(0, 3).map(rec => `• ${rec}`).join('\n');
+              } else if (typeof valor === 'string') {
+                valor = valor.split(';').slice(0, 3).map(rec => `• ${rec.trim()}`).join('\n');
+              }
+            }
+            campos.push([formatHeader(k), valor]);
+          }
+        });
+        body.push(...campos);
+      });
+    } else {
+      // Formato horizontal para el resto de tablas
+      header = keys.map(formatHeader);
+      body = rows.map(r => {
+        return keys.map(k => {
+          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+            // Formatear fechas correctamente
+            let valor = r[k];
+            if (k.toLowerCase().includes('fecha') && valor) {
+              valor = formatDateOnly(valor);
+            }
+            return valor;
+          }
+          return '';
+        });
+      });
+    }
+    
+     autoTable(doc, {
+       startY: 24,
+       head: [header],
+       body,
+       styles: { fontSize: 8, cellPadding: 2 },
+       headStyles: { fillColor: [30, 77, 183], textColor: 255 },
+       bodyStyles: { textColor: 33 },
+       margin: { left: 10, right: 10 },
+       tableLineColor: [30, 77, 183],
+       tableLineWidth: 0.2,
+       pageBreak: 'auto',
+       theme: 'grid',
+       columnStyles: (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) ? {
+         0: { cellWidth: '40%' },
+         1: { cellWidth: '60%' }
+       } : {},
+       didParseCell: (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) ? function (data) {
+         // Permitir saltos de línea en las celdas de recomendaciones
+         if (data.section === 'body' && data.column.dataKey === 1) {
+           const cellValue = data.cell.raw;
+           if (typeof cellValue === 'string' && cellValue.includes('\n')) {
+             data.cell.styles.cellPadding = 3;
+             data.cell.text = cellValue.split('\n');
+           }
+         }
+       } : undefined,
+     });
   }
 
   // Maquinaria

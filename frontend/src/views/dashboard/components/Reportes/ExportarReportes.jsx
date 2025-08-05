@@ -82,35 +82,40 @@ const ExportarReportes = () => {
           if (!id) continue;
           let rows = await (fetchers[tabla]?.(id) || Promise.resolve([]));
           if (!Array.isArray(rows)) rows = [rows];
+          
           // Solo incluir placa y detalle de la maquinaria, más los campos propios de la tabla
           rows = rows.map(r => {
             const { placa, detalle } = m;
-            // Eliminar campos de maquinaria y solo dejar los propios de la tabla + placa y detalle
-            const cleaned = { placa, detalle };
-            Object.entries(r).forEach(([k, v]) => {
-              if (
-                k !== 'id' &&
-                k !== '_id' &&
-                k !== 'maquinaria' &&
-                k !== 'maquinaria_id' &&
-                k !== 'bien_de_uso' &&
-                k !== 'bien_uso' &&
-                k !== 'vida_util' &&
-                k !== 'costo_activo' &&
-                k !== 'unidad' &&
-                k !== 'codigo' &&
-                k !== 'tipo' &&
-                k !== 'marca' &&
-                k !== 'modelo' &&
-                k !== 'color' &&
-                k !== 'nro_motor' &&
-                k !== 'nro_chasis' &&
-                k !== 'gestion' &&
-                k !== 'adqui'
-              ) {
-                cleaned[k] = v;
+            
+            // Crear objeto limpio solo con los campos que queremos
+            const cleaned = tabla === 'pronosticos' ? {} : { placa, detalle };
+            
+            // Lista de campos que SÍ queremos incluir (campos específicos de cada tabla)
+            const camposPermitidos = {
+              control: ['ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
+              asignacion: ['fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
+              mantenimiento: ['tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
+              soat: ['importe_2024', 'importe_2025'],
+              seguros: ['numero_2024', 'importe', 'detalle'],
+              itv: ['detalle', 'importe'],
+              impuestos: ['importe_2023', 'importe_2024'],
+              pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
+            };
+            
+            // Obtener los campos permitidos para esta tabla
+            const camposTabla = camposPermitidos[tabla] || [];
+            
+            // Solo agregar los campos permitidos
+            camposTabla.forEach(campo => {
+              if (r[campo] !== undefined) {
+                cleaned[campo] = r[campo];
               }
             });
+            
+            // EXCLUIR EXPLÍCITAMENTE las fechas de creación y actualización
+            delete cleaned.fecha_creacion;
+            delete cleaned.fecha_actualizacion;
+            
             return cleaned;
           });
           all.push(...rows);
@@ -120,6 +125,11 @@ const ExportarReportes = () => {
       // Nombre de archivo personalizado
       let nombre = 'reporte';
       if (unidad) nombre += `_${unidad}`;
+
+      
+      // TEMPORAL: Verificar qué datos llegan a la exportación
+      console.log('🔍 DATOS PARA EXPORTAR:', JSON.stringify(exportData, null, 2));
+      
       if (tipo === 'excel') {
         exportXLS(exportData, nombre);
       } else {

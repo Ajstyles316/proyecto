@@ -35,7 +35,10 @@ function PronosticoCard({ pronostico }) {
     riesgo,
     probabilidad,
     fecha_sugerida,
-    fechas_futuras,
+    fecha_mantenimiento,
+    fecha_recordatorio,
+    dias_hasta_mantenimiento,
+    urgencia,
     recomendaciones
   } = pronostico;
   // Mostrar solo 3 recomendaciones aleatorias relevantes
@@ -56,7 +59,7 @@ function PronosticoCard({ pronostico }) {
       <Typography><b>Riesgo:</b> <span style={{ color: getRiesgoColor(riesgo), fontWeight: 600 }}>{capitalizeSentence(riesgo)}</span></Typography>
       <Typography><b>Probabilidad:</b> {formatProbabilidad(probabilidad)}</Typography>
       <Typography sx={{ color: 'teal', fontWeight: 600 }}>
-        Fecha Sugerida de Mantenimiento: {fecha_sugerida || (Array.isArray(fechas_futuras) && fechas_futuras.length > 0 ? fechas_futuras[0] : (() => {
+        Fecha Sugerida de Mantenimiento: {fecha_sugerida || fecha_mantenimiento || (() => {
           try {
             if (fecha_asig) {
               const d = new Date(fecha_asig);
@@ -73,8 +76,23 @@ function PronosticoCard({ pronostico }) {
           } catch {
             return '-';
           }
-        })())}
+        })()}
       </Typography>
+      {fecha_recordatorio && (
+        <Typography sx={{ color: 'orange', fontWeight: 600 }}>
+          Fecha de Recordatorio: {fecha_recordatorio}
+        </Typography>
+      )}
+      {dias_hasta_mantenimiento && (
+        <Typography sx={{ color: 'blue', fontWeight: 600 }}>
+          Días hasta Mantenimiento: {dias_hasta_mantenimiento}
+        </Typography>
+      )}
+      {urgencia && (
+        <Typography sx={{ color: 'red', fontWeight: 600 }}>
+          Urgencia: {urgencia}
+        </Typography>
+      )}
       <Typography sx={{ color: 'info.main', fontWeight: 600, mt: 2 }}>Recomendaciones:</Typography>
       {Array.isArray(recomendacionesMostrar) && recomendacionesMostrar.length > 0 ? (
         <ul style={{ margin: 0, paddingLeft: 20 }}>
@@ -100,7 +118,10 @@ PronosticoCard.propTypes = {
     riesgo: PropTypes.string,
     probabilidad: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     fecha_sugerida: PropTypes.string,
-    fechas_futuras: PropTypes.array,
+    fecha_mantenimiento: PropTypes.string,
+    fecha_recordatorio: PropTypes.string,
+    dias_hasta_mantenimiento: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    urgencia: PropTypes.string,
     recomendaciones: PropTypes.array
   })
 };

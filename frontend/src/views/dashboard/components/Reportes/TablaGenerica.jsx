@@ -19,7 +19,6 @@ import {
   TableChart
 } from '@mui/icons-material';
 import { formatDateOnly } from './helpers';
-import { formatMethod } from './helpers';
 
 const TablaGenericaAvanzada = ({
   title,
@@ -89,7 +88,7 @@ const TablaGenericaAvanzada = ({
 
     // Si es un array
     if (Array.isArray(value)) {
-      return value.map(v => typeof v === 'string' ? formatMethod(v) : v).join('; ');
+      return value.map(v => typeof v === 'string' ? v : v).join('; ');
     }
 
     // Si es una fecha
@@ -111,9 +110,10 @@ const TablaGenericaAvanzada = ({
 
     // Si es método
     if (key.toLowerCase() === 'método' || key.toLowerCase() === 'metodo') {
+      const formatted = value === 'linea_recta' ? 'Línea Recta' : value;
       return (
         <Chip
-          label={formatMethod(value)}
+          label={formatted}
           size="small"
           color="secondary"
           sx={{ 
@@ -162,9 +162,9 @@ const TablaGenericaAvanzada = ({
       }
     }
 
-    // Si es string, aplicar formato
+    // Si es string, mostrar tal como se registró
     if (typeof value === 'string') {
-      const formatted = value === 'linea_recta' ? 'Línea Recta' : formatMethod(value);
+      const formatted = value === 'linea_recta' ? 'Línea Recta' : value;
       return (
         <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
           {formatted || '-'}

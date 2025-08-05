@@ -6,9 +6,8 @@ import Scrollbar from "../../../components/custom-scroll/Scrollbar";
 const Sidebar = (props) => {
 
   const lgUp = useMediaQuery((theme) => theme.breakpoints.up("lg"));
-  const sidebarWidth = '270px';
-
-
+  const mdUp = useMediaQuery((theme) => theme.breakpoints.up("md"));
+  const sidebarWidth = lgUp ? '270px' : '240px';
 
   if (lgUp) {
     return (
@@ -31,7 +30,10 @@ const Sidebar = (props) => {
               boxSizing: 'border-box',
               top: '0px',
               backgroundColor: '#154360',
-              color: 'white'
+              color: 'white',
+              '@media (max-width: 1200px)': {
+                width: '240px',
+              },
             },
           }}
         >
@@ -61,6 +63,8 @@ const Sidebar = (props) => {
           boxShadow: (theme) => theme.shadows[8],
           backgroundColor: '#5d6d7e',
           color: 'white',
+          width: mdUp ? '280px' : '85vw',
+          maxWidth: '320px',
         },
       }}
     >

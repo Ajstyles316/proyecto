@@ -1,40 +1,391 @@
 /* Mobile */
 @media (max-width: 480px) {
-
-
-
+  /* Estilos específicos para móviles pequeños */
+  .dashboard-card {
+    margin: 4px !important;
+    padding: 12px !important;
+  }
+  
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .form-responsive {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+  
+  .button-responsive {
+    width: 100% !important;
+    margin-bottom: 8px !important;
+  }
 }
 
 /* Extra small devices */
-
 @media (min-width: 481px) and (max-width: 767px) {
-
-
+  /* Estilos para móviles medianos */
+  .dashboard-card {
+    margin: 6px !important;
+    padding: 16px !important;
+  }
+  
+  .table-responsive {
+    overflow-x: auto !important;
+  }
+  
+  .form-responsive {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
 }
 
 /* Small tablets */
-
 @media (min-width: 768px) and (max-width: 991px) {
-
-
+  /* Estilos para tablets */
+  .dashboard-card {
+    margin: 8px !important;
+    padding: 20px !important;
+  }
+  
+  .table-responsive {
+    overflow-x: auto !important;
+  }
+  
+  .form-responsive {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 20px !important;
+  }
 }
 
 /* Large tablets/laptops */
-
 @media (min-width: 992px) and (max-width: 1199px) {
-
-
-
+  /* Estilos para laptops pequeños */
+  .dashboard-card {
+    margin: 10px !important;
+    padding: 24px !important;
+  }
+  
+  .form-responsive {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 24px !important;
+  }
 }
 
 /* Desktops */
-
 @media (min-width: 1200px) and (max-width: 1919px) {
-
+  /* Estilos para desktops */
+  .dashboard-card {
+    margin: 12px !important;
+    padding: 28px !important;
+  }
+  
+  .form-responsive {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr 1fr !important;
+    gap: 28px !important;
+  }
 }
 
 /* Extra large screens */
-
 @media (min-width: 1920px) {
+  /* Estilos para pantallas muy grandes */
+  .dashboard-card {
+    margin: 16px !important;
+    padding: 32px !important;
+  }
+  
+  .form-responsive {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr !important;
+    gap: 32px !important;
+  }
+}
 
+/* Estilos responsivos específicos para componentes */
+@media (max-width: 600px) {
+  /* Mejoras para móviles */
+  .responsive-table {
+    font-size: 0.75rem !important;
+  }
+  
+  .responsive-table th,
+  .responsive-table td {
+    padding: 8px 4px !important;
+  }
+  
+  .responsive-card {
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  }
+  
+  .responsive-button {
+    font-size: 0.875rem !important;
+    padding: 8px 16px !important;
+    min-height: 44px !important;
+  }
+  
+  .responsive-text {
+    font-size: 0.875rem !important;
+    line-height: 1.4 !important;
+  }
+  
+  .responsive-heading {
+    font-size: 1.25rem !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .responsive-spacing {
+    margin: 8px !important;
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Mejoras para tablets */
+  .responsive-table {
+    font-size: 0.8rem !important;
+  }
+  
+  .responsive-card {
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  }
+  
+  .responsive-button {
+    font-size: 0.9rem !important;
+    padding: 10px 20px !important;
+  }
+  
+  .responsive-text {
+    font-size: 0.9rem !important;
+  }
+  
+  .responsive-heading {
+    font-size: 1.5rem !important;
+    margin-bottom: 16px !important;
+  }
+  
+  .responsive-spacing {
+    margin: 12px !important;
+    padding: 16px !important;
+  }
+}
+
+/* Mejoras específicas para formularios responsivos */
+@media (max-width: 600px) {
+  .form-field-responsive {
+    width: 100% !important;
+    margin-bottom: 16px !important;
+  }
+  
+  .form-button-responsive {
+    width: 100% !important;
+    margin-top: 16px !important;
+  }
+  
+  .form-container-responsive {
+    padding: 16px !important;
+  }
+}
+
+/* Mejoras para tablas responsivas */
+@media (max-width: 600px) {
+  .table-container-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 8px !important;
+  }
+  
+  .table-header-responsive {
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+  }
+  
+  .table-cell-responsive {
+    font-size: 0.75rem !important;
+    padding: 8px 4px !important;
+  }
+}
+
+/* Mejoras para navegación responsiva */
+@media (max-width: 900px) {
+  .nav-responsive {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 1200 !important;
+  }
+  
+  .nav-toggle-responsive {
+    display: block !important;
+  }
+}
+
+/* Mejoras para modales responsivos */
+@media (max-width: 600px) {
+  .modal-responsive {
+    margin: 16px !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100vh - 32px) !important;
+  }
+  
+  .modal-content-responsive {
+    padding: 16px !important;
+  }
+  
+  .modal-actions-responsive {
+    padding: 8px 16px 16px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+}
+
+/* Mejoras para paginación responsiva */
+@media (max-width: 600px) {
+  .pagination-responsive {
+    display: flex !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  
+  .pagination-item-responsive {
+    font-size: 0.7rem !important;
+    min-width: 32px !important;
+    height: 32px !important;
+  }
+}
+
+/* Mejoras para gráficos responsivos */
+@media (max-width: 600px) {
+  .chart-responsive {
+    height: 250px !important;
+    width: 100% !important;
+  }
+  
+  .chart-container-responsive {
+    padding: 8px !important;
+    margin: 4px !important;
+  }
+}
+
+/* Mejoras para tarjetas de estadísticas responsivas */
+@media (max-width: 600px) {
+  .stat-card-responsive {
+    padding: 12px !important;
+    margin: 4px !important;
+    min-height: 80px !important;
+  }
+  
+  .stat-value-responsive {
+    font-size: 1rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  .stat-title-responsive {
+    font-size: 0.7rem !important;
+    line-height: 1.3 !important;
+  }
+  
+  .stat-icon-responsive {
+    width: 35px !important;
+    height: 35px !important;
+  }
+}
+
+/* Mejoras para filtros responsivos */
+@media (max-width: 600px) {
+  .filter-container-responsive {
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+  
+  .filter-field-responsive {
+    width: 100% !important;
+  }
+  
+  .filter-button-responsive {
+    width: 100% !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* Mejoras para búsqueda responsiva */
+@media (max-width: 600px) {
+  .search-container-responsive {
+    margin-bottom: 16px !important;
+  }
+  
+  .search-field-responsive {
+    width: 100% !important;
+  }
+  
+  .search-button-responsive {
+    width: 100% !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* Mejoras para acciones responsivas */
+@media (max-width: 600px) {
+  .action-container-responsive {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-top: 16px !important;
+  }
+  
+  .action-button-responsive {
+    width: 100% !important;
+  }
+}
+
+/* Mejoras para mensajes responsivos */
+@media (max-width: 600px) {
+  .message-responsive {
+    font-size: 0.875rem !important;
+    padding: 12px !important;
+    margin: 8px !important;
+  }
+  
+  .alert-responsive {
+    font-size: 0.8rem !important;
+    padding: 8px 12px !important;
+  }
+}
+
+/* Mejoras para tooltips responsivos */
+@media (max-width: 600px) {
+  .tooltip-responsive {
+    font-size: 0.75rem !important;
+    max-width: 200px !important;
+  }
+}
+
+/* Mejoras para chips responsivos */
+@media (max-width: 600px) {
+  .chip-responsive {
+    font-size: 0.7rem !important;
+    height: 24px !important;
+    min-width: 60px !important;
+  }
+}
+
+/* Mejoras para iconos responsivos */
+@media (max-width: 600px) {
+  .icon-responsive {
+    font-size: 1rem !important;
+  }
+  
+  .icon-button-responsive {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
 }

@@ -41,11 +41,82 @@ const getAccionChip = (accion) => {
     'editar_perfil': 'info',
     'registro_usuario': 'success',
     'editar_depreciacion': 'info',
-    'editar_maquinaria': 'info'
+    'editar_maquinaria': 'info',
+    'desactivar_soat': 'error',
+    'crear_soat': 'success',
+    'editar_asignacion': 'info',
+    'editar_soat': 'info',
+    'desactivar_asignacion': 'error',
+    'crear_asignacion': 'success',
+    'crear_seguro': 'success',
+    'editar_seguro': 'info',
+    'desactivar_seguro': 'error',
+    'crear_mantenimiento': 'success',
+    'editar_mantenimiento': 'info',
+    'desactivar_mantenimiento': 'error',
+    'crear_control': 'success',
+    'editar_control': 'info',
+    'desactivar_control': 'error',
+    'crear_depreciacion': 'success',
+    'inicio_sesion': 'primary',
+    'crear_itv': 'success',
+    'editar_itv': 'info',
+    'crear_impuesto': 'success',
+    'editar_impuesto': 'info'
   };
+  
+  // Función para formatear la acción
+  const formatAccion = (accion) => {
+    if (!accion) return 'N/A';
+    
+    // Mapeo específico para acciones comunes
+    const accionMap = {
+      'crear_soat': 'Crear SOAT',
+      'desactivar_soat': 'Desactivar SOAT',
+      'editar_soat': 'Editar SOAT',
+      'crear_seguro': 'Crear Seguro',
+      'editar_seguro': 'Editar Seguro',
+      'desactivar_seguro': 'Desactivar Seguro',
+      'crear_mantenimiento': 'Crear Mantenimiento',
+      'editar_mantenimiento': 'Editar Mantenimiento',
+      'desactivar_mantenimiento': 'Desactivar Mantenimiento',
+      'crear_control': 'Crear Control',
+      'editar_control': 'Editar Control',
+      'desactivar_control': 'Desactivar Control',
+      'editar_asignacion': 'Editar Asignación',
+      'desactivar_asignacion': 'Desactivar Asignación',
+      'crear_asignacion': 'Crear Asignación',
+      'editar_maquinaria': 'Editar Maquinaria',
+      'editar_depreciacion': 'Editar Depreciación',
+      'crear_depreciacion': 'Crear Depreciación',
+      'inicio_sesion': 'Inicio de Sesión',
+      'cambio_permisos': 'Cambio de Permisos',
+      'registro_usuario': 'Registro de Usuario',
+      'editar_perfil': 'Editar Perfil',
+      'crear_itv': 'Crear ITV',
+      'editar_itv': 'Editar ITV',
+      'crear_impuesto': 'Crear Impuesto',
+      'editar_impuesto': 'Editar Impuesto'
+    };
+    
+    // Si existe un mapeo específico, usarlo
+    if (accionMap[accion]) {
+      return accionMap[accion];
+    }
+    
+    // Si no, aplicar formateo general
+    const formatted = accion.charAt(0).toUpperCase() + accion.slice(1).replace(/_/g, ' ');
+    
+    // Aplicar correcciones adicionales al resultado
+    return formatted
+      .replace(/SesióN/g, 'Sesión')
+      .replace(/AsignacióN/g, 'Asignación')
+      .replace(/DepreciacióN/g, 'Depreciación');
+  };
+  
   return (
     <Chip
-      label={accion ? accion.charAt(0).toUpperCase() + accion.slice(1).replace(/_/g, ' ') : 'N/A'}
+      label={formatAccion(accion)}
       color={colorMap[accion] || 'default'}
       size="small"
       variant="outlined"
@@ -56,20 +127,31 @@ const getAccionChip = (accion) => {
 const capitalizeWords = (str) => {
   if (!str) return '';
   
+  // Corregir terminaciones incorrectas
+  let correctedStr = str
+    .replace(/cióN/g, 'ción')
+    .replace(/sióN/g, 'sión')
+    .replace(/DepreciaciónNes/g, 'Depreciaciones')
+    .replace(/ActaAsignacióN/g, 'Asignación')
+    .replace(/AutenticacióN/g, 'Autenticación')
+    .replace(/SesióN/g, 'Sesión')
+    .replace(/AsignacióN/g, 'Asignación')
+    .replace(/DepreciacióN/g, 'Depreciación');
+  
   // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
-  if (str.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(str)) {
-    return str;
+  if (correctedStr.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(correctedStr)) {
+    return correctedStr;
   }
   
   // Si es un string con guiones bajos, procesarlo
-  if (str.includes('_')) {
-    return str.split('_').map(word => 
+  if (correctedStr.includes('_')) {
+    return correctedStr.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
     ).join(' ');
   }
   
   // Para otros casos, solo capitalizar la primera letra
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  return correctedStr.charAt(0).toUpperCase() + correctedStr.slice(1).toLowerCase();
 };
 
 const RegistroActividadMain = () => {
@@ -355,4 +437,4 @@ const RegistroActividadMain = () => {
   );
 };
 
-export default RegistroActividadMain;
+export default RegistroActividadMain; 

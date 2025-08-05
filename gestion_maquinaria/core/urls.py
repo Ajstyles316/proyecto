@@ -6,6 +6,7 @@ from .views import (
     LoginView,
     LogoutView,  # <-- agregar importación
     PronosticoSummaryView,
+    PronosticoExcelUploadView,
     UsuarioListView,
     UsuarioCargoUpdateView,
     UsuarioPermisoUpdateView,
@@ -51,7 +52,8 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),  # <-- agregar URL
     path('registro/', RegistroView.as_view(), name='registro'),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
-    path('pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
+    path('api/pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
+    path('api/pronostico/excel-upload/', PronosticoExcelUploadView.as_view(), name='pronostico-excel-upload'),
     path('usuarios/', UsuarioListView.as_view(), name='usuarios-list'),
     path('usuarios/opciones/', UsuarioOpcionesView.as_view(), name='usuarios-opciones'),
     path('sugerir_bien_uso/', sugerir_bien_uso, name='sugerir_bien_uso'),

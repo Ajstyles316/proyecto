@@ -17,7 +17,8 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  TableSortLabel
+  TableSortLabel,
+  useMediaQuery
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
@@ -50,6 +51,8 @@ const ActivosTabla = ({ activos, loading }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('ascendente'); // 'ascendente' o 'descendente'
   const [sortField, setSortField] = useState('vida_util');
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery((theme) => theme.breakpoints.between('sm', 'md'));
 
   const filteredAndSortedActivos = useMemo(() => {
     let data = activos;
@@ -131,19 +134,36 @@ const ActivosTabla = ({ activos, loading }) => {
   };
 
   return (
-    <Paper sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: 3, background: 'linear-gradient(135deg, #fff 0%, #f8f9fa 100%)' }}>
+    <Paper sx={{ 
+      borderRadius: { xs: 2, sm: 3 }, 
+      overflow: 'hidden', 
+      boxShadow: { xs: 2, sm: 3 }, 
+      background: 'linear-gradient(135deg, #fff 0%, #f8f9fa 100%)',
+      mx: { xs: 1, sm: 0 },
+    }}>
       {/* Header con controles mejorado */}
       <Box sx={{ 
-        p: 3, 
+        p: { xs: 2, sm: 3 }, 
         background: 'linear-gradient(135deg)',
         color: 'white',
         borderBottom: '1px solid',
         borderColor: 'primary.100'
       }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'black' }}>
+        <Typography variant="h6" sx={{ 
+          fontWeight: 700, 
+          mb: { xs: 1.5, sm: 2 }, 
+          color: 'black',
+          fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' },
+        }}>
           Gestión de Activos
         </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: { xs: 1, sm: 2 }, 
+          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+        }}>
           <TextField
             label="Buscar activos"
             size="small"
@@ -157,8 +177,8 @@ const ActivosTabla = ({ activos, loading }) => {
               ),
             }}
             sx={{ 
-              minWidth: 250,
-              
+              minWidth: { xs: '100%', sm: 250 },
+              width: { xs: '100%', sm: 'auto' },
             }}
           />
           <TextField
@@ -168,7 +188,8 @@ const ActivosTabla = ({ activos, loading }) => {
             value={pageSize}
             onChange={e => { setPageSize(e.target.value); setCurrentPage(1); }}
             sx={{ 
-              minWidth: 150,
+              minWidth: { xs: '100%', sm: 150 },
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             {PAGE_SIZE_OPTIONS.map(opt => (
@@ -176,8 +197,17 @@ const ActivosTabla = ({ activos, loading }) => {
             ))}
           </TextField>
           
-          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ 
+            ml: { xs: 0, sm: 'auto' }, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            width: { xs: '100%', sm: 'auto' },
+            justifyContent: { xs: 'center', sm: 'flex-end' },
+          }}>
+            <Typography variant="body2" color="text.secondary" sx={{
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            }}>
               Ordenar por:
             </Typography>
             <Tooltip title="Cambiar orden de vida útil">
@@ -205,25 +235,32 @@ const ActivosTabla = ({ activos, loading }) => {
         </Box>
       ) : filteredAndSortedActivos.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="textSecondary">
+          <Typography variant="h6" color="textSecondary" sx={{
+            fontSize: { xs: '1rem', sm: '1.25rem' },
+          }}>
             No hay activos disponibles
           </Typography>
         </Box>
       ) : (
         <>
-          <TableContainer sx={{ maxHeight: 600 }}>
-            <Table stickyHeader>
+          <TableContainer sx={{ 
+            maxHeight: { xs: 400, sm: 500, md: 600 },
+            overflowX: 'auto',
+          }}>
+            <Table stickyHeader size={isMobile ? "small" : "medium"}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'primary.main' }}>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    fontSize: '0.9rem'
+                    fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.9rem' },
+                    py: { xs: 1, sm: 1.5 },
                   }}>
                     Bienes de Uso
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    fontSize: '0.9rem'
+                    fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.9rem' },
+                    py: { xs: 1, sm: 1.5 },
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       Años de Vida Útil
@@ -245,13 +282,16 @@ const ActivosTabla = ({ activos, loading }) => {
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600,
-                    fontSize: '0.9rem'
+                    fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.9rem' },
+                    py: { xs: 1, sm: 1.5 },
+                    display: { xs: 'none', sm: 'table-cell' },
                   }}>
                     Coeficiente
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    fontSize: '0.9rem'
+                    fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.9rem' },
+                    py: { xs: 1, sm: 1.5 },
                   }}>
                     Estado
                   </TableCell>
@@ -270,12 +310,23 @@ const ActivosTabla = ({ activos, loading }) => {
                       }
                     }}
                   >
-                    <TableCell sx={{ fontWeight: 600, color: '#1976d2' }}>
+                    <TableCell sx={{ 
+                      fontWeight: 600, 
+                      color: '#1976d2',
+                      fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' },
+                      py: { xs: 1, sm: 1.5 },
+                    }}>
                       {row.bien_uso || '—'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{
+                      fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' },
+                      py: { xs: 1, sm: 1.5 },
+                    }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ 
+                          fontWeight: 600,
+                          fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' },
+                        }}>
                           {row.vida_util || '—'}
                         </Typography>
                         <Chip
@@ -283,11 +334,18 @@ const ActivosTabla = ({ activos, loading }) => {
                           size="small"
                           color={getVidaUtilColor(row.vida_util)}
                           variant="outlined"
-                          sx={{ fontSize: '0.7rem' }}
+                          sx={{ 
+                            fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                            height: { xs: '20px', sm: '24px' },
+                          }}
                         />
                       </Box>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{
+                      fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' },
+                      py: { xs: 1, sm: 1.5 },
+                      display: { xs: 'none', sm: 'table-cell' },
+                    }}>
                       {row.coeficiente !== '' && row.coeficiente !== undefined && row.coeficiente !== null
                         ? (() => {
                             let val = Number(row.coeficiente);
@@ -297,15 +355,19 @@ const ActivosTabla = ({ activos, loading }) => {
                         : '—'
                       }
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{
+                      fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' },
+                      py: { xs: 1, sm: 1.5 },
+                    }}>
                       <Chip
                         label={getVidaUtilText(row.vida_util)}
                         size="small"
                         color={getVidaUtilColor(row.vida_util)}
                         sx={{ 
-                          fontSize: '0.75rem',
+                          fontSize: { xs: '0.65rem', sm: '0.75rem' },
                           fontWeight: 600,
-                          minWidth: 80
+                          minWidth: { xs: 60, sm: 80 },
+                          height: { xs: '20px', sm: '24px' },
                         }}
                       />
                     </TableCell>
@@ -318,16 +380,28 @@ const ActivosTabla = ({ activos, loading }) => {
           {/* Paginación mejorada */}
           {filteredAndSortedActivos.length > 0 && (
             <Box sx={{ 
-              p: 3, 
+              p: { xs: 2, sm: 3 }, 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center',
               background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
               borderTop: '2px solid',
-              borderColor: '#1976d2'
+              borderColor: '#1976d2',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1, sm: 0 },
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 2,
+                flexDirection: { xs: 'column', sm: 'row' },
+                textAlign: { xs: 'center', sm: 'left' },
+              }}>
+                <Typography variant="body2" sx={{ 
+                  fontWeight: 600, 
+                  color: '#1976d2',
+                  fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                }}>
                   Mostrando {((currentPage - 1) * parseInt(pageSize, 10)) + 1} - {Math.min(currentPage * parseInt(pageSize, 10), filteredAndSortedActivos.length)} de {filteredAndSortedActivos.length} activos
                 </Typography>
                 <Chip 
@@ -335,7 +409,10 @@ const ActivosTabla = ({ activos, loading }) => {
                   color="primary" 
                   variant="outlined" 
                   size="small"
-                  sx={{ fontWeight: 600 }}
+                  sx={{ 
+                    fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                  }}
                 />
               </Box>
               <Pagination
@@ -346,10 +423,11 @@ const ActivosTabla = ({ activos, loading }) => {
                 showFirstButton
                 showLastButton
                 color="primary"
-                size="medium"
+                size={isMobile ? "small" : "medium"}
                 sx={{
                   '& .MuiPaginationItem-root': {
                     fontWeight: 600,
+                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
                     '&.Mui-selected': {
                       background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
                       color: 'white'

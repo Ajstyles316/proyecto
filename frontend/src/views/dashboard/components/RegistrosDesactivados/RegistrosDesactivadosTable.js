@@ -57,27 +57,33 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
   }
 
   const getRecordDisplayData = (tipo, record) => {
-    console.log(`Datos para ${tipo}:`, record);
+
     
     // Filtrar campos que no queremos mostrar (IDs y campos técnicos)
-    const camposOcultos = ['_id', 'maquinaria_id', 'id', 'fecha_creacion', 'fecha_actualizacion', 'fecha_desactivacion'];
+    const camposOcultos = ['_id', 'maquinaria_id', 'id', 'fecha_creacion', 'fecha_actualizacion'];
     const camposDisponibles = Object.keys(record).filter(campo => !camposOcultos.includes(campo));
     
-    // Función para capitalizar y formatear valores
-    const formatValue = (value) => {
+    // Función para mostrar valores tal como se ingresaron
+    const formatValue = (value, fieldName) => {
       if (!value) return '—';
-      if (typeof value === 'string') {
-        // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
-        if (value.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(value)) {
-          return value;
+      
+      // Para estos campos específicos, aplicar formateo
+      if (fieldName === 'desactivado_por' || fieldName === 'justificacion_desactivacion') {
+        if (typeof value === 'string') {
+          // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
+          if (value.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(value)) {
+            return value;
+          }
+          // Si es un string con guiones bajos, procesarlo
+          if (value.includes('_')) {
+            return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          }
+          // Para otros casos, solo capitalizar la primera letra
+          return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
         }
-        // Si es un string con guiones bajos, procesarlo
-        if (value.includes('_')) {
-          return value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        }
-        // Para otros casos, solo capitalizar la primera letra
-        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
       }
+      
+      // Para el resto de campos, mostrar tal como se ingresó
       return value;
     };
     
@@ -156,23 +162,25 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
             { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) }
           ]
         };
+      case 'Usuario':
+        return {
+          title: 'Usuario',
+          fields: [
+            { label: 'Nombre', value: formatValue(record['Nombre']) },
+            { label: 'Cargo', value: formatValue(record['Cargo']) },
+            { label: 'Unidad', value: formatValue(record['Unidad']) },
+            { label: 'Email', value: formatValue(record['Email']) },
+            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
+            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
+            { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
+          ]
+        };
       default:
         return {
           title: tipo,
           fields: camposDisponibles.map(key => ({
-            label: (() => {
-              // Si el key ya tiene espacios y parece estar bien formateado, devolverlo tal como está
-              if (key.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(key)) {
-                return key;
-              }
-              // Si es un string con guiones bajos, procesarlo
-              if (key.includes('_')) {
-                return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-              }
-              // Para otros casos, solo capitalizar la primera letra
-              return key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
-            })(),
-            value: formatValue(record[key])
+            label: key,
+            value: formatValue(record[key], key)
           }))
         };
     }
