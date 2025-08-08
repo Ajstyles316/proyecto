@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
@@ -11,10 +11,6 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Chip,
-  Stack,
-  Divider,
-  LinearProgress
 } from '@mui/material';
 import {
   BarChart,
@@ -27,7 +23,6 @@ import {
 } from 'recharts';
 import {
   TrendingUp,
-  TrendingDown,
   Warning,
   CheckCircle,
   Info
@@ -234,40 +229,6 @@ const ActivosDashboard = ({ activos }) => {
         </Box>
       </Paper>
 
-      {/* Resumen de categorías */}
-      {dashboardData.resumen.totalBienes > 0 && (
-        <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 2, background: 'linear-gradient(135deg, #fff 0%, #f8f9fa 100%)' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mb: 2 }}>
-            Resumen de Categorías
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            <Chip 
-              label={`${dashboardData.totalActivos} Activos Totales`} 
-              color="primary" 
-              variant="outlined"
-              sx={{ fontWeight: 600 }}
-            />
-            <Chip 
-              label={`${dashboardData.resumen.activosEnRiesgo} En Riesgo`} 
-              color="warning" 
-              variant="outlined"
-              sx={{ fontWeight: 600 }}
-            />
-            <Chip 
-              label={`${dashboardData.resumen.totalBienes} Categorías`} 
-              color="secondary" 
-              variant="outlined"
-              sx={{ fontWeight: 600 }}
-            />
-            <Chip 
-              label={`${dashboardData.resumen.promedioVidaUtil} años promedio`} 
-              color="success" 
-              variant="outlined"
-              sx={{ fontWeight: 600 }}
-            />
-          </Box>
-        </Paper>
-      )}
     </Box>
   );
 };

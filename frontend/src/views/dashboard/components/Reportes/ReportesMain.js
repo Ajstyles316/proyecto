@@ -196,14 +196,6 @@ const ReportesMain = () => {
           searched={searched}
         />
         
-        {loading && (
-          <Box p={3} textAlign="center">
-            <CircularProgress size={60} />
-            <Typography variant="h6" sx={{ mt: 2, color: 'text.secondary' }}>
-              Buscando maquinaria...
-            </Typography>
-          </Box>
-        )}
         {error && <Typography color="error" mb={2}>{error}</Typography>}
         
         {maquinaria && !loading && (

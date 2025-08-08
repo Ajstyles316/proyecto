@@ -27,7 +27,31 @@ const MODULOS_SEGUIMIENTO = [
   'Depreciaciones',
   'Pronóstico',
   'Reportes',
+  'Asignación',
+  'Control',
+  'SOAT',
+  'ITV',
+  'Seguro',
+  'Mantenimiento',
+  'Impuesto',
 ];
+
+// Mapeo específico para módulos que vienen del backend
+const MODULO_MAP = {
+  'ActaAsignacion': 'Asignación',
+  'HistorialControl': 'Control',
+  'SOAT': 'SOAT',
+  'ITV': 'ITV',
+  'Seguro': 'Seguro',
+  'Mantenimiento': 'Mantenimiento',
+  'Impuesto': 'Impuesto',
+  'Depreciacion': 'Depreciación',
+  'Maquinaria': 'Maquinaria',
+  'Autenticacion': 'Autenticación',
+  'Usuarios': 'Usuarios',
+  'Pronostico': 'Pronóstico',
+  'Reportes': 'Reportes'
+};
 
 const getAccionChip = (accion) => {
   const colorMap = {
@@ -69,35 +93,35 @@ const getAccionChip = (accion) => {
   const formatAccion = (accion) => {
     if (!accion) return 'N/A';
     
-    // Mapeo específico para acciones comunes
-    const accionMap = {
-      'crear_soat': 'Crear SOAT',
-      'desactivar_soat': 'Desactivar SOAT',
-      'editar_soat': 'Editar SOAT',
-      'crear_seguro': 'Crear Seguro',
-      'editar_seguro': 'Editar Seguro',
-      'desactivar_seguro': 'Desactivar Seguro',
-      'crear_mantenimiento': 'Crear Mantenimiento',
-      'editar_mantenimiento': 'Editar Mantenimiento',
-      'desactivar_mantenimiento': 'Desactivar Mantenimiento',
-      'crear_control': 'Crear Control',
-      'editar_control': 'Editar Control',
-      'desactivar_control': 'Desactivar Control',
-      'editar_asignacion': 'Editar Asignación',
-      'desactivar_asignacion': 'Desactivar Asignación',
-      'crear_asignacion': 'Crear Asignación',
-      'editar_maquinaria': 'Editar Maquinaria',
-      'editar_depreciacion': 'Editar Depreciación',
-      'crear_depreciacion': 'Crear Depreciación',
-      'inicio_sesion': 'Inicio de Sesión',
-      'cambio_permisos': 'Cambio de Permisos',
-      'registro_usuario': 'Registro de Usuario',
-      'editar_perfil': 'Editar Perfil',
-      'crear_itv': 'Crear ITV',
-      'editar_itv': 'Editar ITV',
-      'crear_impuesto': 'Crear Impuesto',
-      'editar_impuesto': 'Editar Impuesto'
-    };
+         // Mapeo específico para acciones comunes
+     const accionMap = {
+       'crear_soat': 'Crear SOAT',
+       'desactivar_soat': 'Desactivar SOAT',
+       'editar_soat': 'Editar SOAT',
+       'crear_seguro': 'Crear seguro',
+       'editar_seguro': 'Editar seguro',
+       'desactivar_seguro': 'Desactivar seguro',
+       'crear_mantenimiento': 'Crear mantenimiento',
+       'editar_mantenimiento': 'Editar mantenimiento',
+       'desactivar_mantenimiento': 'Desactivar mantenimiento',
+       'crear_control': 'Crear control',
+       'editar_control': 'Editar control',
+       'desactivar_control': 'Desactivar control',
+       'editar_asignacion': 'Editar asignación',
+       'desactivar_asignacion': 'Desactivar asignación',
+       'crear_asignacion': 'Crear asignación',
+       'editar_maquinaria': 'Editar maquinaria',
+       'editar_depreciacion': 'Editar depreciación',
+       'crear_depreciacion': 'Crear depreciación',
+       'inicio_sesion': 'Inicio de sesión',
+       'cambio_permisos': 'Cambio de permisos',
+       'registro_usuario': 'Registro de usuario',
+       'editar_perfil': 'Editar perfil',
+       'crear_itv': 'Crear ITV',
+       'editar_itv': 'Editar ITV',
+       'crear_impuesto': 'Crear impuesto',
+       'editar_impuesto': 'Editar impuesto'
+     };
     
     // Si existe un mapeo específico, usarlo
     if (accionMap[accion]) {
@@ -127,7 +151,43 @@ const getAccionChip = (accion) => {
 const capitalizeWords = (str) => {
   if (!str) return '';
   
-  // Corregir terminaciones incorrectas
+  // Verificar si es un módulo que necesita mapeo específico
+  if (MODULO_MAP[str]) {
+    return MODULO_MAP[str];
+  }
+  
+  // Correcciones específicas para mensajes problemáticos
+  if (str.includes('De Sin Detalle Para Maquinaria')) {
+    return str.replace('De Sin Detalle Para Maquinaria', 'de sin detalle para maquinaria');
+  }
+  if (str.includes('Para Maquinaria')) {
+    return str.replace(/Para Maquinaria/g, 'para maquinaria');
+  }
+  if (str.includes('Con Placa')) {
+    return str.replace(/Con Placa/g, 'con placa');
+  }
+  if (str.includes('De Sin Detalle')) {
+    return str.replace(/De Sin Detalle/g, 'de sin detalle');
+  }
+  
+  // Corrección específica para el problema de la N mayúscula
+  if (str.includes('ióN')) {
+    str = str.replace(/ióN/g, 'ión');
+  }
+  if (str.includes('AsignacióN')) {
+    str = str.replace(/AsignacióN/g, 'Asignación');
+  }
+  if (str.includes('DepreciacióN')) {
+    str = str.replace(/DepreciacióN/g, 'Depreciación');
+  }
+  if (str.includes('AutenticacióN')) {
+    str = str.replace(/AutenticacióN/g, 'Autenticación');
+  }
+  if (str.includes('SesióN')) {
+    str = str.replace(/SesióN/g, 'Sesión');
+  }
+  
+  // Corregir terminaciones incorrectas con N mayúscula
   let correctedStr = str
     .replace(/cióN/g, 'ción')
     .replace(/sióN/g, 'sión')
@@ -136,7 +196,54 @@ const capitalizeWords = (str) => {
     .replace(/AutenticacióN/g, 'Autenticación')
     .replace(/SesióN/g, 'Sesión')
     .replace(/AsignacióN/g, 'Asignación')
-    .replace(/DepreciacióN/g, 'Depreciación');
+    .replace(/DepreciacióN/g, 'Depreciación')
+    .replace(/AsignacióN/g, 'Asignación')
+    .replace(/DepreciacióN/g, 'Depreciación')
+    .replace(/AutenticacióN/g, 'Autenticación')
+    .replace(/SesióN/g, 'Sesión')
+    .replace(/PronósticóN/g, 'Pronóstico')
+    .replace(/ReportéN/g, 'Reportes')
+    .replace(/UsuarióN/g, 'Usuarios')
+    .replace(/MaquinariáN/g, 'Maquinaria')
+    .replace(/ContróN/g, 'Control')
+    .replace(/SeguróN/g, 'Seguro')
+    .replace(/MantenimientóN/g, 'Mantenimiento')
+    .replace(/ImpuestóN/g, 'Impuesto')
+    .replace(/ITVóN/g, 'ITV')
+    .replace(/SOATóN/g, 'SOAT');
+  
+  // Corregir casos específicos de mayúsculas incorrectas en preposiciones y artículos
+  correctedStr = correctedStr
+    .replace(/\bDe\b/g, 'de')
+    .replace(/\bPara\b/g, 'para')
+    .replace(/\bCon\b/g, 'con')
+    .replace(/\bSin\b/g, 'sin')
+    .replace(/\bPor\b/g, 'por')
+    .replace(/\bEn\b/g, 'en')
+    .replace(/\bSobre\b/g, 'sobre')
+    .replace(/\bEntre\b/g, 'entre')
+    .replace(/\bHasta\b/g, 'hasta')
+    .replace(/\bDesde\b/g, 'desde')
+    .replace(/\bHacia\b/g, 'hacia')
+    .replace(/\bSegún\b/g, 'según')
+    .replace(/\bMediante\b/g, 'mediante')
+    .replace(/\bDurante\b/g, 'durante')
+    .replace(/\bContra\b/g, 'contra')
+    .replace(/\bTras\b/g, 'tras')
+    .replace(/\bAnte\b/g, 'ante')
+    .replace(/\bBajo\b/g, 'bajo')
+    .replace(/\bCabe\b/g, 'cabe')
+    .replace(/\bSobre\b/g, 'sobre')
+    .replace(/\bTras\b/g, 'tras');
+  
+  // Corregir casos específicos de combinaciones incorrectas
+  correctedStr = correctedStr
+    .replace(/\bDe Sin Detalle\b/g, 'de sin detalle')
+    .replace(/\bDe sin Detalle\b/g, 'de sin detalle')
+    .replace(/\bDe Sin detalle\b/g, 'de sin detalle')
+    .replace(/\bDe Sin Detalle Para Maquinaria\b/g, 'de sin detalle para maquinaria')
+    .replace(/\bPara Maquinaria\b/g, 'para maquinaria')
+    .replace(/\bCon Placa\b/g, 'con placa');
   
   // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
   if (correctedStr.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(correctedStr)) {
@@ -203,7 +310,11 @@ const RegistroActividadMain = () => {
     const { usuario, modulo, desde, hasta } = filters;
     let ok = true;
     if (usuario) ok = ok && (row.usuario_email === usuario);
-    if (modulo) ok = ok && row.modulo === modulo;
+    if (modulo) {
+      // Convertir el módulo del filtro al formato del backend para comparar
+      const moduloBackend = Object.keys(MODULO_MAP).find(key => MODULO_MAP[key] === modulo);
+      ok = ok && (row.modulo === moduloBackend || row.modulo === modulo);
+    }
     if (desde) ok = ok && row.fecha_hora && new Date(row.fecha_hora) >= new Date(desde);
     if (hasta) ok = ok && row.fecha_hora && new Date(row.fecha_hora) <= new Date(hasta + 'T23:59:59');
     return ok;

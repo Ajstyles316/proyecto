@@ -10,7 +10,11 @@ import {
   TableRow, 
   Paper,
   Chip,
-  useTheme
+  useTheme,
+  Pagination,
+  TextField,
+  MenuItem,
+  useMediaQuery
 } from '@mui/material';
 import { 
   Warning, 
@@ -19,6 +23,7 @@ import {
   TableChart
 } from '@mui/icons-material';
 import { formatDateOnly } from './helpers';
+import { useState, useMemo } from 'react';
 
 const TablaGenericaAvanzada = ({
   title,
@@ -30,6 +35,19 @@ const TablaGenericaAvanzada = ({
   reemplazos = {}
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Calcular datos paginados
+  const paginatedData = useMemo(() => {
+    if (rowsPerPage === 'Todos') return data;
+    const startIndex = (page - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return data.slice(startIndex, endIndex);
+  }, [data, page, rowsPerPage]);
+
+  const totalPages = rowsPerPage === 'Todos' ? 1 : Math.ceil(data.length / rowsPerPage);
 
   if (!data || data.length === 0) {
     return (
@@ -186,27 +204,66 @@ const TablaGenericaAvanzada = ({
         <Box 
           display="flex" 
           alignItems="center" 
+          justifyContent="space-between"
           mb={2}
           p={2}
           bgcolor="primary.main"
           color="primary.contrastText"
-          borderRadius={1}
-          boxShadow={2}
+          borderRadius={2}
+          boxShadow={3}
         >
-          <TableChart sx={{ mr: 1 }} />
-          <Typography variant="h6" fontWeight={600}>
-            {title}
-          </Typography>
-          <Chip
-            label={`${data.length} registro${data.length !== 1 ? 's' : ''}`}
-            size="small"
-            sx={{ 
-              ml: 'auto',
-              bgcolor: 'rgba(255,255,255,0.2)',
-              color: 'inherit',
-              fontWeight: 600
-            }}
-          />
+          <Box display="flex" alignItems="center">
+            <TableChart sx={{ mr: 1 }} />
+            <Typography variant="h6" fontWeight={600}>
+              {title}
+            </Typography>
+          </Box>
+          <Box display="flex" alignItems="center" gap={2}>
+            <Chip
+              label={`${data.length} registro${data.length !== 1 ? 's' : ''}`}
+              size="small"
+              sx={{ 
+                bgcolor: 'rgba(255,255,255,0.2)',
+                color: 'inherit',
+                fontWeight: 600
+              }}
+            />
+            {data.length > 10 && (
+              <TextField
+                select
+                size="small"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(e.target.value === 'Todos' ? 'Todos' : parseInt(e.target.value, 10));
+                  setPage(1);
+                }}
+                sx={{
+                  minWidth: 120,
+                  '& .MuiOutlinedInput-root': {
+                    color: 'inherit',
+                    '& fieldset': {
+                      borderColor: 'rgba(255,255,255,0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255,255,255,0.5)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'rgba(255,255,255,0.7)',
+                    },
+                  },
+                  '& .MuiSelect-icon': {
+                    color: 'inherit',
+                  },
+                }}
+              >
+                <MenuItem value={5}>5 por página</MenuItem>
+                <MenuItem value={10}>10 por página</MenuItem>
+                <MenuItem value={20}>20 por página</MenuItem>
+                <MenuItem value={50}>50 por página</MenuItem>
+                <MenuItem value={'Todos'}>Todos</MenuItem>
+              </TextField>
+            )}
+          </Box>
         </Box>
       )}
       
@@ -216,10 +273,11 @@ const TablaGenericaAvanzada = ({
           borderRadius: 2,
           boxShadow: 3,
           border: `1px solid ${theme.palette.divider}`,
-          overflow: 'hidden'
+          overflow: 'hidden',
+          maxHeight: { xs: '400px', sm: '500px', md: '600px' }
         }}
       >
-        <Table size="medium">
+        <Table size={isMobile ? "small" : "medium"} stickyHeader>
           <TableHead>
             <TableRow sx={{ bgcolor: theme.palette.grey[50] }}>
               {headers.map((header, i) => (
@@ -227,12 +285,13 @@ const TablaGenericaAvanzada = ({
                   key={i}
                   sx={{
                     fontWeight: 700,
-                    fontSize: '0.875rem',
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     color: theme.palette.primary.main,
                     borderBottom: `2px solid ${theme.palette.primary.main}`,
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
-                    py: 2
+                    py: { xs: 1, sm: 2 },
+                    px: { xs: 1, sm: 2 }
                   }}
                 >
                   {header}
@@ -241,7 +300,7 @@ const TablaGenericaAvanzada = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row, idx) => (
+            {paginatedData.map((row, idx) => (
               <TableRow 
                 key={idx}
                 sx={{
@@ -250,7 +309,9 @@ const TablaGenericaAvanzada = ({
                   },
                   '&:hover': {
                     bgcolor: theme.palette.action.selected,
-                    transition: 'background-color 0.2s ease'
+                    transition: 'background-color 0.2s ease',
+                    transform: 'scale(1.01)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   },
                   transition: 'all 0.2s ease'
                 }}
@@ -259,8 +320,8 @@ const TablaGenericaAvanzada = ({
                   <TableCell 
                     key={k}
                     sx={{
-                      py: 1.5,
-                      px: 2,
+                      py: { xs: 1, sm: 1.5 },
+                      px: { xs: 1, sm: 2 },
                       borderBottom: `1px solid ${theme.palette.divider}`,
                       '&:first-of-type': {
                         fontWeight: 600,
@@ -276,6 +337,25 @@ const TablaGenericaAvanzada = ({
           </TableBody>
         </Table>
       </TableContainer>
+      
+      {/* Paginación */}
+      {totalPages > 1 && rowsPerPage !== 'Todos' && (
+        <Box display="flex" justifyContent="center" mt={2}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(e, newPage) => setPage(newPage)}
+            showFirstButton
+            showLastButton
+            size={isMobile ? "small" : "medium"}
+            sx={{
+              '& .MuiPaginationItem-root': {
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              },
+            }}
+          />
+        </Box>
+      )}
     </Box>
   );
 };

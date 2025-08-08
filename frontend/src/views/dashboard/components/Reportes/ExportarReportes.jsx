@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Grid, Checkbox, FormControlLabel, FormGroup, FormControl, FormLabel, TextField, MenuItem, Typography, Modal } from '@mui/material';
+import { Box, Button, Grid, Checkbox, FormControlLabel, FormGroup, FormControl, FormLabel, TextField, MenuItem, Typography, Modal, CircularProgress } from '@mui/material';
 import exportXLS from './exportacionExcel';
 import exportPDF, { exportPDFMasivo } from './exportacionPDF';
 import { maquinariaFields } from './fields';
@@ -88,7 +88,7 @@ const ExportarReportes = () => {
             const { placa, detalle } = m;
             
             // Crear objeto limpio solo con los campos que queremos
-            const cleaned = tabla === 'pronosticos' ? {} : { placa, detalle };
+            const cleaned = { placa, detalle };
             
             // Lista de campos que SÍ queremos incluir (campos específicos de cada tabla)
             const camposPermitidos = {
@@ -99,6 +99,7 @@ const ExportarReportes = () => {
               seguros: ['numero_2024', 'importe', 'detalle'],
               itv: ['detalle', 'importe'],
               impuestos: ['importe_2023', 'importe_2024'],
+              depreciaciones: ['costo_activo', 'fecha_compra', 'vida_util', 'bien_uso', 'metodo_depreciacion', 'valor_residual', 'coeficiente'],
               pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
             };
             
@@ -154,50 +155,64 @@ const ExportarReportes = () => {
   const modalContent = (
     <Box p={3} bgcolor="#fff" borderRadius={2} boxShadow={3} minWidth={340} maxWidth={500} mx="auto">
       <Typography variant="h6" mb={2}>Exportar registros masivos</Typography>
-      <FormControl component="fieldset" sx={{ mb: 2 }}>
-        <FormLabel component="legend">Tablas a exportar</FormLabel>
-        <FormGroup row>
-          {tablas.map(t => (
-            <FormControlLabel
-              key={t.key}
-              control={
-                <Checkbox
-                  checked={tablasSeleccionadas.includes(t.key)}
-                  onChange={() => handleCheckbox(t.key)}
+      {loading ? (
+        <Box display="flex" flexDirection="column" alignItems="center" py={4}>
+          <CircularProgress size={60} sx={{ mb: 2, color: 'primary.main' }} />
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
+            Exportando reportes...
+          </Typography>
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            Por favor espera mientras se procesan los datos
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <FormControl component="fieldset" sx={{ mb: 2 }}>
+            <FormLabel component="legend">Tablas a exportar</FormLabel>
+            <FormGroup row>
+              {tablas.map(t => (
+                <FormControlLabel
+                  key={t.key}
+                  control={
+                    <Checkbox
+                      checked={tablasSeleccionadas.includes(t.key)}
+                      onChange={() => handleCheckbox(t.key)}
+                    />
+                  }
+                  label={t.label}
                 />
-              }
-              label={t.label}
-            />
-          ))}
-        </FormGroup>
-      </FormControl>
-      <Grid container spacing={2} mb={2}>
-        <Grid item xs={12} sm={6} md={12}>
-          <TextField
-            select
-            label="Unidad"
-            value={unidad}
-            onChange={e => setUnidad(e.target.value)}
-            fullWidth
-          >
-            <MenuItem value="">Todas</MenuItem>
-            {opcionesUnidad.map(u => (
-              <MenuItem key={u} value={u}>{u}</MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-      </Grid>
-      <Box display="flex" gap={2}>
-        <Button variant="contained" color="success" onClick={() => handleExport('excel')} disabled={loading}>
-          Exportar Excel
-        </Button>
-        <Button variant="contained" color="error" onClick={() => handleExport('pdf')} disabled={loading}>
-          Exportar PDF
-        </Button>
-        <Button variant="outlined" onClick={() => setOpen(false)} disabled={loading}>
-          Cancelar
-        </Button>
-      </Box>
+              ))}
+            </FormGroup>
+          </FormControl>
+          <Grid container spacing={2} mb={2}>
+            <Grid item xs={12} sm={6} md={12}>
+              <TextField
+                select
+                label="Unidad"
+                value={unidad}
+                onChange={e => setUnidad(e.target.value)}
+                fullWidth
+              >
+                <MenuItem value="">Todas</MenuItem>
+                {opcionesUnidad.map(u => (
+                  <MenuItem key={u} value={u}>{u}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+          <Box display="flex" gap={2}>
+            <Button variant="contained" color="success" onClick={() => handleExport('excel')} disabled={loading}>
+              Exportar Excel
+            </Button>
+            <Button variant="contained" color="error" onClick={() => handleExport('pdf')} disabled={loading}>
+              Exportar PDF
+            </Button>
+            <Button variant="outlined" onClick={() => setOpen(false)} disabled={loading}>
+              Cancelar
+            </Button>
+          </Box>
+        </>
+      )}
     </Box>
   );
 

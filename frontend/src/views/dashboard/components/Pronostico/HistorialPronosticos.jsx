@@ -15,14 +15,8 @@ import {
   Paper
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
-import Popover from "@mui/material/Popover";
 import { useState } from "react";
 import PropTypes from "prop-types";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useUser } from 'src/components/UserContext.jsx';
 import { getRandomRecomendacionesPorTipo } from './hooks';
 

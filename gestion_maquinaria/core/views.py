@@ -322,7 +322,7 @@ class MaquinariaListView(APIView):
                 # --- REGISTRO DE ACTIVIDAD ---
                 try:
                     actor_email = request.headers.get('X-User-Email')
-                    mensaje = f"Creó Maquinaria con placa {validated_data.get('placa', '')}"
+                    mensaje = f"Creó maquinaria con placa {validated_data.get('placa', '')}"
                     registrar_actividad(
                         actor_email,
                         'crear_maquinaria',
@@ -470,7 +470,7 @@ class MaquinariaDetailView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Maquinaria con placa {existing_maquinaria.get('placa', id)}"
+                mensaje = f"Editó maquinaria con placa {existing_maquinaria.get('placa', id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_maquinaria',
@@ -902,7 +902,7 @@ class HistorialControlListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó Control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_control',
@@ -980,7 +980,7 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó control para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_control',
@@ -1090,7 +1090,7 @@ class ActaAsignacionListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó Asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_asignacion',
@@ -1167,7 +1167,7 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó asignación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_asignacion',
@@ -1287,7 +1287,7 @@ class MantenimientoListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó Mantenimiento para maquinaria {maquinaria_id}"
+                mensaje = f"Creó mantenimiento para maquinaria {maquinaria_id}"
                 registrar_actividad(
                     actor_email,
                     'crear_mantenimiento',
@@ -1349,7 +1349,7 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó mantenimiento para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_mantenimiento',
@@ -1469,7 +1469,7 @@ class SeguroListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó Seguro para maquinaria {maquinaria_id}"
+                mensaje = f"Creó seguro para maquinaria {maquinaria_id}"
                 registrar_actividad(
                     actor_email,
                     'crear_seguro',
@@ -1531,7 +1531,7 @@ class SeguroDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó seguro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_seguro',
@@ -1993,7 +1993,7 @@ class ImpuestoListView(BaseSectionAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó Impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_impuesto',
@@ -2055,7 +2055,7 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_impuesto',
@@ -2125,21 +2125,21 @@ def get_maquinaria_info(maquinaria_id):
 def get_record_description(record, collection_name):
     """Obtiene una descripción legible de un registro para usar en mensajes."""
     if collection_name == 'HistorialControl':
-        return f"Control de {record.get('detalle', 'Sin detalle')}"
+        return f"Control de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'Mantenimiento':
-        return f"Mantenimiento de {record.get('detalle', 'Sin detalle')}"
+        return f"Mantenimiento de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'Seguro':
-        return f"Seguro de {record.get('detalle', 'Sin detalle')}"
+        return f"Seguro de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'ITV':
-        return f"ITV de {record.get('detalle', 'Sin detalle')}"
+        return f"ITV de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'SOAT':
-        return f"SOAT de {record.get('detalle', 'Sin detalle')}"
+        return f"SOAT de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'Impuesto':
-        return f"Impuesto de {record.get('detalle', 'Sin detalle')}"
+        return f"Impuesto de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'ActaAsignacion':
-        return f"Asignación de {record.get('detalle', 'Sin detalle')}"
+        return f"Asignación de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'Depreciacion':
-        return f"Depreciación de {record.get('detalle', 'Sin detalle')}"
+        return f"Depreciación de {record.get('detalle', 'sin detalle')}"
     else:
         return f"Registro de {collection_name}"
 
@@ -2262,7 +2262,7 @@ class DepreciacionesListView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Creó Depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Creó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'crear_depreciacion',
@@ -2319,7 +2319,7 @@ class DepreciacionesDetailView(APIView):
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó Depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                mensaje = f"Editó depreciación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
                     'editar_depreciacion',

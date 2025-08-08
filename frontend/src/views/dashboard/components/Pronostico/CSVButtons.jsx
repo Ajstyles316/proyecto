@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -13,15 +13,18 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 import {
   CloudUpload as UploadIcon,
   CheckCircle as CheckIcon,
   Error as ErrorIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  FileDownload as ExcelIcon
 } from '@mui/icons-material';
 import { useUser } from 'src/components/UserContext.jsx';
+import * as XLSX from 'xlsx';
 
 const CSVButtons = ({ onDataUpdated }) => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -30,8 +33,10 @@ const CSVButtons = ({ onDataUpdated }) => {
   const [uploadResults, setUploadResults] = useState(null);
   const { user } = useUser();
   const permisosPronostico = user?.permisos?.['Pronóstico'] || {};
-  const isAdminOrEncargado = user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'encargado';
-  const canEdit = isAdminOrEncargado || permisosPronostico.editar;
+  const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  const isTecnico = user?.Cargo?.toLowerCase() === 'técnico';
+  const canEdit = isEncargado || isTecnico || permisosPronostico.editar;
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -46,11 +51,11 @@ const CSVButtons = ({ onDataUpdated }) => {
     if (!selectedFile) return;
 
     setUploading(true);
-         const formData = new FormData();
-     formData.append('excel_file', selectedFile);
+    const formData = new FormData();
+    formData.append('excel_file', selectedFile);
 
     try {
-             const response = await fetch('http://localhost:8000/api/pronostico/excel-upload/', {
+      const response = await fetch('http://localhost:8000/api/pronostico/excel-upload/', {
         method: 'POST',
         body: formData,
       });
@@ -62,12 +67,12 @@ const CSVButtons = ({ onDataUpdated }) => {
         if (onDataUpdated) {
           onDataUpdated();
         }
-             } else {
-         setUploadResults({
-           error: result.error || 'Error al procesar el archivo Excel',
-           debug_info: result.debug_info
-         });
-       }
+      } else {
+        setUploadResults({
+          error: result.error || 'Error al procesar el archivo Excel',
+          debug_info: result.debug_info
+        });
+      }
     } catch (error) {
       setUploadResults({
         error: 'Error de conexión: ' + error.message
@@ -77,6 +82,53 @@ const CSVButtons = ({ onDataUpdated }) => {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/pronostico/');
+      const data = await response.json();
+      
+      // Crear el contenido del Excel usando la librería XLSX
+      const headers = ['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones'];
+      const rows = data.map(item => [
+        item.placa || '',
+        item.detalle || '',
+        item.fecha_asig || '',
+        item.horas_op || '',
+        item.recorrido || '',
+        item.resultado || '',
+        item.riesgo || '',
+        item.probabilidad || '',
+        item.fecha_mantenimiento || '',
+        item.urgencia || '',
+        Array.isArray(item.recomendaciones) ? item.recomendaciones.join('; ') : (item.recomendaciones || '')
+      ]);
+      
+      // Crear el workbook y worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      
+      // Agregar el worksheet al workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Pronósticos');
+      
+      // Generar el archivo Excel
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      // Descargar el archivo
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `pronosticos_${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exportando Excel:', error);
+      alert('Error al exportar el archivo Excel');
+    }
+  };
 
 
   const handleCloseDialog = () => {
@@ -109,20 +161,70 @@ const CSVButtons = ({ onDataUpdated }) => {
     }
   };
 
+  if (isAdmin) {
+    return (
+      <Box display="flex" gap={2} mb={2}>
+        <Tooltip title="Esta función no está disponible para Administradores">
+          <span>
+            <Button
+              variant="contained"
+              startIcon={<ExcelIcon />}
+              disabled
+              sx={{ 
+                backgroundColor: '#9e9e9e',
+                '&:hover': {
+                  backgroundColor: '#757575'
+                }
+              }}
+            >
+              Exportar Excel
+            </Button>
+          </span>
+        </Tooltip>
+      </Box>
+    );
+  }
+
   if (!canEdit) {
     return null;
   }
 
   return (
     <Box display="flex" gap={2} mb={2}>
-             <Button
-         variant="contained"
-         startIcon={<UploadIcon />}
-         onClick={() => setUploadDialogOpen(true)}
-         disabled={uploading}
-       >
-         Cargar Excel
-       </Button>
+      {/* Botón de Excel - Solo para Encargado y Técnico */}
+      <Tooltip title="Exportar pronósticos a Excel">
+        <Button
+          variant="contained"
+          startIcon={<ExcelIcon />}
+          onClick={handleExportExcel}
+          sx={{ 
+            backgroundColor: '#2196f3',
+            '&:hover': {
+              backgroundColor: '#1976d2'
+            }
+          }}
+        >
+          Exportar Excel
+        </Button>
+      </Tooltip>
+      
+      {/* Botón de Cargar Excel - Solo para Encargado y Técnico */}
+      <Tooltip title="Cargar pronósticos desde Excel">
+        <Button
+          variant="contained"
+          startIcon={<UploadIcon />}
+          onClick={() => setUploadDialogOpen(true)}
+          disabled={uploading}
+          sx={{ 
+            backgroundColor: '#4caf50',
+            '&:hover': {
+              backgroundColor: '#45a049'
+            }
+          }}
+        >
+          Cargar Excel
+        </Button>
+      </Tooltip>
 
              <Dialog open={uploadDialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
          <DialogTitle>

@@ -7,7 +7,8 @@ import {
   Typography,
   Card,
   CardContent,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import {
   Assessment,
@@ -191,13 +192,12 @@ const ReportesDashboard = ({
   if (!maquinaria) {
     return (
       <Paper sx={{ p: 4, borderRadius: 3, boxShadow: 2, textAlign: 'center' }}>
-        <Warning sx={{ fontSize: 60, color: 'warning.main', mb: 2 }} />
-        <Typography variant="h5" sx={{ mb: 2, fontWeight: 600, color: 'warning.main' }}>
-          No se encontró la maquinaria
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Verifica los datos de búsqueda e intenta nuevamente
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <CircularProgress size={60} sx={{ mb: 2, color: 'primary.main' }} />
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
+            Buscando maquinaria...
+          </Typography>
+        </Box>
       </Paper>
     );
   }

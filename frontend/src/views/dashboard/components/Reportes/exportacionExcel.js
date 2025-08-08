@@ -140,33 +140,25 @@ function exportXLS(data, filename = 'reporte') {
       );
       
       
-      // Para pronósticos usar formato vertical, para el resto horizontal
+      // Para pronósticos usar formato horizontal, para el resto horizontal
       let header, body;
       if (t.key === 'pronosticos') {
-        // Formato vertical solo para pronósticos
-        header = ['Campo', 'Valor'];
-        body = data[t.key].map(r => {
-          const campos = [];
-          allKeys.forEach(k => {
-            if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-              // Formatear fechas correctamente
-              let valor = r[k];
-              if (k.toLowerCase().includes('fecha') && valor) {
-                valor = formatDateOnly(valor);
-              }
-              // Para recomendaciones, mostrar solo las primeras 3
-              if (k === 'recomendaciones' && valor) {
-                if (Array.isArray(valor)) {
-                  valor = valor.slice(0, 3).map(rec => `- ${rec}`).join('\n');
-                } else if (typeof valor === 'string') {
-                  valor = valor.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
-                }
-              }
-              campos.push([formatHeader(k), valor]);
-            }
-          });
-          return campos;
-        }).flat();
+        // Formato horizontal para pronósticos - igual que en CSVButtons
+        // Los datos ya vienen con placa y detalle agregados desde ExportarReportes.jsx
+        header = ['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones'];
+        body = data[t.key].map(r => [
+          r.placa || '',
+          r.detalle || '',
+          r.fecha_asig || '',
+          r.horas_op || '',
+          r.recorrido || '',
+          r.resultado || '',
+          r.riesgo || '',
+          r.probabilidad || '',
+          r.fecha_mantenimiento || '',
+          r.urgencia || '',
+          Array.isArray(r.recomendaciones) ? r.recomendaciones.join('; ') : (r.recomendaciones || '')
+        ]);
       } else {
         // Formato horizontal para el resto de tablas
         header = allKeys.map(formatHeader);

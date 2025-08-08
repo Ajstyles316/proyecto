@@ -559,7 +559,8 @@ function exportPDFMasivo(data, filename = 'reporte') {
         seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle'],
         itv: ['placa', 'detalle', 'detalle', 'importe'],
         impuestos: ['placa', 'detalle', 'importe_2023', 'importe_2024'],
-        pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
+        depreciaciones: ['placa', 'detalle', 'costo_activo', 'fecha_compra', 'vida_util', 'bien_uso', 'metodo_depreciacion', 'valor_residual', 'coeficiente'],
+        pronosticos: ['placa', 'detalle', 'riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
       };
       
       // Obtener los campos permitidos para esta tabla
@@ -573,36 +574,25 @@ function exportPDFMasivo(data, filename = 'reporte') {
       );
     }
     
-    // Para pronósticos usar formato vertical, para el resto horizontal
+    // Para pronósticos usar formato horizontal, para el resto horizontal
     let header, body;
     if (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) {
-      // Formato vertical solo para pronósticos
-      header = ['Campo', 'Valor'];
-      body = [];
-      
-      // Procesar cada registro individualmente
-      rows.forEach(r => {
-        const campos = [];
-        keys.forEach(k => {
-          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-            // Formatear fechas correctamente
-            let valor = r[k];
-            if (k.toLowerCase().includes('fecha') && valor) {
-              valor = formatDateOnly(valor);
-            }
-            // Para recomendaciones, mostrar solo las primeras 3 con formato de lista
-            if (k === 'recomendaciones' && valor) {
-              if (Array.isArray(valor)) {
-                valor = valor.slice(0, 3).map(rec => `• ${rec}`).join('\n');
-              } else if (typeof valor === 'string') {
-                valor = valor.split(';').slice(0, 3).map(rec => `• ${rec.trim()}`).join('\n');
-              }
-            }
-            campos.push([formatHeader(k), valor]);
-          }
-        });
-        body.push(...campos);
-      });
+      // Formato horizontal para pronósticos - igual que en Excel
+      // Los datos ya vienen con placa y detalle agregados desde ExportarReportes.jsx
+      header = ['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones'];
+      body = rows.map(r => [
+        r.placa || '',
+        r.detalle || '',
+        r.fecha_asig || '',
+        r.horas_op || '',
+        r.recorrido || '',
+        r.resultado || '',
+        r.riesgo || '',
+        r.probabilidad || '',
+        r.fecha_mantenimiento || '',
+        r.urgencia || '',
+        Array.isArray(r.recomendaciones) ? r.recomendaciones.join('; ') : (r.recomendaciones || '')
+      ]);
     } else {
       // Formato horizontal para el resto de tablas
       header = keys.map(formatHeader);
@@ -634,16 +624,25 @@ function exportPDFMasivo(data, filename = 'reporte') {
        pageBreak: 'auto',
        theme: 'grid',
        columnStyles: (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) ? {
-         0: { cellWidth: '40%' },
-         1: { cellWidth: '60%' }
+         0: { cellWidth: '12%' }, // Placa
+         1: { cellWidth: '15%' }, // Detalle
+         2: { cellWidth: '12%' }, // Fecha Asignación
+         3: { cellWidth: '8%' },  // Horas Operación
+         4: { cellWidth: '8%' },  // Recorrido
+         5: { cellWidth: '8%' },  // Resultado
+         6: { cellWidth: '8%' },  // Riesgo
+         7: { cellWidth: '8%' },  // Probabilidad
+         8: { cellWidth: '12%' }, // Fecha Mantenimiento
+         9: { cellWidth: '8%' },  // Urgencia
+         10: { cellWidth: '15%' } // Recomendaciones
        } : {},
        didParseCell: (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) ? function (data) {
          // Permitir saltos de línea en las celdas de recomendaciones
-         if (data.section === 'body' && data.column.dataKey === 1) {
+         if (data.section === 'body' && data.column.dataKey === 10) {
            const cellValue = data.cell.raw;
-           if (typeof cellValue === 'string' && cellValue.includes('\n')) {
+           if (typeof cellValue === 'string' && cellValue.includes(';')) {
              data.cell.styles.cellPadding = 3;
-             data.cell.text = cellValue.split('\n');
+             data.cell.text = cellValue.split(';').map(rec => rec.trim());
            }
          }
        } : undefined,
@@ -664,13 +663,34 @@ function exportPDFMasivo(data, filename = 'reporte') {
     { key: 'seguros', label: 'Seguros' },
     { key: 'itv', label: 'ITV' },
     { key: 'impuestos', label: 'Impuestos' },
-    { key: 'depreciaciones', label: 'Depreciación' },
+    { key: 'depreciaciones', label: 'Depreciación', fields: depFields },
     { key: 'pronosticos', label: 'Pronóstico' },
   ];
   for (const t of tablas) {
     if (data[t.key] && data[t.key].length > 0) {
-      addTable(t.label, data[t.key], null, t.key);
+      addTable(t.label, data[t.key], t.fields || null, t.key);
     }
+  }
+
+  // === PIE DE PÁGINA CON INFORMACIÓN ADICIONAL ===
+  const totalPages = doc.internal.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const pageY = doc.internal.pageSize.getHeight() - 10;
+    
+    // Línea separadora
+    doc.setDrawColor(30, 77, 183);
+    doc.setLineWidth(0.2);
+    doc.line(18, pageY - 5, pageWidth - 18, pageY - 5);
+    
+    // Información del pie de página
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageY, { align: 'center' });
+    doc.text(`Generado el: ${getFormattedDateTime()}`, 18, pageY);
+    doc.text(`Sistema de Gestión de Maquinaria`, pageWidth - 18, pageY, { align: 'right' });
   }
 
   doc.save(`${filename}.pdf`);
