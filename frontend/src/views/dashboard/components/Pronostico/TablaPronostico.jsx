@@ -144,14 +144,26 @@ const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal, is
         )}
       </Box>
 
-      <Table sx={{ mb: 3 }}>
+      <Table sx={{ 
+        mb: 3,
+        '& .MuiTableCell-root': {
+          borderBottom: '1px solid rgba(224, 224, 224, 1)',
+        },
+        '& .MuiTableRow-root:hover': {
+          backgroundColor: 'rgba(25, 118, 210, 0.04)',
+        },
+        '& .MuiTableHead-root .MuiTableCell-root': {
+          borderBottom: '2px solid rgba(224, 224, 224, 1)',
+          fontWeight: 600,
+        }
+      }}>
         <TableHead>
-          <TableRow>
-            <TableCell><b>N°</b></TableCell>
-            <TableCell><b>Placa</b></TableCell>
-            <TableCell><b>Detalle</b></TableCell>
-            <TableCell><b>Estado</b></TableCell>
-            <TableCell><b>Acción</b></TableCell>
+          <TableRow sx={{ bgcolor: 'grey.50' }}>
+            <TableCell sx={{ fontWeight: 600 }}><b>N°</b></TableCell>
+            <TableCell sx={{ fontWeight: 600 }}><b>Placa</b></TableCell>
+            <TableCell sx={{ fontWeight: 600 }}><b>Detalle</b></TableCell>
+            <TableCell sx={{ fontWeight: 600 }}><b>Estado</b></TableCell>
+            <TableCell sx={{ fontWeight: 600 }}><b>Acción</b></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -163,7 +175,9 @@ const TablaPronostico = ({ maquinarias, searchTerm, setSearchTerm, openModal, is
             paginatedMaquinarias.map((m, idx) => {
               const status = getMantenimientoStatus(m.placa);
               return (
-                <TableRow key={m._id?.$oid || m._id}>
+                <TableRow key={m._id?.$oid || m._id} sx={{
+                  '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+                }}>
                   <TableCell>{(maqCurrentPage - 1) * maqRowsPerPage + idx + 1}</TableCell>
                   <TableCell>{m.placa || '-'}</TableCell>
                   <TableCell>{m.detalle || '-'}</TableCell>

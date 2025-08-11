@@ -17,22 +17,22 @@ import CloseIcon from '@mui/icons-material/Close';
 import RegistrosDesactivadosTable from './RegistrosDesactivadosTable';
 import { useUser } from '../../../../components/UserContext';
 
-const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }) => {
+const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) => {
   const [registrosDesactivados, setRegistrosDesactivados] = useState({});
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const { user } = useUser();
 
   const fetchRegistrosDesactivados = React.useCallback(async () => {
-    if (!isEncargado || !user?.Email) {
+    if (!isAdmin || !user?.Email) {
       setSnackbar({ 
         open: true, 
-        message: 'Solo los encargados pueden ver registros desactivados', 
+        message: 'Solo los administradores pueden ver registros desactivados', 
         severity: 'error' 
       });
       return;
     }
-
+    
     setLoading(true);
     try {
       const url = maquinariaId === "all" 
@@ -40,7 +40,6 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
         : `http://localhost:8000/api/maquinaria/${maquinariaId}/desactivados/`;
       
       console.log('Fetching URL:', url);
-      
       const response = await fetch(url, {
         headers: {
           'X-User-Email': user.Email
@@ -48,7 +47,6 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
       });
       
       console.log('Response status:', response.status);
-      
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('No tienes permisos para ver registros desactivados');
@@ -62,9 +60,28 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
       const data = await response.json();
       console.log('Response data:', data);
       
-      // Verificar si hay datos
-      const totalRegistros = Object.values(data).reduce((total, registros) => total + registros.length, 0);
+      // Procesar los datos para eliminar duplicados y asegurar que contengan justificaciones
+      const processedData = {};
+      Object.keys(data).forEach(tipo => {
+        if (Array.isArray(data[tipo])) {
+          // Eliminar duplicados basados en _id
+          const uniqueRecords = [];
+          const seenIds = new Set();
+          
+          data[tipo].forEach(record => {
+            const id = record._id || record.id || record.Email || record.Codigo;
+            if (id && !seenIds.has(id)) {
+              seenIds.add(id);
+              uniqueRecords.push(record);
+            }
+          });
+          
+          processedData[tipo] = uniqueRecords;
+        }
+      });
       
+      // Verificar si hay datos
+      const totalRegistros = Object.values(processedData).reduce((total, registros) => total + registros.length, 0);
       if (totalRegistros === 0) {
         setSnackbar({ 
           open: true, 
@@ -79,7 +96,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
         });
       }
       
-      setRegistrosDesactivados(data);
+      setRegistrosDesactivados(processedData);
     } catch (error) {
       console.error('Error fetching:', error);
       setSnackbar({ 
@@ -90,12 +107,20 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
     } finally {
       setLoading(false);
     }
-  }, [maquinariaId, isEncargado, user?.Email]);
+  }, [maquinariaId, isAdmin, user?.Email]);
 
   const handleReactivar = async (tipo, recordId, maquinariaId) => {
     try {
+      if (!isAdmin) {
+        setSnackbar({ 
+          open: true, 
+          message: 'Solo los administradores pueden reactivar registros', 
+          severity: 'error' 
+        });
+        return;
+      }
+
       let url;
-      
       // Mapeo de tipos a endpoints
       const tipoToEndpoint = {
         'Usuario': 'usuarios',
@@ -114,36 +139,38 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
       if (!endpoint) {
         throw new Error(`Tipo de registro no soportado: ${tipo}`);
       }
-      
-      // Para usuarios, usar endpoint diferente
-      if (tipo === 'Usuario') {
-        url = `http://localhost:8000/api/usuarios/${recordId}/`;
+
+      // Para usuarios y maquinaria, usar endpoint diferente
+      if (tipo === 'Usuario' || tipo === 'Maquinaria') {
+        url = `http://localhost:8000/api/${endpoint}/${recordId}/`;
       } else {
         // Para otros tipos, usar endpoint con maquinaria_id
         if (!maquinariaId) {
           console.log('No se proporcionó maquinariaId, intentando obtener del registro...');
+          // Intentar obtener maquinariaId del registro
           throw new Error(`No se puede reactivar este registro de ${tipo} porque no se encontró la información de la maquinaria asociada. Contacte al administrador.`);
         }
         url = `http://localhost:8000/api/maquinaria/${maquinariaId}/${endpoint}/${recordId}/`;
       }
-      
+
       console.log('Reactivating URL:', url);
-      
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'X-User-Email': user.Email
-        }
+        },
+        body: JSON.stringify({ activo: true }) // Asegurar que se envíe el cuerpo correcto
       });
-
+      
       console.log('Reactivation response status:', response.status);
-
+      
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('No tienes permisos para reactivar registros');
         }
-        throw new Error(`Error al reactivar el registro: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Error al reactivar el registro: ${response.statusText} - ${JSON.stringify(errorData)}`);
       }
 
       setSnackbar({ 
@@ -151,7 +178,6 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
         message: 'Registro reactivado exitosamente', 
         severity: 'success' 
       });
-
       // Recargar los datos
       fetchRegistrosDesactivados();
     } catch (error) {
@@ -165,10 +191,10 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
   };
 
   useEffect(() => {
-    if (open && isEncargado) {
+    if (open && isAdmin) {
       fetchRegistrosDesactivados();
     }
-  }, [open, fetchRegistrosDesactivados, isEncargado]);
+  }, [open, fetchRegistrosDesactivados, isAdmin]);
 
   const handleClose = () => {
     onClose();
@@ -205,7 +231,6 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-
         <DialogContent sx={{ p: 3 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
@@ -215,18 +240,16 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isEncargado }
             <RegistrosDesactivadosTable 
               registrosDesactivados={registrosDesactivados}
               onReactivar={handleReactivar}
-              isEncargado={isEncargado}
+              isAdmin={isAdmin}
             />
           )}
         </DialogContent>
-
         <DialogActions sx={{ p: 3, borderTop: '1px solid #e0e0e0' }}>
           <Button onClick={handleClose} variant="outlined">
             Cerrar
           </Button>
         </DialogActions>
       </Dialog>
-
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
@@ -246,7 +269,7 @@ RegistrosDesactivadosModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   maquinariaId: PropTypes.string.isRequired,
-  isEncargado: PropTypes.bool.isRequired
+  isAdmin: PropTypes.bool.isRequired
 };
 
-export default RegistrosDesactivadosModal; 
+export default RegistrosDesactivadosModal;

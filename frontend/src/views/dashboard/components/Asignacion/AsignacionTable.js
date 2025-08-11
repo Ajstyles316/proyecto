@@ -68,21 +68,34 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
 
 
   return (
-    <Table>
+    <Table sx={{
+      '& .MuiTableCell-root': {
+        borderBottom: '1px solid rgba(224, 224, 224, 1)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+      },
+      '& .MuiTableHead-root .MuiTableCell-root': {
+        borderBottom: '2px solid rgba(224, 224, 224, 1)',
+        fontWeight: 600,
+      }
+    }}>
       <TableHead>
-        <TableRow>
-          <TableCell>Placa</TableCell>
-          <TableCell>Fecha Asignación</TableCell>
-          <TableCell>Fecha Liberación</TableCell>
-          <TableCell>Recorrido Asignado (Km)</TableCell>
-          <TableCell>Recorrido Entregado (Km)</TableCell>
-          <TableCell>Encargado</TableCell>
-          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
+        <TableRow sx={{ bgcolor: 'grey.50' }}>
+          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Fecha Asignación</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Fecha Liberación</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Recorrido Asignado (Km)</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Recorrido Entregado (Km)</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Encargado</TableCell>
+          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {asignaciones.map((asignacion) => (
-          <TableRow key={asignacion._id}>
+        {asignaciones.map((asignacion, index) => (
+          <TableRow key={asignacion._id} sx={{
+            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+          }}>
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{formatDate(asignacion.fecha_asignacion)}</TableCell>
             <TableCell>{formatDate(asignacion.fecha_liberacion)}</TableCell>

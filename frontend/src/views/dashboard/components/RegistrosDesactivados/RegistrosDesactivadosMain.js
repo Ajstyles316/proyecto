@@ -11,14 +11,14 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const { user } = useUser();
 
-  // Verificar si el usuario es encargado
-  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  // Verificar si el usuario es administrador
+  const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
 
   const fetchRegistrosDesactivados = useCallback(async () => {
-    if (!isEncargado) {
+    if (!isAdmin) {
       setSnackbar({ 
         open: true, 
-        message: 'Solo los encargados pueden ver registros desactivados', 
+        message: 'Solo los administradores pueden ver registros desactivados', 
         severity: 'error' 
       });
       return;
@@ -55,13 +55,13 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
     } finally {
       setLoading(false);
     }
-  }, [isEncargado, maquinariaId, user.Email]);
+  }, [isAdmin, maquinariaId, user.Email]);
 
   const handleReactivar = async (tipo, recordId, maquinariaId) => {
-    if (!isEncargado) {
+    if (!isAdmin) {
       setSnackbar({ 
         open: true, 
-        message: 'Solo los encargados pueden reactivar registros', 
+        message: 'Solo los administradores pueden reactivar registros', 
         severity: 'error' 
       });
       return;
@@ -71,6 +71,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       // Determinar la URL correcta según el tipo
       let url;
       switch (tipo) {
+        case 'Usuario':
+          url = `http://localhost:8000/api/usuarios/${recordId}/reactivar/`;
+          break;
         case 'Control':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${recordId}/`;
           break;
@@ -129,11 +132,11 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
 
   // Siempre cargar los registros desactivados cuando se muestra el componente
   React.useEffect(() => {
-    if (isEncargado) {
+    if (isAdmin) {
       fetchRegistrosDesactivados();
       setShowTable(true);
     }
-  }, [isEncargado, fetchRegistrosDesactivados]);
+  }, [isAdmin, fetchRegistrosDesactivados]);
 
   return (
     <Box>
@@ -166,7 +169,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
             registrosDesactivados={registrosDesactivados}
             onReactivar={handleReactivar}
             loading={loading}
-            isEncargado={isEncargado}
+            isAdmin={isAdmin}
           />
         </Paper>
       )}

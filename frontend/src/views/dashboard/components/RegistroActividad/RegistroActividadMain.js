@@ -467,7 +467,19 @@ const RegistroActividadMain = () => {
         ) : (
           <>
             <Box sx={{ overflow: 'auto', flex: 1 }}>
-              <Table size="small" sx={{ minWidth: 600 }}>
+              <Table size="small" sx={{ 
+                minWidth: 600,
+                '& .MuiTableCell-root': {
+                  borderBottom: '1px solid rgba(224, 224, 224, 1)',
+                },
+                '& .MuiTableRow-root:hover': {
+                  backgroundColor: 'rgba(25, 118, 210, 0.04)',
+                },
+                '& .MuiTableHead-root .MuiTableCell-root': {
+                  borderBottom: '2px solid rgba(224, 224, 224, 1)',
+                  fontWeight: 700,
+                }
+              }}>
                 <TableHead sx={{ background: theme => theme.palette.grey[200] }}>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', py: 1 }}>Fecha/Hora</TableCell>
@@ -479,7 +491,10 @@ const RegistroActividadMain = () => {
                 </TableHead>
                 <TableBody>
                   {paginatedData.map((row, idx) => (
-                    <TableRow key={idx} hover sx={{ '&:hover': { backgroundColor: theme => theme.palette.action.hover } }}>
+                    <TableRow key={idx} sx={{ 
+                      '&:hover': { backgroundColor: theme => theme.palette.action.hover },
+                      '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+                    }}>
                       <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
                         {row.fecha_hora ? new Date(row.fecha_hora).toLocaleString('es-ES') : '-'}
                       </TableCell>

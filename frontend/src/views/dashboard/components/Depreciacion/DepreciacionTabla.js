@@ -181,7 +181,21 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
               maxHeight: { xs: '400px', sm: '500px', md: '600px' }
             }}
           >
-            <Table stickyHeader size={isMobile ? "small" : "medium"}>
+            <Table size={isMobile ? "small" : "medium"} sx={{
+              '& .MuiTableCell-root': {
+                borderBottom: '1px solid rgba(224, 224, 224, 1)',
+              },
+              '& .MuiTableRow-root:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                transform: 'scale(1.01)',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              },
+              '& .MuiTableHead-root .MuiTableCell-root': {
+                borderBottom: '2px solid rgba(224, 224, 224, 1)',
+                fontWeight: 600,
+              }
+            }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: theme.palette.grey[50] }}>
                   <TableCell sx={{ 

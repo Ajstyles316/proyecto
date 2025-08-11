@@ -80,7 +80,18 @@ const ActivosDashboardSimple = () => {
       ) : (
         <>
           <TableContainer>
-            <Table size="small">
+            <Table size="small" sx={{
+              '& .MuiTableCell-root': {
+                borderBottom: '1px solid rgba(224, 224, 224, 1)',
+              },
+              '& .MuiTableRow-root:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.04)',
+              },
+              '& .MuiTableHead-root .MuiTableCell-root': {
+                borderBottom: '2px solid rgba(224, 224, 224, 1)',
+                fontWeight: 600,
+              }
+            }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'grey.50' }}>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>Bien de Uso</TableCell>
@@ -90,7 +101,9 @@ const ActivosDashboardSimple = () => {
               </TableHead>
               <TableBody>
                 {currentActivos.map((activo, index) => (
-                  <TableRow key={startIndex + index} hover>
+                  <TableRow key={startIndex + index} hover sx={{
+                    '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+                  }}>
                     <TableCell sx={{ fontSize: '0.8rem' }}>
                       {activo.bien_uso || '—'}
                     </TableCell>

@@ -4,11 +4,11 @@ import { Button, Box } from '@mui/material';
 import RestoreIcon from '@mui/icons-material/Restore';
 import RegistrosDesactivadosModal from './RegistrosDesactivadosModal';
 
-const RegistrosDesactivadosButton = ({ maquinariaId, isEncargado }) => {
+const RegistrosDesactivadosButton = ({ maquinariaId, isAdmin }) => {
   const [showRegistrosDesactivados, setShowRegistrosDesactivados] = useState(false);
 
-  if (!isEncargado) {
-    return null; // No mostrar nada para usuarios que no sean admin o encargado
+  if (!isAdmin) {
+    return null; // No mostrar nada para usuarios que no sean administradores
   }
 
   return (
@@ -35,7 +35,7 @@ const RegistrosDesactivadosButton = ({ maquinariaId, isEncargado }) => {
         open={showRegistrosDesactivados}
         onClose={() => setShowRegistrosDesactivados(false)}
         maquinariaId={maquinariaId}
-        isEncargado={isEncargado}
+        isAdmin={isAdmin}
       />
     </Box>
   );
@@ -44,7 +44,7 @@ const RegistrosDesactivadosButton = ({ maquinariaId, isEncargado }) => {
 // PropTypes para el componente
 RegistrosDesactivadosButton.propTypes = {
   maquinariaId: PropTypes.string,
-  isEncargado: PropTypes.bool.isRequired
+  isAdmin: PropTypes.bool.isRequired
 };
 
 export default RegistrosDesactivadosButton; 

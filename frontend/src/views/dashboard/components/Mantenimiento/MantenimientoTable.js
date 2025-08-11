@@ -52,20 +52,33 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <Table>
+    <Table sx={{
+      '& .MuiTableCell-root': {
+        borderBottom: '1px solid rgba(224, 224, 224, 1)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+      },
+      '& .MuiTableHead-root .MuiTableCell-root': {
+        borderBottom: '2px solid rgba(224, 224, 224, 1)',
+        fontWeight: 600,
+      }
+    }}>
       <TableHead>
-        <TableRow>
-          <TableCell>Placa</TableCell>
-          <TableCell>Tipo</TableCell>
-          <TableCell>Cantidad</TableCell>
-          <TableCell>Gestión</TableCell>
-          <TableCell>Ubicación</TableCell>
-          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
+        <TableRow sx={{ bgcolor: 'grey.50' }}>
+          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Cantidad</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Gestión</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Ubicación</TableCell>
+          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {mantenimientos.map((mantenimiento) => (
-          <TableRow key={mantenimiento._id}>
+        {mantenimientos.map((mantenimiento, index) => (
+          <TableRow key={mantenimiento._id} sx={{
+            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+          }}>
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{mantenimiento.tipo}</TableCell>
             <TableCell>{mantenimiento.cantidad}</TableCell>

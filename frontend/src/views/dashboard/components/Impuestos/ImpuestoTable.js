@@ -51,18 +51,31 @@ const ImpuestoTable = ({ impuestos, maquinariaPlaca, onEdit, onDelete, loading, 
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <Table>
+    <Table sx={{
+      '& .MuiTableCell-root': {
+        borderBottom: '1px solid rgba(224, 224, 224, 1)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+      },
+      '& .MuiTableHead-root .MuiTableCell-root': {
+        borderBottom: '2px solid rgba(224, 224, 224, 1)',
+        fontWeight: 600,
+      }
+    }}>
       <TableHead>
-        <TableRow>
-          <TableCell>Placa</TableCell>
-          <TableCell>Importe 2023</TableCell>
-          <TableCell>Importe 2024</TableCell>
-          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
+        <TableRow sx={{ bgcolor: 'grey.50' }}>
+          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Importe 2023</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Importe 2024</TableCell>
+          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {impuestos.map((impuesto) => (
-          <TableRow key={impuesto._id}>
+        {impuestos.map((impuesto, index) => (
+          <TableRow key={impuesto._id} sx={{
+            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+          }}>
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{impuesto.importe_2023}</TableCell>
             <TableCell>{impuesto.importe_2024}</TableCell>

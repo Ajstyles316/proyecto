@@ -51,21 +51,34 @@ const ControlTable = ({ controls, maquinariaPlaca, onEdit, onDelete, loading, is
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <Table>
+    <Table sx={{
+      '& .MuiTableCell-root': {
+        borderBottom: '1px solid rgba(224, 224, 224, 1)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+      },
+      '& .MuiTableHead-root .MuiTableCell-root': {
+        borderBottom: '2px solid rgba(224, 224, 224, 1)',
+        fontWeight: 600,
+      }
+    }}>
       <TableHead>
-        <TableRow>
-          <TableCell>Placa</TableCell>
-          <TableCell>Ubicación</TableCell>
-          <TableCell>Gerente</TableCell>
-          <TableCell>Encargado</TableCell>
-          <TableCell>Estado</TableCell>
-          <TableCell>Hoja de Trámite</TableCell>
-          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
+        <TableRow sx={{ bgcolor: 'grey.50' }}>
+          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Ubicación</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Gerente</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Encargado</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Estado</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Hoja de Trámite</TableCell>
+          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {controls.map((control) => (
-          <TableRow key={control._id}>
+        {controls.map((control, index) => (
+          <TableRow key={control._id} sx={{
+            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+          }}>
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{control.ubicacion}</TableCell>
             <TableCell>{control.gerente}</TableCell>

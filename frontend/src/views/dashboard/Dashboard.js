@@ -91,17 +91,22 @@ const Dashboard = () => {
 
         {/* Gráficos y otros componentes */}
         <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
-          <Grid item xs={12} lg={5}>
-            <PronosticoChart />
-          </Grid>
-          <Grid item xs={12} lg={7}>
-            {/* Mostrar contenido diferente según el cargo */}
-            {isAdmin ? (
+          {/* Para el admin, mostrar solo el registro de actividad */}
+          {isAdmin ? (
+            <Grid item xs={12}>
               <RegistroActividadMain />
-            ) : (
-              <ActivosDashboardSimple />
-            )}
-          </Grid>
+            </Grid>
+          ) : (
+            <>
+              {/* Para usuarios no-admin, mostrar el gráfico y activos */}
+              <Grid item xs={12} lg={5}>
+                <PronosticoChart />
+              </Grid>
+              <Grid item xs={12} lg={7}>
+                <ActivosDashboardSimple />
+              </Grid>
+            </>
+          )}
         </Grid>
       </Box>
     </PageContainer>

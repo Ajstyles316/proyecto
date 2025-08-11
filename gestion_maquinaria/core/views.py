@@ -528,14 +528,14 @@ class MaquinariaDetailView(APIView):
 
     def patch(self, request, id):
         """Reactivar una maquinaria desactivada"""
-        # Verificar permisos
+        # Verificar permisos de ADMINISTRADOR únicamente
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not check_user_permissions(user, required_permission='editar', module='Maquinaria'):
-            return Response({"error": "No tienes permisos para reactivar maquinarias"}, status=status.HTTP_403_FORBIDDEN)
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden reactivar maquinarias"}, status=status.HTTP_403_FORBIDDEN)
         
         maquinaria_collection = get_collection(Maquinaria)
         if not ObjectId.is_valid(id):
@@ -770,14 +770,14 @@ class BaseSectionDetailAPIView(APIView):
 
     def patch(self, request, maquinaria_id, record_id):
         """Reactivar un registro desactivado"""
-        # Verificar permisos de encargado
+        # Verificar permisos de ADMINISTRADOR únicamente
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not user or user.get('Cargo', '').lower() != 'encargado':
-            return Response({"error": "Solo los encargados pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
         
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
@@ -3162,10 +3162,25 @@ class UsuarioDeleteView(APIView):
             return Response({'error': 'Solo el administrador puede desactivar usuarios'}, status=status.HTTP_403_FORBIDDEN)
         if str(user.get('_id')) == id:
             return Response({'error': 'No puedes desactivarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener datos adicionales del request
+        try:
+            data = request.data
+            justificacion = data.get('justificacion', 'Sin justificación')
+            desactivado_por = data.get('desactivado_por', email)
+        except:
+            justificacion = 'Sin justificación'
+            desactivado_por = email
+        
         # En lugar de eliminar, desactivar
         result = collection.update_one(
             {'_id': ObjectId(id)},
-            {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
+            {"$set": {
+                "activo": False, 
+                "fecha_desactivacion": datetime.now(),
+                "justificacion": justificacion,
+                "desactivado_por": desactivado_por
+            }}
         )
         if result.modified_count == 0:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -3178,7 +3193,7 @@ class UsuarioDeleteView(APIView):
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
-        if not check_user_permissions(user, required_role='admin'):
+        if not user or user.get('Cargo', '').lower() != 'admin':
             return Response({'error': 'Solo el administrador puede reactivar usuarios'}, status=status.HTTP_403_FORBIDDEN)
         
         # Reactivar el usuario
@@ -3193,14 +3208,14 @@ class UsuarioDeleteView(APIView):
 class RegistrosDesactivadosView(APIView):
     """Vista para obtener registros desactivados"""
     def get(self, request, maquinaria_id):
-        # Verificar permisos de encargado o admin
+        # Verificar permisos de ADMINISTRADOR únicamente
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not check_user_permissions(user, required_role='encargado'):
-            return Response({"error": "Solo los encargados pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
         
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
@@ -3232,14 +3247,14 @@ class RegistrosDesactivadosView(APIView):
 class TodosRegistrosDesactivadosView(APIView):
     """Vista para obtener todos los registros desactivados del sistema"""
     def get(self, request):
-        # Verificar permisos de encargado o admin
+        # Verificar permisos de ADMINISTRADOR únicamente
         actor_email = request.headers.get('X-User-Email')
         if not actor_email:
             return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = get_collection(Usuario).find_one({"Email": actor_email})
-        if not check_user_permissions(user, required_role='encargado'):
-            return Response({"error": "Solo los encargados pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden ver registros desactivados"}, status=status.HTTP_403_FORBIDDEN)
         
         # Obtener parámetros de consulta
         dias = request.GET.get('dias', '30')  # Por defecto 30 días
@@ -3251,10 +3266,10 @@ class TodosRegistrosDesactivadosView(APIView):
         # Obtener todos los registros desactivados de todas las colecciones
         collections = [
             ('usuarios', 'Usuario'),
-            ('historial_control', 'Control'),
-            ('acta_asignacion', 'Asignación'),
-            ('mantenimiento', 'Mantenimiento'),
-            ('seguro', 'Seguro'),
+            ('controles', 'Control'),
+            ('asignacion', 'Asignación'),
+            ('mantenimientos', 'Mantenimiento'),
+            ('seguros', 'Seguro'),
             ('itv', 'ITV'),
             ('soat', 'SOAT'),
             ('impuesto', 'Impuesto'),
@@ -3274,124 +3289,214 @@ class TodosRegistrosDesactivadosView(APIView):
                 collection = get_collection(collection_name)
                 print(f"Buscando en colección: {collection_name}")
                 
-                # Buscar registros desactivados recientes
-                query = {
-                    'activo': False,
-                    '$or': [
-                        {'fecha_desactivacion': {'$gte': fecha_limite}},
-                        {'fecha_creacion': {'$gte': fecha_limite}},
-                        {'fecha_registro': {'$gte': fecha_limite}}
-                    ]
-                }
-                
-                registros = list(collection.find(query))
-                print(f"Encontrados {len(registros)} registros desactivados recientes en {collection_name}")
-                
-                # Si no hay registros recientes, buscar solo los desactivados (sin filtro de fecha)
-                if not registros:
-                    registros = list(collection.find({'activo': False}))
-                    print(f"Encontrados {len(registros)} registros desactivados totales en {collection_name}")
-                
-                if registros:
-                    # Serializar sin mapeo de campos para registros desactivados
-                    def serialize_desactivados(doc):
-                        if not doc:
-                            return None
-                        from bson import ObjectId
-                        from datetime import datetime, date
-                        def convert(value):
-                            if isinstance(value, ObjectId):
-                                return str(value)
-                            elif isinstance(value, (datetime, date)):
-                                if isinstance(value, datetime):
-                                    if value.hour == 0 and value.minute == 0 and value.second == 0:
-                                        return value.strftime('%d/%m/%Y')
-                                    else:
-                                        return value.strftime('%d/%m/%Y %H:%M:%S')
-                                else:
-                                    return value.strftime('%d/%m/%Y')
-                            elif isinstance(value, dict):
-                                return {k: convert(v) for k, v in value.items()}
-                            elif isinstance(value, list):
-                                return [convert(v) for v in value]
-                            else:
-                                return value
-                        
-                        doc = convert(doc)
-                        
-                        # Quitar la contraseña si existe
-                        if 'Password' in doc:
-                            del doc['Password']
-                        
-                        # Quitar campos que no queremos mostrar (pero mantener _id y maquinaria_id para reactivación)
-                        campos_a_quitar = ['activo']
-                        for campo in campos_a_quitar:
-                            if campo in doc:
-                                del doc[campo]
-                        
-                        # Convertir maquinaria a maquinaria_id si existe y mantener maquinaria para referencia
-                        if 'maquinaria' in doc:
-                            doc['maquinaria_id'] = str(doc['maquinaria'])
-                            # Mantener maquinaria para referencia en el frontend
-                        
-                        # --- Asegurar maquinaria_id como string si existe ---
-                        if 'maquinaria_id' in doc:
-                            # Obtener la placa de la maquinaria en lugar del ID
-                            try:
-                                maquinaria_collection = get_collection('maquinaria')
-                                maquinaria = maquinaria_collection.find_one({"_id": ObjectId(doc['maquinaria_id'])})
-                                if maquinaria:
-                                    doc['Maquinaria'] = maquinaria.get('placa', 'Sin placa')
-                                else:
-                                    doc['Maquinaria'] = 'Maquinaria no encontrada'
-                            except:
-                                doc['Maquinaria'] = 'Error al obtener maquinaria'
-                            # NO eliminar maquinaria_id, lo necesitamos para reactivación
-                        
-                        # Mejorar nombres de campos para mejor legibilidad
-                        mapeo_campos = {
-                            'fecha_desactivacion': 'Fecha de Desactivación',
-                            'fecha_reactivacion': 'Fecha de Reactivación',
-                            'fecha_creacion': 'Fecha de Creación',
-                            'fecha_registro': 'Fecha de Registro',
-                            'fecha_asignacion': 'Fecha de Asignación',
-                            'fecha_liberacion': 'Fecha de Liberación',
-                            'fecha_ingreso': 'Fecha de Ingreso',
-                            'detalle': 'Detalle',
-                            'estado': 'Estado',
-                            'observacion': 'Observación',
-                            'costo': 'Costo',
-                            'tipo': 'Tipo',
-                            'cantidad': 'Cantidad',
-                            'ubicacion': 'Ubicación',
-                            'encargado': 'Encargado',
-                            'gerente': 'Gerente',
-                            'hoja_tramite': 'Hoja de Trámite',
-                            'numero_2024': 'N° 2024',
-                            'importe': 'Importe',
-                            'importe_2023': 'Importe 2023',
-                            'importe_2024': 'Importe 2024',
-                            'importe_2025': 'Importe 2025',
-                            'bien_uso': 'Bien de Uso',
-                            'vida_util': 'Vida Útil',
-                            'metodo': 'Método',
-                            'recorrido_km': 'Recorrido (Km)',
-                            'recorrido_entregado': 'Recorrido Entregado'
-                        }
-                        
-                        # Aplicar mapeo de campos
-                        for campo_original, campo_nuevo in mapeo_campos.items():
-                            if campo_original in doc:
-                                doc[campo_nuevo] = doc.pop(campo_original)
-                        
-                        return doc
+                # Manejo especial para usuarios
+                if collection_name == 'usuarios':
+                    # Para usuarios, buscar todos los desactivados sin filtro de fecha
+                    query = {'activo': False}
                     
-                    registros_desactivados[label] = [serialize_desactivados(record) for record in registros]
-                    print(f"Agregados {len(registros)} registros de {label}")
+                    # Buscar directamente sin distinct para evitar problemas
+                    registros = list(collection.find(query))
+                    print(f"Encontrados {len(registros)} usuarios desactivados en {collection_name}")
+                    
+                    if registros:
+                        # ELIMINAR DUPLICADOS POR EMAIL
+                        # Crear un diccionario para mantener solo un registro por email
+                        usuarios_unicos = {}
+                        for record in registros:
+                            email = record.get('Email')
+                            if email:
+                                # Si ya existe un usuario con este email, mantener el más reciente
+                                if email not in usuarios_unicos:
+                                    usuarios_unicos[email] = record
+                                else:
+                                    # Si ya existe, comparar fechas y mantener el más reciente
+                                    fecha_existente = usuarios_unicos[email].get('fecha_desactivacion')
+                                    fecha_nuevo = record.get('fecha_desactivacion')
+                                    if fecha_nuevo and (not fecha_existente or fecha_nuevo > fecha_existente):
+                                        usuarios_unicos[email] = record
+                        
+                        # Convertir de vuelta a lista
+                        registros = list(usuarios_unicos.values())
+                        print(f"Después de eliminar duplicados: {len(registros)} usuarios únicos")
+                        
+                        # Serializar usuarios desactivados
+                        def serialize_usuario_desactivado(doc):
+                            if not doc:
+                                return None
+                            from bson import ObjectId
+                            from datetime import datetime, date
+                            def convert(value):
+                                if isinstance(value, ObjectId):
+                                    return str(value)
+                                elif isinstance(value, (datetime, date)):
+                                    if isinstance(value, datetime):
+                                        if value.hour == 0 and value.minute == 0 and value.second == 0:
+                                            return value.strftime('%d/%m/%Y')
+                                        else:
+                                            return value.strftime('%d/%m/%Y %H:%M:%S')
+                                    else:
+                                        return value.strftime('%d/%m/%Y')
+                                elif isinstance(value, dict):
+                                    return {k: convert(v) for k, v in value.items()}
+                                elif isinstance(value, list):
+                                    return [convert(v) for v in value]
+                                else:
+                                    return value
+                            
+                            doc = convert(doc)
+                            
+                            # Quitar la contraseña si existe
+                            if 'Password' in doc:
+                                del doc['Password']
+                            
+                            # Quitar campos que no queremos mostrar
+                            campos_a_quitar = ['activo']
+                            for campo in campos_a_quitar:
+                                if campo in doc:
+                                    del doc[campo]
+                            
+                            # Mapear campos específicos de usuarios
+                            mapeo_campos_usuario = {
+                                'fecha_desactivacion': 'Fecha de Desactivación',
+                                'fecha_creacion': 'Fecha de Creación',
+                                'fecha_registro': 'Fecha de Registro'
+                            }
+                            
+                            # Aplicar mapeo de campos para usuarios
+                            for campo_original, campo_nuevo in mapeo_campos_usuario.items():
+                                if campo_original in doc:
+                                    doc[campo_nuevo] = doc.pop(campo_original)
+                            
+                            return doc
+                        
+                        registros_desactivados[label] = [serialize_usuario_desactivado(record) for record in registros]
+                        print(f"Agregados {len(registros)} usuarios únicos de {label}")
+                else:
+                    # Para otras colecciones, buscar registros desactivados recientes primero
+                    query = {
+                        'activo': False,
+                        '$or': [
+                            {'fecha_desactivacion': {'$gte': fecha_limite}},
+                            {'fecha_creacion': {'$gte': fecha_limite}},
+                            {'fecha_registro': {'$gte': fecha_limite}}
+                        ]
+                    }
+                    
+                    # Buscar registros recientes
+                    registros = list(collection.find(query))
+                    print(f"Encontrados {len(registros)} registros desactivados recientes en {collection_name}")
+                    
+                    # Si no hay registros recientes, buscar solo los desactivados (sin filtro de fecha)
+                    if not registros:
+                        query_simple = {'activo': False}
+                        registros = list(collection.find(query_simple))
+                        print(f"Encontrados {len(registros)} registros desactivados totales en {collection_name}")
+                
+                    if registros:
+                        # Serializar registros desactivados
+                        def serialize_desactivados(doc):
+                            if not doc:
+                                return None
+                            from bson import ObjectId
+                            from datetime import datetime, date
+                            def convert(value):
+                                if isinstance(value, ObjectId):
+                                    return str(value)
+                                elif isinstance(value, (datetime, date)):
+                                    if isinstance(value, datetime):
+                                        if value.hour == 0 and value.minute == 0 and value.second == 0:
+                                            return value.strftime('%d/%m/%Y')
+                                        else:
+                                            return value.strftime('%d/%m/%Y %H:%M:%S')
+                                    else:
+                                        return value.strftime('%d/%m/%Y')
+                                elif isinstance(value, dict):
+                                    return {k: convert(v) for k, v in value.items()}
+                                elif isinstance(value, list):
+                                    return [convert(v) for v in value]
+                                else:
+                                    return value
+                            
+                            doc = convert(doc)
+                            
+                            # Quitar la contraseña si existe
+                            if 'Password' in doc:
+                                del doc['Password']
+                            
+                            # Quitar campos que no queremos mostrar (pero mantener _id y maquinaria_id para reactivación)
+                            campos_a_quitar = ['activo']
+                            for campo in campos_a_quitar:
+                                if campo in doc:
+                                    del doc[campo]
+                            
+                            # Convertir maquinaria a maquinaria_id si existe y mantener maquinaria para referencia
+                            if 'maquinaria' in doc:
+                                doc['maquinaria_id'] = str(doc['maquinaria'])
+                                # Mantener maquinaria para referencia en el frontend
+                            
+                            # --- Asegurar maquinaria_id como string si existe ---
+                            if 'maquinaria_id' in doc:
+                                # Obtener la placa de la maquinaria en lugar del ID
+                                try:
+                                    maquinaria_collection = get_collection('maquinaria')
+                                    maquinaria = maquinaria_collection.find_one({"_id": ObjectId(doc['maquinaria_id'])})
+                                    if maquinaria:
+                                        doc['Maquinaria'] = maquinaria.get('placa', 'Sin placa')
+                                    else:
+                                        doc['Maquinaria'] = 'Maquinaria no encontrada'
+                                except:
+                                    doc['Maquinaria'] = 'Error al obtener maquinaria'
+                                # NO eliminar maquinaria_id, lo necesitamos para reactivación
+                            
+                            # Mejorar nombres de campos para mejor legibilidad
+                            mapeo_campos = {
+                                'fecha_desactivacion': 'Fecha de Desactivación',
+                                'fecha_reactivacion': 'Fecha de Reactivación',
+                                'fecha_creacion': 'Fecha de Creación',
+                                'fecha_registro': 'Fecha de Registro',
+                                'fecha_asignacion': 'Fecha de Asignación',
+                                'fecha_liberacion': 'Fecha de Liberación',
+                                'fecha_ingreso': 'Fecha de Ingreso',
+                                'detalle': 'Detalle',
+                                'estado': 'Estado',
+                                'observacion': 'Observación',
+                                'costo': 'Costo',
+                                'tipo': 'Tipo',
+                                'cantidad': 'Cantidad',
+                                'ubicacion': 'Ubicación',
+                                'encargado': 'Encargado',
+                                'gerente': 'Gerente',
+                                'hoja_tramite': 'Hoja de Trámite',
+                                'numero_2024': 'N° 2024',
+                                'importe': 'Importe',
+                                'importe_2023': 'Importe 2023',
+                                'importe_2024': 'Importe 2024',
+                                'importe_2025': 'Importe 2025',
+                                'bien_uso': 'Bien de Uso',
+                                'vida_util': 'Vida Útil',
+                                'metodo': 'Método',
+                                'recorrido_km': 'Recorrido (Km)',
+                                'recorrido_entregado': 'Recorrido Entregado'
+                            }
+                            
+                            # Aplicar mapeo de campos
+                            for campo_original, campo_nuevo in mapeo_campos.items():
+                                if campo_original in doc:
+                                    doc[campo_nuevo] = doc.pop(campo_original)
+                            
+                            return doc
+                        
+                        registros_desactivados[label] = [serialize_desactivados(record) for record in registros]
+                        print(f"Agregados {len(registros)} registros de {label}")
+                
+                print(f"Total de colecciones con registros: {len(registros_desactivados)}")
             
-            print(f"Total de colecciones con registros: {len(registros_desactivados)}")
             return Response(registros_desactivados)
+            
         except Exception as e:
+            print(f"Error en TodosRegistrosDesactivadosView: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response({"error": f"Error interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
@@ -3691,3 +3796,60 @@ def reset_password_usuario(request):
         
     except Exception as e:
         return Response({"error": f"Error al actualizar contraseña: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def limpiar_usuarios_duplicados(request):
+    """Limpiar usuarios duplicados en la base de datos"""
+    try:
+        # Verificar permisos de ADMINISTRADOR únicamente
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden limpiar usuarios duplicados"}, status=status.HTTP_403_FORBIDDEN)
+        
+        collection = get_collection(Usuario)
+        
+        # Buscar usuarios duplicados por email
+        pipeline = [
+            {"$group": {
+                "_id": "$Email",
+                "count": {"$sum": 1},
+                "docs": {"$push": "$_id"}
+            }},
+            {"$match": {"count": {"$gt": 1}}}
+        ]
+        
+        duplicados = list(collection.aggregate(pipeline))
+        
+        if not duplicados:
+            return Response({'success': True, 'message': 'No hay usuarios duplicados'}, status=status.HTTP_200_OK)
+        
+        usuarios_eliminados = 0
+        
+        for duplicado in duplicados:
+            email = duplicado['_id']
+            ids = duplicado['docs']
+            
+            # Mantener el primer usuario (más antiguo) y eliminar los demás
+            ids_a_eliminar = ids[1:]  # Mantener el primero, eliminar el resto
+            
+            for user_id in ids_a_eliminar:
+                result = collection.delete_one({'_id': user_id})
+                if result.deleted_count > 0:
+                    usuarios_eliminados += 1
+                    print(f"Usuario duplicado eliminado: {email} - ID: {user_id}")
+        
+        return Response({
+            'success': True, 
+            'message': f'Se eliminaron {usuarios_eliminados} usuarios duplicados',
+            'duplicados_encontrados': len(duplicados)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        print(f"Error al limpiar usuarios duplicados: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({'error': f'Error interno: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

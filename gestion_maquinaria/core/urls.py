@@ -23,6 +23,7 @@ from .views import (
     UsuarioOpcionesView,  # <-- importar la nueva vista de opciones
     validar_password_usuario,  # <-- importar la nueva vista
     reset_password_usuario,  # <-- importar la vista de reset password
+    limpiar_usuarios_duplicados,  # <-- importar la vista para limpiar duplicados
     test_api,  # <-- importar la vista de prueba
     RegistrosDesactivadosView,  # <-- importar la nueva vista
     TodosRegistrosDesactivadosView,  # <-- importar la nueva vista
@@ -61,6 +62,7 @@ urlpatterns = [
     path('usuarios/<str:id>/cargo/', UsuarioCargoUpdateView.as_view(), name='usuario-cargo-update'),
     path('usuarios/<str:id>/permiso/', UsuarioPermisoUpdateView.as_view(), name='usuario-permiso-update'),
     path('usuarios/<str:id>/permisos/', UsuarioPermisosUpdateView.as_view(), name='usuario-permisos-update'),
+    path('usuarios/<str:id>/reactivar/', UsuarioDeleteView.as_view(), name='usuario-reactivar'),
     path('usuarios/<str:id>/', UsuarioDeleteView.as_view(), name='usuario-delete'),
     path('api/depreciaciones/', DepreciacionesGeneralView.as_view(), name='depreciaciones-general'),
     path('api/depreciaciones/<str:maquinaria_id>/', DepreciacionesListView.as_view(), name='depreciaciones-list'),
@@ -70,6 +72,7 @@ urlpatterns = [
     path('seguimiento/', SeguimientoListView.as_view(), name='seguimiento-list'),
     path('api/usuarios/validar_password/', validar_password_usuario, name='usuarios-validar-password'),
     path('api/usuarios/reset_password/', reset_password_usuario, name='usuarios-reset-password'),
+    path('api/usuarios/limpiar_duplicados/', limpiar_usuarios_duplicados, name='usuarios-limpiar-duplicados'),
     path('api/maquinaria/<str:maquinaria_id>/desactivados/', RegistrosDesactivadosView.as_view(), name='registros-desactivados'),
     path('api/registros-desactivados/', TodosRegistrosDesactivadosView.as_view(), name='todos-registros-desactivados'),
     path('api/test/', test_api, name='test-api'),

@@ -140,7 +140,18 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
           overflow: 'auto',
           maxHeight: { xs: '400px', sm: '500px', md: '600px' },
         }}>
-          <Table stickyHeader size={isMobile ? "small" : "medium"}>
+          <Table stickyHeader size={isMobile ? "small" : "medium"} sx={{
+            '& .MuiTableCell-root': {
+              borderBottom: '1px solid rgba(224, 224, 224, 1)',
+            },
+            '& .MuiTableRow-root:hover': {
+              backgroundColor: 'rgba(25, 118, 210, 0.04)',
+            },
+            '& .MuiTableHead-root .MuiTableCell-root': {
+              borderBottom: '2px solid rgba(224, 224, 224, 1)',
+              fontWeight: 600,
+            }
+          }}>
             <TableHead>
               <TableRow>
                 <TableCell align="center" sx={{ 
@@ -197,6 +208,7 @@ const HistorialPronosticos = ({ data, onRecomendacionClick }) => {
                     '&:hover': {
                       backgroundColor: 'rgba(25, 118, 210, 0.04)',
                     },
+                    '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
                   }}>
                     <TableCell align="center" sx={{ 
                       fontSize: { xs: '0.7rem', sm: '0.8rem', md: '0.875rem' },

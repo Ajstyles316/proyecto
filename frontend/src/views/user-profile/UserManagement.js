@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useUser, useIsReadOnlyForModule } from '../../components/hooks';
-import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip } from '@mui/material';
+import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip, TextField } from '@mui/material';
 import RegistrosDesactivadosButton from '../dashboard/components/RegistrosDesactivados/RegistrosDesactivadosButton';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
@@ -10,7 +10,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-
 const cargos = ["Encargado", "Técnico"];
 const MODULOS = [
   'Maquinaria',
@@ -34,7 +33,6 @@ const MODULOS_SEGUIMIENTO = [
   'Pronóstico',
   'Reportes',
 ];
-
 // Helper para mostrar usuario bonito
 const getAccionChip = (accion) => {
   // Acciones legibles
@@ -113,12 +111,10 @@ const getAccionChip = (accion) => {
   }
   return <Chip label={accion} size="small" sx={{ fontWeight: 600, bgcolor: '#e0e0e0', letterSpacing: 0.2 }} />;
 };
-
 function capitalizeWords(str) {
   if (!str) return '';
   return str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
-
 // Función mejorada para capitalizar acciones y módulos
 function formatActivityText(text) {
   if (!text) return '';
@@ -161,22 +157,20 @@ function formatActivityText(text) {
   formatted = formatted.replace(/\b\w/g, l => l.toUpperCase());
   return formatted;
 }
-
 // Función para procesar mensajes y reemplazar IDs con nombres reales
 function formatMessage(message, accion) {
   if (!message) return '';
-  
   // Si es un objeto, procesarlo
   if (typeof message === 'object' && message !== null) {
     if (accion === 'cambio_permisos' && message.usuario_afectado_email) {
-      return `Usuario: ${message.usuario_afectado_nombre || ''} (${message.usuario_afectado_email || ''})\nCargo: ${message.usuario_afectado_cargo || ''}\nUnidad: ${message.usuario_afectado_unidad || ''}`;
+      return `Usuario: ${message.usuario_afectado_nombre || ''} (${message.usuario_afectado_email || ''})
+Cargo: ${message.usuario_afectado_cargo || ''}
+Unidad: ${message.usuario_afectado_unidad || ''}`;
     }
-    
     // Para otros objetos, procesar cada campo
     return Object.entries(message).map(([k, v]) => {
       const key = capitalizeWords(k);
       let value = String(v);
-      
       // Reemplazar IDs con nombres más legibles
       if (k === 'maquinaria_id' || k === 'maquinaria') {
         value = 'Maquinaria'; 
@@ -203,17 +197,13 @@ function formatMessage(message, accion) {
       } else if (k === 'usuario_id' || k === 'usuario') {
         value = 'Usuario';
       }
-      
       return `${key}: ${value}`;
     }).join('\n');
   }
-  
   // Si es un string, procesarlo
   let formatted = String(message);
-  
   // Cambiar "Eliminó" por "Desactivó"
   formatted = formatted.replace(/Eliminó/gi, 'Desactivó');
-  
   // Corregir capitalización de palabras que terminan en "ión"
   formatted = formatted.replace(/sesióN/gi, 'Sesión');
   formatted = formatted.replace(/asignacióN/gi, 'Asignación');
@@ -221,7 +211,6 @@ function formatMessage(message, accion) {
   formatted = formatted.replace(/inspeccióN/gi, 'Inspección');
   formatted = formatted.replace(/pronósticO/gi, 'Pronóstico');
   formatted = formatted.replace(/reporteS/gi, 'Reportes');
-  
   // Cambiar "desactivar_control" por "Desactivar Control"
   formatted = formatted.replace(/desactivar_control/gi, 'Desactivar Control');
   formatted = formatted.replace(/desactivar_asignacion/gi, 'Desactivar Asignación');
@@ -231,7 +220,6 @@ function formatMessage(message, accion) {
   formatted = formatted.replace(/desactivar_soat/gi, 'Desactivar SOAT');
   formatted = formatted.replace(/desactivar_impuesto/gi, 'Desactivar Impuesto');
   formatted = formatted.replace(/desactivar_depreciacion/gi, 'Desactivar Depreciación');
-  
   // Eliminar completamente los IDs y patrones específicos
   formatted = formatted.replace(/Con ID [a-f0-9]{24}/gi, '');
   formatted = formatted.replace(/Para Maquinaria [a-f0-9]{24}/gi, '');
@@ -247,16 +235,13 @@ function formatMessage(message, accion) {
   formatted = formatted.replace(/pronostico [a-f0-9]{24}/gi, 'pronóstico');
   formatted = formatted.replace(/reporte [a-f0-9]{24}/gi, 'reportes');
   formatted = formatted.replace(/usuario [a-f0-9]{24}/gi, 'usuario');
-  
   // Limpiar espacios extra y caracteres no deseados
   formatted = formatted.replace(/\s+/g, ' ').trim();
   formatted = formatted.replace(/^\s*,\s*/, ''); // Eliminar comas al inicio
   formatted = formatted.replace(/\s*,\s*$/, ''); // Eliminar comas al final
-  
   // Capitalizar y limpiar
   return capitalizeWords(formatted);
 }
-
 const UserManagement = () => {
   const { user } = useUser();
   const isReadOnly = useIsReadOnlyForModule('Usuarios');
@@ -265,17 +250,19 @@ const UserManagement = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [modalPermisos, setModalPermisos] = useState({ open: false, usuario: null, permisos: {} });
   const [usuariosRegistrados, setUsuariosRegistrados] = useState([]);
-
   // Auditoría
   const [seguimientoModal, setSeguimientoModal] = useState(false);
   const [seguimientoLoading, setSeguimientoLoading] = useState(false);
   const [seguimientoError, setSeguimientoError] = useState('');
   const [seguimientoData, setSeguimientoData] = useState([]);
   const [seguimientoFilters, setSeguimientoFilters] = useState({ usuario: '', modulo: '', desde: '', hasta: '' });
-
+  
+  // Nuevo estado para el modal de desactivación de usuario
+  const [desactivarUsuarioModal, setDesactivarUsuarioModal] = useState({ open: false, usuarioId: null });
+  const [justificacionDesactivacion, setJustificacionDesactivacion] = useState('');
+  
   // Filtros únicos para selects
   const seguimientoUsuarios = usuariosRegistrados.map(u => ({ nombre: u.Nombre, email: u.Email, cargo: u.Cargo, unidad: u.Unidad }));
-
   // Filtrado de auditoría
   const filteredSeguimiento = seguimientoData.filter(row => {
     const { usuario, modulo, desde, hasta } = seguimientoFilters;
@@ -286,13 +273,11 @@ const UserManagement = () => {
     if (hasta) ok = ok && row.fecha_hora && new Date(row.fecha_hora) <= new Date(hasta + 'T23:59:59');
     return ok;
   });
-
   // --- PAGINACIÓN EN EL MODAL DE SEGUIMIENTO ---
   const [seguimientoPage, setSeguimientoPage] = useState(1);
   const rowsPerPage = 10;
   const paginatedSeguimiento = filteredSeguimiento.slice((seguimientoPage - 1) * rowsPerPage, seguimientoPage * rowsPerPage);
   const totalSeguimientoPages = Math.ceil(filteredSeguimiento.length / rowsPerPage);
-
   const fetchUsuarios = () => {
     setLoading(true);
     fetch('http://localhost:8000/api/usuarios/', {
@@ -309,16 +294,13 @@ const UserManagement = () => {
         setLoading(false);
       });
   };
-
   useEffect(() => {
     if (!user || (user.Cargo.toLowerCase() !== 'admin' && user.Cargo.toLowerCase() !== 'encargado')) return;
     fetchUsuarios();
   }, [user]);
-
   const [cargoLoading, setCargoLoading] = useState({});
   const [actionLoading, setActionLoading] = useState({});
   const [permisosLoading, setPermisosLoading] = useState(false);
-
   const handleCargoChange = (id, newCargo) => {
     setCargoLoading(prev => ({ ...prev, [id]: true }));
     fetch(`http://localhost:8000/api/usuarios/${id}/cargo/`, {
@@ -339,27 +321,50 @@ const UserManagement = () => {
         setCargoLoading(prev => ({ ...prev, [id]: false }));
       });
   };
+  
+  // Modificada para usar el modal de justificación
   const handleEliminarUsuario = (id) => {
-    if (!window.confirm('¿Seguro que deseas desactivar este usuario?')) return;
-    setActionLoading(prev => ({ ...prev, [`delete_${id}`]: true }));
-    fetch(`http://localhost:8000/api/usuarios/${id}/`, {
-      method: 'DELETE',
-      headers: { 'X-User-Email': user.Email }
-    })
-      .then(res => {
-        if (res.ok) {
-          setSnackbar({ open: true, message: 'Usuario desactivado exitosamente!', severity: 'success' });
-          fetchUsuarios(); // Recargar la lista de usuarios
-        } else {
-          setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' });
-        }
-      })
-      .catch(() => setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' }))
-      .finally(() => {
-        setActionLoading(prev => ({ ...prev, [`delete_${id}`]: false }));
-      });
+    setDesactivarUsuarioModal({ open: true, usuarioId: id });
+    setJustificacionDesactivacion('');
   };
-
+  
+  const confirmarDesactivarUsuario = () => {
+  const { usuarioId } = desactivarUsuarioModal;
+  if (!usuarioId || !justificacionDesactivacion.trim()) {
+    setSnackbar({ 
+      open: true, 
+      message: 'La justificación es obligatoria', 
+      severity: 'error' 
+    });
+    return;
+  }
+  
+  setActionLoading(prev => ({ ...prev, [`delete_${usuarioId}`]: true }));
+  fetch(`http://localhost:8000/api/usuarios/${usuarioId}/`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-User-Email': user.Email
+    },
+    body: JSON.stringify({ 
+      justificacion: justificacionDesactivacion.trim(),
+      desactivado_por: user.Email
+    })
+  })
+  .then(res => {
+    if (res.ok) {
+      setSnackbar({ open: true, message: 'Usuario desactivado exitosamente!', severity: 'success' });
+      fetchUsuarios(); // Recargar la lista de usuarios
+    } else {
+      setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' });
+    }
+  })
+  .catch(() => setSnackbar({ open: true, message: 'Error al desactivar usuario', severity: 'error' }))
+  .finally(() => {
+    setActionLoading(prev => ({ ...prev, [`delete_${usuarioId}`]: false }));
+    setDesactivarUsuarioModal({ open: false, usuarioId: null });
+  });
+};
   const handleReactivarUsuario = (id) => {
     if (!window.confirm('¿Seguro que deseas reactivar este usuario?')) return;
     setActionLoading(prev => ({ ...prev, [`reactivate_${id}`]: true }));
@@ -380,7 +385,6 @@ const UserManagement = () => {
         setActionLoading(prev => ({ ...prev, [`reactivate_${id}`]: false }));
       });
   };
-
   const handleOpenPermisos = (usuario) => {
     // Si el usuario no tiene permisos aún, usar defaultPermisos
     setModalPermisos({
@@ -414,7 +418,6 @@ const UserManagement = () => {
         setPermisosLoading(false);
       });
   };
-
   const handleOpenSeguimiento = () => {
     setSeguimientoModal(true);
     setSeguimientoLoading(true);
@@ -451,32 +454,17 @@ const UserManagement = () => {
     setSeguimientoError('');
     setSeguimientoFilters({ usuario: '', modulo: '', desde: '', hasta: '' });
   };
-
   if (!user || (user.Cargo.toLowerCase() !== 'admin' && user.Cargo.toLowerCase() !== 'encargado')) {
     return <Typography variant="h6" color="error">Acceso denegado</Typography>;
   }
-
   const isAdmin = user.Cargo.toLowerCase() === 'admin';
   const isEncargado = user.Cargo.toLowerCase() === 'encargado';
-
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" mb={2} fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
       {(isAdmin || isEncargado) && (
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<HistoryIcon />}
-            sx={{ borderRadius: 2, fontWeight: 600, boxShadow: 2, textTransform: 'none' }}
-            onClick={handleOpenSeguimiento}
-            disabled={isReadOnly}
-          >
-            Registro de Actividad
-          </Button>
-          
-          {/* Botón de Registros Desactivados (solo para admin y encargados) */}
-          <RegistrosDesactivadosButton maquinariaId="all" isEncargado={isAdmin || isEncargado} />
+                          <RegistrosDesactivadosButton maquinariaId="all" isAdmin={isAdmin} />
         </Box>
       )}
       <Paper sx={{ overflowX: 'auto', borderRadius: 3, boxShadow: 3 }}>
@@ -580,7 +568,43 @@ const UserManagement = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
+      
+      {/* Modal para desactivar usuario */}
+      <Dialog open={desactivarUsuarioModal.open} onClose={() => setDesactivarUsuarioModal({ open: false, usuarioId: null })}>
+        <DialogTitle>Desactivar usuario</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Por favor, indique la razón de la desactivación:
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Justificación"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={justificacionDesactivacion}
+            onChange={(e) => setJustificacionDesactivacion(e.target.value)}
+            multiline
+            rows={3}
+            placeholder="Ej: El usuario ya no forma parte del equipo..."
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDesactivarUsuarioModal({ open: false, usuarioId: null })} color="primary">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={confirmarDesactivarUsuario} 
+            color="error"
+            variant="contained"
+            disabled={!justificacionDesactivacion.trim()}
+          >
+            Desactivar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       <Dialog open={modalPermisos.open} onClose={handleClosePermisos} maxWidth="md" fullWidth>
         <DialogTitle>Permisos de {modalPermisos.usuario?.Nombre || ''}</DialogTitle>
         <DialogContent>
@@ -679,7 +703,6 @@ const UserManagement = () => {
           <Button onClick={handleClosePermisos} variant="contained" color="error">Salir</Button>
         </DialogActions>
       </Dialog>
-
       <Dialog open={seguimientoModal} onClose={handleCloseSeguimiento} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
           <HistoryIcon color="secondary" /> Registro de Actividad
@@ -832,5 +855,4 @@ const UserManagement = () => {
     </Box>
   );
 };
-
-export default UserManagement; 
+export default UserManagement;

@@ -51,18 +51,31 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <Table>
+    <Table sx={{
+      '& .MuiTableCell-root': {
+        borderBottom: '1px solid rgba(224, 224, 224, 1)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+      },
+      '& .MuiTableHead-root .MuiTableCell-root': {
+        borderBottom: '2px solid rgba(224, 224, 224, 1)',
+        fontWeight: 600,
+      }
+    }}>
       <TableHead>
-        <TableRow>
-          <TableCell>Placa</TableCell>
-          <TableCell>Detalle</TableCell>
-          <TableCell>Importe</TableCell>
-          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
+        <TableRow sx={{ bgcolor: 'grey.50' }}>
+          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Detalle</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Importe</TableCell>
+          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {itvs.map((itv) => (
-          <TableRow key={itv._id}>
+        {itvs.map((itv, index) => (
+          <TableRow key={itv._id} sx={{
+            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+          }}>
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{itv.detalle}</TableCell>
             <TableCell>{itv.importe}</TableCell>

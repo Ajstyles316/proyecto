@@ -212,18 +212,33 @@ const ActivosTabla = ({ activos, loading }) => {
       ) : (
         <>
           <TableContainer sx={{ maxHeight: 600 }}>
-            <Table stickyHeader>
+            <Table stickyHeader sx={{
+              '& .MuiTableCell-root': {
+                borderBottom: '1px solid rgba(224, 224, 224, 1)',
+              },
+              '& .MuiTableRow-root:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                transform: 'scale(1.01)',
+                transition: 'all 0.2s ease'
+              },
+              '& .MuiTableHead-root .MuiTableCell-root': {
+                borderBottom: '2px solid rgba(224, 224, 224, 1)',
+                fontWeight: 600,
+              }
+            }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'primary.main' }}>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    color: 'white'
                   }}>
                     Bienes de Uso
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    color: 'white'
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       Años de Vida Útil
@@ -245,13 +260,15 @@ const ActivosTabla = ({ activos, loading }) => {
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600,
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    color: 'white'
                   }}>
                     Coeficiente
                   </TableCell>
                   <TableCell sx={{ 
                     fontWeight: 600, 
-                    fontSize: '0.9rem'
+                    fontSize: '0.9rem',
+                    color: 'white'
                   }}>
                     Estado
                   </TableCell>

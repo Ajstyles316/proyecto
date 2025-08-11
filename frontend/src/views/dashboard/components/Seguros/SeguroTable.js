@@ -51,19 +51,32 @@ const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading, isRe
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <Table>
+    <Table sx={{
+      '& .MuiTableCell-root': {
+        borderBottom: '1px solid rgba(224, 224, 224, 1)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(25, 118, 210, 0.04)',
+      },
+      '& .MuiTableHead-root .MuiTableCell-root': {
+        borderBottom: '2px solid rgba(224, 224, 224, 1)',
+        fontWeight: 600,
+      }
+    }}>
       <TableHead>
-        <TableRow>
-          <TableCell>Placa</TableCell>
-          <TableCell>Número 2024</TableCell>
-          <TableCell>Importe</TableCell>
-          <TableCell>Detalle</TableCell>
-          {showActionsColumn && <TableCell align="right">Acciones</TableCell>}
+        <TableRow sx={{ bgcolor: 'grey.50' }}>
+          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Número 2024</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Importe</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Detalle</TableCell>
+          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {seguros.map((seguro) => (
-          <TableRow key={seguro._id}>
+        {seguros.map((seguro, index) => (
+          <TableRow key={seguro._id} sx={{
+            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+          }}>
             <TableCell>{maquinariaPlaca}</TableCell>
             <TableCell>{seguro.numero_2024}</TableCell>
             <TableCell>{seguro.importe}</TableCell>
