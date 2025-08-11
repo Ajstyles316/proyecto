@@ -68,7 +68,7 @@ const ReportesDashboard = ({
 
     // Análisis de datos
     const secciones = [
-      { key: 'control', label: 'Control', data: control },
+      { key: 'control', label: 'Control y Seguimiento', data: control },
       { key: 'asignacion', label: 'Asignación', data: asignacion },
       { key: 'mantenimiento', label: 'Mantenimiento', data: mantenimiento },
       { key: 'soat', label: 'SOAT', data: soat },

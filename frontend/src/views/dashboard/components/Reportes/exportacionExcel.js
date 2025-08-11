@@ -105,7 +105,7 @@ function exportXLS(data, filename = 'reporte') {
 
   // Otras tablas
   const tablas = [
-    { key: 'control', label: 'Control' },
+    { key: 'control', label: 'Control y Seguimiento' },
     { key: 'asignacion', label: 'Asignación' },
     { key: 'mantenimiento', label: 'Mantenimiento' },
     { key: 'soat', label: 'SOAT' },

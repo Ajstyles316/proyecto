@@ -198,7 +198,7 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     doc.setTextColor(33, 33, 33);
     let intro = '';
     switch (title) {
-      case 'Control':
+      case 'Control y Seguimiento':
         intro = 'Esta sección muestra los controles realizados sobre la maquinaria.';
         break;
       case 'Asignación':
@@ -299,7 +299,7 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   }
   
   // Renderizar todas las secciones
-  renderSection('Control', control);
+  renderSection('Control y Seguimiento', control);
   renderSection('Asignación', asignacion);
   renderSection('Mantenimiento', mantenimiento);
   renderSection('SOAT', soat);
@@ -656,7 +656,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
 
   // Otras tablas
   const tablas = [
-    { key: 'control', label: 'Control' },
+    { key: 'control', label: 'Control y Seguimiento' },
     { key: 'asignacion', label: 'Asignación' },
     { key: 'mantenimiento', label: 'Mantenimiento' },
     { key: 'soat', label: 'SOAT' },

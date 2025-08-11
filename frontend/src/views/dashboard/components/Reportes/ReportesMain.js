@@ -218,7 +218,7 @@ const ReportesMain = () => {
                 fields={maquinariaFields}
                 emptyMessage="No hay datos de maquinaria"
               />
-              <TablaGenerica title="Control" data={control} ocultarCampos={ocultarCampos} reemplazos={{ 'gerente': 'Gerente', 'encargado': 'Encargado', 'estado': 'Estado', 'ubicacion': 'Ubicación' }} />
+              <TablaGenerica title="Control y Seguimiento" data={control} ocultarCampos={ocultarCampos} reemplazos={{ 'gerente': 'Gerente', 'encargado': 'Encargado', 'estado': 'Estado', 'ubicacion': 'Ubicación' }} />
               <TablaGenerica title="Asignación" data={asignacion} ocultarCampos={ocultarCampos} reemplazos={{ 'fecha_asignacion': 'Fecha de Asignación', 'recorrido_km': 'Recorrido Km', 'encargado': 'Encargado', 'ubicacion': 'Ubicación' }} />
               <TablaGenerica title="Mantenimiento" data={mantenimiento} ocultarCampos={ocultarCampos} />
               <TablaGenerica title="SOAT" data={soat} ocultarCampos={ocultarCampos} />

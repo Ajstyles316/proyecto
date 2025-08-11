@@ -14,6 +14,8 @@ import BlockIcon from '@mui/icons-material/Block';
 import EditIcon from '@mui/icons-material/Edit';
 
 
+const LABEL_OVERRIDES = { Control: 'Control y Seguimiento' };
+
 const maquinariaImage = 'https://images.unsplash.com/photo-1511918984145-48de785d4c4e?auto=format&fit=crop&w=400&q=80';
 
 const MaquinariaDetalle = ({
@@ -210,7 +212,7 @@ const MaquinariaDetalle = ({
               onClick={() => setActiveSection(sec)}
               sx={{ minWidth: 120, justifyContent: 'flex-start', py: 1 }}
             >
-              {sec}
+              {LABEL_OVERRIDES[sec] || sec}
             </Button>
           ))}
         </Box>

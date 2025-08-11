@@ -13,7 +13,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 const cargos = ["Encargado", "Técnico"];
 const MODULOS = [
   'Maquinaria',
-  'Control',
+  'Control y Seguimiento',
   'Asignación',
   'Mantenimiento',
   'SOAT',
