@@ -311,12 +311,18 @@ const UserManagement = () => {
       },
       body: JSON.stringify({ Cargo: newCargo })
     })
-      .then(res => res.json())
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || 'Error al actualizar cargo');
+        }
+        return data;
+      })
       .then(data => {
         setUsuarios(usuarios => usuarios.map(u => (u._id?.$oid || u._id) === id ? data : u));
         setSnackbar({ open: true, message: 'Cargo actualizado', severity: 'success' });
       })
-      .catch(() => setSnackbar({ open: true, message: 'Error al actualizar cargo', severity: 'error' }))
+      .catch((e) => setSnackbar({ open: true, message: e.message || 'Error al actualizar cargo', severity: 'error' }))
       .finally(() => {
         setCargoLoading(prev => ({ ...prev, [id]: false }));
       });

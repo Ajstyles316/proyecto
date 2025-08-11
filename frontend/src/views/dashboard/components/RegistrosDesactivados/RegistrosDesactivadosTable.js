@@ -16,16 +16,17 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
 } from '@mui/material';
 import RestoreIcon from '@mui/icons-material/Restore';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useState } from 'react';
 
-const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loading, isAdmin = false }) => {
+const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onEliminar, loading, isAdmin = false }) => {
   const [expandedSections, setExpandedSections] = useState({});
   const [reactivarModal, setReactivarModal] = useState({ open: false, tipo: '', recordId: null, maquinariaId: null });
+  const [eliminarModal, setEliminarModal] = useState({ open: false, tipo: '', recordId: null, maquinariaId: null });
   
   const handleToggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -52,6 +53,22 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
     const { tipo, recordId, maquinariaId } = reactivarModal;
     await onReactivar(tipo, recordId, maquinariaId);
     setReactivarModal({ open: false, tipo: '', recordId: null, maquinariaId: null });
+  };
+
+  const handleEliminar = async (tipo, recordId, maquinariaId) => {
+    if (!isAdmin) {
+      alert('Solo los administradores pueden eliminar registros');
+      return;
+    }
+    setEliminarModal({ open: true, tipo, recordId, maquinariaId });
+  };
+
+  const confirmarEliminar = async () => {
+    const { tipo, recordId, maquinariaId } = eliminarModal;
+    if (onEliminar) {
+      await onEliminar(tipo, recordId, maquinariaId);
+    }
+    setEliminarModal({ open: false, tipo: '', recordId: null, maquinariaId: null });
   };
   
   if (loading) {
@@ -82,7 +99,6 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
       // Para estos campos específicos, aplicar formateo
       if (fieldName === 'desactivado_por' || fieldName === 'justificacion_desactivacion') {
         if (typeof value === 'string') {
-          // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
           if (value.includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(value)) {
             return value;
           }
@@ -106,18 +122,16 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
             { label: 'Gestión', value: formatValue(record['Gestión'] || record['gestion']) },
             { label: 'Placa', value: formatValue(record['Placa'] || record['placa']) },
             { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
-            
+            { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
       case 'Control':
         return {
           title: 'Control',
           fields: [
+            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
             { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
             { label: 'Estado', value: formatValue(record['Estado'] || record['estado']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -127,8 +141,6 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
           fields: [
             { label: 'Encargado', value: formatValue(record['Encargado'] || record['encargado']) },
             { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -136,12 +148,10 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
         return {
           title: 'Mantenimiento',
           fields: [
+            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
             { label: 'Tipo', value: formatValue(record['Tipo'] || record['tipo']) },
             { label: 'Cantidad', value: record['Cantidad'] || record['cantidad'] || '—' },
             { label: 'Ubicación', value: formatValue(record['Ubicación'] || record['ubicacion']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -149,12 +159,10 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
         return {
           title: 'Seguro',
           fields: [
+            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
             { label: 'N° 2024', value: record['N° 2024'] || record['numero_2024'] || '—' },
             { label: 'Importe', value: record['Importe'] || record['importe'] || '—' },
             { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -162,11 +170,9 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
         return {
           title: 'ITV',
           fields: [
+            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
             { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
             { label: 'Importe', value: record['Importe'] || record['importe'] || '—' },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -174,11 +180,9 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
         return {
           title: 'SOAT',
           fields: [
+            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
             { label: 'Importe 2024', value: record['Importe 2024'] || record['importe_2024'] || '—' },
             { label: 'Importe 2025', value: record['Importe 2025'] || record['importe_2025'] || '—' },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -186,11 +190,9 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
         return {
           title: 'Impuesto',
           fields: [
+            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
             { label: 'Importe 2023', value: record['Importe 2023'] || record['importe_2023'] || '—' },
             { label: 'Importe 2024', value: record['Importe 2024'] || record['importe_2024'] || '—' },
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -202,8 +204,6 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
             { label: 'Bien de Uso', value: formatValue(record['Bien de Uso'] || record['bien_uso']) },
             { label: 'Vida Útil', value: record['Vida Útil'] || record['vida_util'] || '—' },
             { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Desactivado por', value: formatValue(record['desactivado_por'], 'desactivado_por') },
-            { label: 'Justificación', value: formatValue(record['justificacion_desactivacion'], 'justificacion_desactivacion') },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -286,28 +286,38 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
                     const recordId = record._id || record.id || record.Email || record.Codigo;
                     // Para maquinaria, usar su propio ID como maquinariaId
                     const maqId = tipo === 'Maquinaria' ? recordId : record.maquinaria_id || record.maquinaria;
-                    
+                    // Obtener los datos de visualización para este registro (no reutilizar los del primero)
+                    const rowDisplay = getRecordDisplayData(tipo, record);
+
                     return (
-                      <TableRow key={recordId} sx={{
+                      <TableRow key={recordId || index} sx={{
                         '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
                       }}>
-                        {displayData.fields.map((field, fieldIndex) => (
+                        {rowDisplay.fields.map((field, fieldIndex) => (
                           <TableCell key={fieldIndex}>
                             {field.value || '—'}
                           </TableCell>
                         ))}
                         <TableCell align="right">
                           {isAdmin ? (
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => {
-                                console.log('Reactivando:', { tipo, recordId, maquinariaId: maqId, record });
-                                handleReactivar(tipo, recordId, maqId);
-                              }}
-                            >
-                              <RestoreIcon sx={{ color: '#4caf50' }} />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <IconButton
+                                size="small"
+                                color="success"
+                                title="Reactivar"
+                                onClick={() => handleReactivar(tipo, recordId, maqId)}
+                              >
+                                <RestoreIcon sx={{ color: '#4caf50' }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                title="Eliminar permanentemente"
+                                onClick={() => handleEliminar(tipo, recordId, maqId)}
+                              >
+                                <DeleteForeverIcon sx={{ color: '#e53935' }} />
+                              </IconButton>
+                            </Box>
                           ) : (
                             <Typography variant="caption" color="textSecondary">
                               Solo administradores
@@ -348,6 +358,31 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal de confirmación para eliminación permanente */}
+      <Dialog open={eliminarModal.open} onClose={() => setEliminarModal({ open: false, tipo: '', recordId: null, maquinariaId: null })}>
+        <DialogTitle>Eliminar permanentemente</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Esta acción no se puede deshacer. ¿Eliminar este {eliminarModal.tipo.toLowerCase()} para siempre?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setEliminarModal({ open: false, tipo: '', recordId: null, maquinariaId: null })} 
+            color="primary"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={confirmarEliminar} 
+            color="error"
+            variant="contained"
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
@@ -355,6 +390,7 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, loadin
 RegistrosDesactivadosTable.propTypes = {
   registrosDesactivados: PropTypes.object.isRequired,
   onReactivar: PropTypes.func.isRequired,
+  onEliminar: PropTypes.func,
   loading: PropTypes.bool.isRequired,
   isAdmin: PropTypes.bool,
 };

@@ -72,7 +72,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       let url;
       switch (tipo) {
         case 'Usuario':
-          url = `http://localhost:8000/api/usuarios/${recordId}/reactivar/`;
+          url = `http://localhost:8000/usuarios/${recordId}/reactivar/`;
           break;
         case 'Control':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${recordId}/`;
@@ -130,6 +130,88 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
     }
   };
 
+  const handleEliminar = async (tipo, recordId, maquinariaId) => {
+    if (!isAdmin) {
+      setSnackbar({ 
+        open: true, 
+        message: 'Solo los administradores pueden eliminar registros', 
+        severity: 'error' 
+      });
+      return;
+    }
+
+    try {
+      let url;
+      switch (tipo) {
+        case 'Usuario':
+          url = `http://localhost:8000/usuarios/${recordId}/?permanent=true`;
+          break;
+        case 'Maquinaria':
+          url = `http://localhost:8000/api/maquinaria/${recordId}/?permanent=true`;
+          break;
+        case 'Control':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${recordId}/?permanent=true`;
+          break;
+        case 'Asignación':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${recordId}/?permanent=true`;
+          break;
+        case 'Mantenimiento':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${recordId}/?permanent=true`;
+          break;
+        case 'Seguro':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${recordId}/?permanent=true`;
+          break;
+        case 'ITV':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${recordId}/?permanent=true`;
+          break;
+        case 'SOAT':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${recordId}/?permanent=true`;
+          break;
+        case 'Impuesto':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${recordId}/?permanent=true`;
+          break;
+        case 'Depreciación':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/depreciaciones/${recordId}/?permanent=true`;
+          break;
+        default:
+          throw new Error('Tipo de registro no válido');
+      }
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('No tienes permisos para eliminar permanentemente');
+        }
+        throw new Error('Error al eliminar el registro');
+      }
+
+      setSnackbar({ 
+        open: true, 
+        message: `${tipo} eliminado permanentemente`, 
+        severity: 'success' 
+      });
+      // Remover del estado local para respuesta inmediata
+      setRegistrosDesactivados(prev => {
+        const next = { ...prev };
+        const arr = next[tipo] || [];
+        next[tipo] = arr.filter(r => (r._id || r.id || r.Email || r.Codigo) !== recordId);
+        return next;
+      });
+      // Luego refrescar desde backend
+      await fetchRegistrosDesactivados();
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: `Error: ${error.message}`, 
+        severity: 'error' 
+      });
+    }
+  };
+
   // Siempre cargar los registros desactivados cuando se muestra el componente
   React.useEffect(() => {
     if (isAdmin) {
@@ -168,6 +250,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
           <RegistrosDesactivadosTable
             registrosDesactivados={registrosDesactivados}
             onReactivar={handleReactivar}
+            onEliminar={handleEliminar}
             loading={loading}
             isAdmin={isAdmin}
           />

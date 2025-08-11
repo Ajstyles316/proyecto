@@ -141,8 +141,10 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
       }
 
       // Para usuarios y maquinaria, usar endpoint diferente
-      if (tipo === 'Usuario' || tipo === 'Maquinaria') {
-        url = `http://localhost:8000/api/${endpoint}/${recordId}/`;
+      if (tipo === 'Usuario') {
+        url = `http://localhost:8000/usuarios/${recordId}/reactivar/`;
+      } else if (tipo === 'Maquinaria') {
+        url = `http://localhost:8000/api/maquinaria/${recordId}/`;
       } else {
         // Para otros tipos, usar endpoint con maquinaria_id
         if (!maquinariaId) {
@@ -182,6 +184,81 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
       fetchRegistrosDesactivados();
     } catch (error) {
       console.error('Error reactivating:', error);
+      setSnackbar({ 
+        open: true, 
+        message: `Error: ${error.message}`, 
+        severity: 'error' 
+      });
+    }
+  };
+
+  const handleEliminar = async (tipo, recordId, maquinariaId) => {
+    try {
+      if (!isAdmin) {
+        setSnackbar({ 
+          open: true, 
+          message: 'Solo los administradores pueden eliminar registros', 
+          severity: 'error' 
+        });
+        return;
+      }
+
+      const tipoToEndpoint = {
+        'Usuario': 'usuarios',
+        'Control': 'control',
+        'Asignación': 'asignacion',
+        'Mantenimiento': 'mantenimiento',
+        'Seguro': 'seguros',
+        'ITV': 'itv',
+        'SOAT': 'soat',
+        'Impuesto': 'impuestos',
+        'Maquinaria': 'maquinaria',
+        'Depreciación': 'depreciaciones'
+      };
+
+      const endpoint = tipoToEndpoint[tipo];
+      if (!endpoint) {
+        throw new Error(`Tipo de registro no soportado: ${tipo}`);
+      }
+
+      let url;
+      if (tipo === 'Usuario') {
+        url = `http://localhost:8000/usuarios/${recordId}/?permanent=true`;
+      } else if (tipo === 'Maquinaria') {
+        url = `http://localhost:8000/api/maquinaria/${recordId}/?permanent=true`;
+      } else {
+        if (!maquinariaId) {
+          throw new Error(`No se puede eliminar este registro de ${tipo} porque no se encontró la maquinaria asociada.`);
+        }
+        url = `http://localhost:8000/api/maquinaria/${maquinariaId}/${endpoint}/${recordId}/?permanent=true`;
+      }
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('No tienes permisos para eliminar permanentemente');
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Error al eliminar el registro: ${response.statusText} - ${JSON.stringify(errorData)}`);
+      }
+
+      setSnackbar({ open: true, message: 'Registro eliminado permanentemente', severity: 'success' });
+      // Remover del estado local para evitar que quede visible si el backend aún devuelve el registro
+      setRegistrosDesactivados(prev => {
+        const next = { ...prev };
+        const arr = next[tipo] || [];
+        next[tipo] = arr.filter(r => (r._id || r.id || r.Email || r.Codigo) !== recordId);
+        return next;
+      });
+      // Además refrescar desde backend
+      fetchRegistrosDesactivados();
+    } catch (error) {
       setSnackbar({ 
         open: true, 
         message: `Error: ${error.message}`, 
@@ -240,6 +317,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
             <RegistrosDesactivadosTable 
               registrosDesactivados={registrosDesactivados}
               onReactivar={handleReactivar}
+              onEliminar={handleEliminar}
               isAdmin={isAdmin}
             />
           )}

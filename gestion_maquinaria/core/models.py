@@ -32,6 +32,9 @@ class Impuesto:
 class Usuario:
     collection_name = "usuarios"
 
+class VerificacionRegistro:
+    collection_name = "verificaciones_registro"
+
 class Depreciacion:
     collection_name = "depreciaciones"
 

@@ -5,12 +5,15 @@ from .views import (
     RegistroView,
     LoginView,
     LogoutView,  # <-- agregar importación
+    VerificarCodigoRegistroView,
+    ReenviarCodigoRegistroView,
     PronosticoSummaryView,
     PronosticoExcelUploadView,
     UsuarioListView,
     UsuarioCargoUpdateView,
     UsuarioPermisoUpdateView,
     UsuarioDeleteView,
+    MaquinariaDetailView,
     DepreciacionesGeneralView,
     DepreciacionesListView,
     DepreciacionesDetailView,
@@ -52,6 +55,8 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),  # <-- agregar URL
     path('registro/', RegistroView.as_view(), name='registro'),
+    path('registro/verificar/', VerificarCodigoRegistroView.as_view(), name='registro-verificar'),
+    path('registro/reenviar/', ReenviarCodigoRegistroView.as_view(), name='registro-reenviar'),
     path('dashboard/', DashboardStatsView.as_view(), name='dashboard'),
     path('api/pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
     path('api/pronostico/excel-upload/', PronosticoExcelUploadView.as_view(), name='pronostico-excel-upload'),
@@ -76,6 +81,8 @@ urlpatterns = [
     path('api/maquinaria/<str:maquinaria_id>/desactivados/', RegistrosDesactivadosView.as_view(), name='registros-desactivados'),
     path('api/registros-desactivados/', TodosRegistrosDesactivadosView.as_view(), name='todos-registros-desactivados'),
     path('api/test/', test_api, name='test-api'),
+    # Detalle de maquinaria (GET/PUT/PATCH/DELETE)
+    path('api/maquinaria/<str:id>/', MaquinariaDetailView.as_view(), name='maquinaria-detail'),
     
     # URLs específicas para cada sección
     path('api/maquinaria/<str:maquinaria_id>/control/', include([

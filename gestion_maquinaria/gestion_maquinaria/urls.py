@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 # Importar las nuevas vistas basadas en clases
 from core.views import (
     RegistroView, LoginView,
+    VerificarCodigoRegistroView, ReenviarCodigoRegistroView,
     MaquinariaListView, MaquinariaDetailView, MaquinariaOptionsView,
     HistorialControlListView, HistorialControlDetailView,
     ActaAsignacionListView, ActaAsignacionDetailView,
@@ -39,6 +40,8 @@ class CustomApiRoot(APIView):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('registro/', RegistroView.as_view(), name='registro'),
+    path('registro/verificar/', VerificarCodigoRegistroView.as_view(), name='registro-verificar'),
+    path('registro/reenviar/', ReenviarCodigoRegistroView.as_view(), name='registro-reenviar'),
     path('login/', LoginView.as_view(), name='login'),
     # API root navegable y rutas automáticas para maquinaria
     path('api/', CustomApiRoot.as_view(), name='api-root'),

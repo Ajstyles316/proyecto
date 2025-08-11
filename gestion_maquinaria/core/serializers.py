@@ -177,6 +177,13 @@ class RegistroSerializer(serializers.Serializer):
     def update(self, instance, validated_data):
         return validated_data
 
+class VerificarCodigoSerializer(serializers.Serializer):
+    Email = serializers.EmailField(required=True)
+    codigo = serializers.CharField(required=True, min_length=6, max_length=6)
+
+class ReenviarCodigoSerializer(serializers.Serializer):
+    Email = serializers.EmailField(required=True)
+
     def create(self, validated_data):
         return validated_data
 

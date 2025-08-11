@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -18,35 +18,84 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 
 const ResetPasswordModal = ({ open, onClose }) => {
   const [email, setEmail] = useState('');
+  const [codigo, setCodigo] = useState('');
   const [nuevaPassword, setNuevaPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+  // Enviar código de 6 dígitos al correo
+  const handleSendCodigo = async () => {
+    if (!email) {
+      setSnackbar({
+        open: true,
+        message: 'El correo es requerido',
+        severity: 'error',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/api/usuarios/send_codigo/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSnackbar({
+          open: true,
+          message: 'Código enviado al correo electrónico',
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: data.error || 'Error al enviar el código',
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Error de conexión. Verifica que el servidor esté corriendo.',
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verificar código y restablecer la contraseña
   const handleResetPassword = async () => {
-    if (!email || !nuevaPassword || !confirmPassword) {
-      setSnackbar({ 
-        open: true, 
-        message: 'Todos los campos son requeridos', 
-        severity: 'error' 
+    if (!codigo || !nuevaPassword || !confirmPassword) {
+      setSnackbar({
+        open: true,
+        message: 'Todos los campos son requeridos',
+        severity: 'error',
       });
       return;
     }
 
     if (nuevaPassword !== confirmPassword) {
-      setSnackbar({ 
-        open: true, 
-        message: 'Las contraseñas no coinciden', 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: 'Las contraseñas no coinciden',
+        severity: 'error',
       });
       return;
     }
 
     if (nuevaPassword.length < 6) {
-      setSnackbar({ 
-        open: true, 
-        message: 'La contraseña debe tener al menos 6 caracteres', 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: 'La contraseña debe tener al menos 6 caracteres',
+        severity: 'error',
       });
       return;
     }
@@ -60,35 +109,36 @@ const ResetPasswordModal = ({ open, onClose }) => {
         },
         body: JSON.stringify({
           email: email,
-          nueva_password: nuevaPassword
-        })
+          nueva_password: nuevaPassword,
+          codigo: codigo,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setSnackbar({ 
-          open: true, 
-          message: 'Contraseña actualizada exitosamente', 
-          severity: 'success' 
+        setSnackbar({
+          open: true,
+          message: 'Contraseña actualizada exitosamente',
+          severity: 'success',
         });
-        // Limpiar campos
         setEmail('');
+        setCodigo('');
         setNuevaPassword('');
         setConfirmPassword('');
         onClose();
       } else {
-        setSnackbar({ 
-          open: true, 
-          message: data.error || 'Error al actualizar contraseña', 
-          severity: 'error' 
+        setSnackbar({
+          open: true,
+          message: data.error || 'Error al actualizar contraseña',
+          severity: 'error',
         });
       }
     } catch (error) {
-      setSnackbar({ 
-        open: true, 
-        message: 'Error de conexión. Verifica que el servidor esté corriendo.', 
-        severity: 'error' 
+      setSnackbar({
+        open: true,
+        message: 'Error de conexión. Verifica que el servidor esté corriendo.',
+        severity: 'error',
       });
     } finally {
       setLoading(false);
@@ -97,6 +147,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
 
   const handleClose = () => {
     setEmail('');
+    setCodigo('');
     setNuevaPassword('');
     setConfirmPassword('');
     onClose();
@@ -105,13 +156,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
   return (
     <>
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          borderBottom: '1px solid #e0e0e0',
-          pb: 2
-        }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <LockResetIcon color="primary" />
             <Typography variant="h6" fontWeight={600} color="primary.main">
@@ -122,12 +167,12 @@ const ResetPasswordModal = ({ open, onClose }) => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        
+
         <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Ingresa tu email y la nueva contraseña que deseas establecer.
+            Ingresa tu correo y el código enviado, luego ingresa la nueva contraseña.
           </Typography>
-          
+
           <TextField
             fullWidth
             label="Email"
@@ -138,7 +183,16 @@ const ResetPasswordModal = ({ open, onClose }) => {
             required
             autoFocus
           />
-          
+
+          <TextField
+            fullWidth
+            label="Código de 6 dígitos"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            margin="normal"
+            required
+          />
+
           <TextField
             fullWidth
             label="Nueva Contraseña"
@@ -149,7 +203,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
             required
             helperText="Mínimo 6 caracteres"
           />
-          
+
           <TextField
             fullWidth
             label="Confirmar Contraseña"
@@ -160,14 +214,14 @@ const ResetPasswordModal = ({ open, onClose }) => {
             required
           />
         </DialogContent>
-        
+
         <DialogActions sx={{ p: 3, pt: 1 }}>
           <Button onClick={handleClose} color="inherit">
             Cancelar
           </Button>
-          <Button 
-            onClick={handleResetPassword} 
-            variant="contained" 
+          <Button
+            onClick={handleResetPassword}
+            variant="contained"
             color="primary"
             disabled={loading}
             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
@@ -182,8 +236,8 @@ const ResetPasswordModal = ({ open, onClose }) => {
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
           sx={{ width: '100%' }}
         >
@@ -194,4 +248,4 @@ const ResetPasswordModal = ({ open, onClose }) => {
   );
 };
 
-export default ResetPasswordModal; 
+export default ResetPasswordModal;

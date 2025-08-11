@@ -9,11 +9,13 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento
+from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro
 from .serializers import (
     MaquinariaSerializer,
     RegistroSerializer,
     LoginSerializer,
+    VerificarCodigoSerializer,
+    ReenviarCodigoSerializer,
     HistorialControlSerializer,
     ActaAsignacionSerializer,
     MantenimientoSerializer,
@@ -495,21 +497,40 @@ class MaquinariaDetailView(APIView):
             # Verificar permisos
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email})
-            
-            if not check_user_permissions(user, required_permission='eliminar', module='Maquinaria'):
-                return Response({"error": "No tienes permisos para desactivar maquinaria"}, status=status.HTTP_403_FORBIDDEN)
-            
+
             existing_maquinaria = maquinaria_collection.find_one({"_id": ObjectId(id)})
             if not existing_maquinaria:
                 return Response({"error": "Máquina no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-            # En lugar de eliminar, desactivar
+
+            permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+            if permanent:
+                # Solo admin puede eliminar permanentemente
+                if not user or user.get('Cargo', '').lower() != 'admin':
+                    return Response({"error": "Solo el administrador puede eliminar maquinaria permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+                maquinaria_collection.delete_one({"_id": ObjectId(id)})
+                try:
+                    mensaje = f"Eliminó permanentemente maquinaria con placa {existing_maquinaria.get('placa', id)}"
+                    registrar_actividad(
+                        actor_email,
+                        'eliminar_permanente_maquinaria',
+                        'Maquinaria',
+                        mensaje,
+                        {'datos': serialize_doc(existing_maquinaria)}
+                    )
+                except Exception:
+                    pass
+                return Response({"success": True})
+
+            # Soft delete si no es permanente
+            if not check_user_permissions(user, required_permission='eliminar', module='Maquinaria'):
+                return Response({"error": "No tienes permisos para desactivar maquinaria"}, status=status.HTTP_403_FORBIDDEN)
+
             maquinaria_collection.update_one(
                 {"_id": ObjectId(id)},
                 {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
             )
             # --- REGISTRO DE ACTIVIDAD ---
             try:
-                actor_email = request.headers.get('X-User-Email')
                 mensaje = f"Desactivó maquinaria con placa {existing_maquinaria.get('placa', id)}"
                 registrar_actividad(
                     actor_email,
@@ -745,8 +766,36 @@ class BaseSectionDetailAPIView(APIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": f"{self.collection_class.__name__} no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
-        result = collection.update_one(
+
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, self.collection_class.__name__)
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_' + self.collection_class.__name__.lower(),
+                    self.collection_class.__name__,
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de {self.collection_class.__name__}: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
+        collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
         )
@@ -2347,8 +2396,32 @@ class DepreciacionesDetailView(APIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Depreciación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
-        result = collection.update_one(
+
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'Depreciacion')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_depreciacion',
+                    'Depreciaciones',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception:
+                pass
+            return Response({"success": True})
+
+        # Soft delete por defecto
+        collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
         )
@@ -2408,9 +2481,37 @@ class RegistroView(APIView):
                 bcrypt.gensalt()
             ).decode("utf-8")
 
-            collection = get_collection(Usuario) # Usar Usuario directamente
-            result_db = collection.insert_one(data)
-            inserted = collection.find_one({"_id": result_db.inserted_id})
+            # Si el correo ya existe, no hacemos nada (usuarios existentes no se tocan)
+            usuarios_collection = get_collection(Usuario)
+            existing_user = usuarios_collection.find_one({"Email": data.get("Email")})
+            if existing_user:
+                return Response({"message": "Usuario ya existente"}, status=status.HTTP_200_OK)
+
+            # Generar código de verificación de 6 dígitos y guardar solicitud temporal
+            import random
+            codigo = f"{random.randint(0, 999999):06d}"
+
+            verificaciones = get_collection(VerificacionRegistro)
+            # upsert por email
+            verificaciones.update_one(
+                {"Email": data.get("Email")},
+                {"$set": {
+                    "solicitud": data,
+                    "codigo": codigo,
+                    "intentos": 0,
+                    "creado_en": datetime.now(),
+                    "expira_en": datetime.now() + timedelta(minutes=15)
+                }},
+                upsert=True
+            )
+
+            # Enviar correo con el código
+            try:
+                asunto = "Código de verificación"
+                mensaje = f"Tu código de verificación es: {codigo}. Vence en 15 minutos."
+                send_mail(asunto, mensaje, settings.DEFAULT_FROM_EMAIL, [data.get("Email")])
+            except Exception as e:
+                logger.error(f"Error enviando correo de verificación: {str(e)}")
 
             # --- REGISTRO DE AUDITORÍA ---
             try:
@@ -2418,7 +2519,7 @@ class RegistroView(APIView):
                 actor_email = request.headers.get('X-User-Email') or data.get('Email')
                 registrar_actividad(
                     actor_email,
-                    'registro_usuario',
+                    'registro_usuario_solicitado',
                     'Usuarios',
                     {
                         'nombre': data.get('Nombre'),
@@ -2431,7 +2532,7 @@ class RegistroView(APIView):
                 logger.error(f"Error al registrar actividad de registro de usuario: {str(e)}")
             # --- FIN REGISTRO DE AUDITORÍA ---
 
-            return Response(json.loads(json_util.dumps(serialize_doc(inserted))), status=status.HTTP_201_CREATED)
+            return Response({"message": "Código enviado al correo"}, status=status.HTTP_200_OK)
 
         except Exception as e:
             logger.error(f"Error al registrar: {str(e)}")
@@ -2439,6 +2540,81 @@ class RegistroView(APIView):
                 {"error": f"Error al registrar: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class VerificarCodigoRegistroView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = VerificarCodigoSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            email = serializer.validated_data['Email']
+            codigo = serializer.validated_data['codigo']
+
+            verificaciones = get_collection(VerificacionRegistro)
+            solicitud = verificaciones.find_one({"Email": email})
+            if not solicitud:
+                return Response({"error": "No hay una solicitud de registro para este correo"}, status=status.HTTP_404_NOT_FOUND)
+
+            if solicitud.get('expira_en') and datetime.now() > solicitud['expira_en']:
+                return Response({"error": "El código ha expirado"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if solicitud.get('codigo') != codigo:
+                verificaciones.update_one({"Email": email}, {"$inc": {"intentos": 1}})
+                return Response({"error": "Código incorrecto"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Crear usuario definitivo
+            usuarios = get_collection(Usuario)
+            registro = solicitud.get('solicitud', {})
+            if not registro:
+                return Response({"error": "Datos de registro no encontrados"}, status=status.HTTP_400_BAD_REQUEST)
+
+            usuarios.insert_one(registro)
+            verificaciones.delete_one({"Email": email})
+
+            try:
+                registrar_actividad(email, 'registro_usuario_verificado', 'Usuarios', { 'email': email })
+            except Exception:
+                pass
+
+            return Response({"message": "Registro verificado y creado"}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error al verificar código: {str(e)}")
+            return Response({"error": "Error interno"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ReenviarCodigoRegistroView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = ReenviarCodigoSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            email = serializer.validated_data['Email']
+            verificaciones = get_collection(VerificacionRegistro)
+            solicitud = verificaciones.find_one({"Email": email})
+            if not solicitud:
+                return Response({"error": "No hay una solicitud de registro para este correo"}, status=status.HTTP_404_NOT_FOUND)
+
+            import random
+            codigo = f"{random.randint(0, 999999):06d}"
+            verificaciones.update_one(
+                {"Email": email},
+                {"$set": {"codigo": codigo, "expira_en": datetime.now() + timedelta(minutes=15), "intentos": 0}}
+            )
+            try:
+                asunto = "Nuevo código de verificación"
+                mensaje = f"Tu nuevo código es: {codigo}. Vence en 15 minutos."
+                send_mail(asunto, mensaje, settings.DEFAULT_FROM_EMAIL, [email])
+            except Exception as e:
+                logger.error(f"Error reenviando correo: {str(e)}")
+            return Response({"message": "Código reenviado"})
+        except Exception as e:
+            logger.error(f"Error en reenvío de código: {str(e)}")
+            return Response({"error": "Error interno"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 def registrar_actividad(email, accion, modulo, mensaje, detalle=None, fecha_login=None, fecha_logout=None):
     collection = get_collection(Seguimiento)
@@ -3118,8 +3294,8 @@ class UsuarioCargoUpdateView(APIView):
         if not nuevo_cargo:
             return Response({'error': 'Cargo requerido'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Validar que el cargo sea válido
-        cargos_validos = ['admin', 'encargado', 'tecnico']
+        # Validar que el cargo sea válido (aceptar con y sin acento, mayúsculas/minúsculas)
+        cargos_validos = ['admin', 'encargado', 'tecnico', 'técnico']
         if nuevo_cargo.lower() not in cargos_validos:
             return Response({'error': 'Cargo inválido. Debe ser: admin, encargado o tecnico'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -3159,11 +3335,30 @@ class UsuarioDeleteView(APIView):
         collection = get_collection(Usuario)
         user = collection.find_one({"Email": email})
         if not check_user_permissions(user, required_role='admin'):
-            return Response({'error': 'Solo el administrador puede desactivar usuarios'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Solo el administrador puede gestionar usuarios'}, status=status.HTTP_403_FORBIDDEN)
         if str(user.get('_id')) == id:
-            return Response({'error': 'No puedes desactivarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Obtener datos adicionales del request
+            return Response({'error': 'No puedes operar sobre tu propio usuario'}, status=status.HTTP_400_BAD_REQUEST)
+
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Eliminación permanente
+            target = collection.find_one({'_id': ObjectId(id)})
+            if not target:
+                return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+            collection.delete_one({'_id': ObjectId(id)})
+            try:
+                registrar_actividad(
+                    email,
+                    'eliminar_permanente_usuario',
+                    'Usuarios',
+                    f"Eliminó permanentemente al usuario {target.get('Email', id)}",
+                    {'datos': serialize_doc(target)}
+                )
+            except Exception:
+                pass
+            return Response({'success': True}, status=status.HTTP_200_OK)
+
+        # Soft delete por defecto
         try:
             data = request.data
             justificacion = data.get('justificacion', 'Sin justificación')
@@ -3171,12 +3366,11 @@ class UsuarioDeleteView(APIView):
         except:
             justificacion = 'Sin justificación'
             desactivado_por = email
-        
-        # En lugar de eliminar, desactivar
+
         result = collection.update_one(
             {'_id': ObjectId(id)},
             {"$set": {
-                "activo": False, 
+                "activo": False,
                 "fecha_desactivacion": datetime.now(),
                 "justificacion": justificacion,
                 "desactivado_por": desactivado_por

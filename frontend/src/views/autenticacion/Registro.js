@@ -66,6 +66,11 @@ const Register = () => {
   const [opciones, setOpciones] = useState({ cargos: [], unidades: [] });
   const [loadingOpciones, setLoadingOpciones] = useState(true);
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [step, setStep] = useState('form'); // 'form' | 'codigo'
+  const [codigo, setCodigo] = useState('');
+  const [verificationError, setVerificationError] = useState('');
 
   useEffect(() => {
     // Obtener opciones de cargos y unidades
@@ -121,6 +126,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (step !== 'form') return;
     if (!validateForm()) return;
     setRegisterLoading(true);
     try {
@@ -138,25 +144,70 @@ const Register = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error("Error en el registro");
-      alert("Registro exitoso");
-      setFormData({
-        Nombre: "",
-        Cargo: "",
-        Unidad: "",
-        Email: "",
-        Password: "",
-        confirmPassword: "",
-      });
-      setCaptchaToken(null);
-      window.location.href = "/login/";
+      if (data?.message === 'Usuario ya existente') {
+        alert('Este correo ya está registrado. Por favor, inicia sesión.');
+        window.location.href = '/login/';
+        return;
+      }
+      // Paso 2: mostrar formulario para código
+      setStep('codigo');
     } catch (error) {
-      alert("Ocurrió un error al registrarse");
+      alert("Ocurrió un error al iniciar el registro");
       console.error("Error al registrarse:", error.message);
     } finally {
       setRegisterLoading(false);
     }
   };
+
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    setVerificationError('');
+    if (!codigo || codigo.length !== 6) {
+      setVerificationError('Ingresa el código de 6 dígitos enviado a tu correo');
+      return;
+    }
+    setVerifyLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/registro/verificar/", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Email: formData.Email, codigo }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setVerificationError(data?.error || 'Código inválido');
+        return;
+      }
+      alert('Registro verificado correctamente');
+      // limpiar y redirigir a login
+      setFormData({ Nombre: '', Cargo: '', Unidad: '', Email: '', Password: '', confirmPassword: '' });
+      setCaptchaToken(null);
+      setCodigo('');
+      setStep('form');
+      window.location.href = '/login/';
+    } catch (err) {
+      setVerificationError('Error al verificar el código');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    try {
+      await fetch("http://localhost:8000/registro/reenviar/", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Email: formData.Email }),
+      });
+    } catch (e) {
+      // silencio
+    } finally {
+      setResendLoading(false);
+    }
+  }
 
   // Helper texts
   const helperTexts = {
@@ -206,9 +257,10 @@ const Register = () => {
           />
         </Box>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={step === 'form' ? handleSubmit : handleVerify}>
           <Stack spacing={2} mb={2}> 
             {/* Nombre */}
+            {step === 'form' && (
             <Box display="flex" alignItems="center">
               <TextField
                 label="Nombre completo"
@@ -225,8 +277,10 @@ const Register = () => {
                 </IconButton>
               </CustomTooltip>
             </Box>
+            )}
 
             {/* Cargo */}
+            {step === 'form' && (
             <Box display="flex" alignItems="center">
               <TextField
                 select
@@ -265,8 +319,10 @@ const Register = () => {
                 </IconButton>
               </CustomTooltip>
             </Box>
+            )}
 
             {/* Unidad */}
+            {step === 'form' && (
             <Box display="flex" alignItems="center">
               <TextField
                 select
@@ -305,6 +361,7 @@ const Register = () => {
                 </IconButton>
               </CustomTooltip>
             </Box>
+            )}
 
             {/* Email */}
             <Box display="flex" alignItems="center">
@@ -316,6 +373,7 @@ const Register = () => {
                 fullWidth
                 error={!!errors.Email}
                 helperText={errors.Email}
+                disabled={step === 'codigo'}
               />
               <CustomTooltip title={helperTexts.Email} placement="right">
                 <IconButton size="small" sx={{ ml: 1 }}>
@@ -325,6 +383,7 @@ const Register = () => {
             </Box>
 
             {/* Password */}
+            {step === 'form' && (
             <Box display="flex" alignItems="center">
               <TextField
                 label="Contraseña"
@@ -351,8 +410,10 @@ const Register = () => {
                 </IconButton>
               </CustomTooltip>
             </Box>
+            )}
 
             {/* Confirm Password */}
+            {step === 'form' && (
             <Box display="flex" alignItems="center">
               <TextField
                 label="Confirmar contraseña"
@@ -379,19 +440,42 @@ const Register = () => {
                 </IconButton>
               </CustomTooltip>
             </Box>
+            )}
 
-            <ReCAPTCHA
-              sitekey={SITE_KEY}
-              onChange={onCaptchaChange}
-              hl="es"
-              theme="light"
-              size="normal"
-              position="center" 
-            />
-            {errors.captcha && (
-              <Typography color="error" variant="body2" mt={1}>
-                {errors.captcha}
-              </Typography>
+            {step === 'form' && (
+              <>
+                <ReCAPTCHA
+                  sitekey={SITE_KEY}
+                  onChange={onCaptchaChange}
+                  hl="es"
+                  theme="light"
+                  size="normal"
+                  position="center" 
+                />
+                {errors.captcha && (
+                  <Typography color="error" variant="body2" mt={1}>
+                    {errors.captcha}
+                  </Typography>
+                )}
+              </>
+            )}
+
+            {step === 'codigo' && (
+              <>
+                <Typography variant="body2">Hemos enviado un código de 6 dígitos a tu correo. Escríbelo para finalizar el registro.</Typography>
+                <TextField
+                  label="Código de verificación"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  inputProps={{ maxLength: 6 }}
+                  fullWidth
+                  error={!!verificationError}
+                  helperText={verificationError}
+                />
+                <Button onClick={handleResend} disabled={resendLoading}>
+                  {resendLoading ? 'Reenviando...' : 'Reenviar código'}
+                </Button>
+              </>
             )}
           </Stack>
 
@@ -401,10 +485,10 @@ const Register = () => {
             type="submit"
             fullWidth
             sx={{ py: 1.5 }}
-            disabled={registerLoading}
-            startIcon={registerLoading ? <CircularProgress size={20} color="inherit" /> : null}
+            disabled={step === 'form' ? registerLoading : verifyLoading}
+            startIcon={(step === 'form' ? registerLoading : verifyLoading) ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            {registerLoading ? 'Registrando...' : 'Registrarse'}
+            {step === 'form' ? (registerLoading ? 'Enviando código...' : 'Registrarse') : (verifyLoading ? 'Verificando...' : 'Verificar código')}
           </Button>
         </form>
 
