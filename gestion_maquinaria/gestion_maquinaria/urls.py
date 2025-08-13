@@ -19,7 +19,6 @@ from core.views import (
     ImpuestoListView, ImpuestoDetailView,
     activos_list, PronosticoAPIView, DashboardStatsView, PronosticoSummaryView,
     DepreciacionesDetailView,DepreciacionesGeneralView,DepreciacionesListView,
-    # Agregar las nuevas vistas
     TodosRegistrosDesactivadosView, test_api, PronosticoExcelUploadView
 )
 
@@ -83,7 +82,6 @@ urlpatterns = [
     path('api/dashboard/', DashboardStatsView.as_view(), name='dashboard'),
     path('api/pronostico/summary/', PronosticoSummaryView.as_view(), name='pronostico-summary'),
     path('api/pronostico/excel-upload/', PronosticoExcelUploadView.as_view(), name='pronostico-excel-upload'),
-    
     # URLs para registros desactivados
     path('api/registros-desactivados/', TodosRegistrosDesactivadosView.as_view(), name='todos-registros-desactivados'),
     path('api/test/', test_api, name='test-api'),

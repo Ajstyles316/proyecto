@@ -3874,7 +3874,7 @@ class UsuarioUpdateView(APIView):
         data = request.data.copy()
         update_fields = {}
         # Solo permitir actualizar ciertos campos
-        for field in ["Nombre", "Unidad", "Email", "Cargo", "imagen"]:
+        for field in ["Nombre", "Unidad", "Email", "Cargo", "imagen", "CI"]:
             if field in data:
                 if field == "imagen" and (data[field] == '' or data[field] is None):
                     # Eliminar el campo imagen si llega vacío
@@ -4047,3 +4047,148 @@ def limpiar_usuarios_duplicados(request):
         import traceback
         traceback.print_exc()
         return Response({'error': f'Error interno: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SolicitarResetPasswordView(APIView):
+    permission_classes = []  
+
+    def post(self, request):
+        try:
+            email = request.data.get("Email") or request.data.get("email")
+            if not email:
+                return Response({"error": "Email requerido"}, status=status.HTTP_400_BAD_REQUEST)
+
+            usuarios = get_collection(Usuario)
+            user = usuarios.find_one({"Email": email})
+            if not user:
+                return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+            import random
+            codigo = f"{random.randint(0, 999999):06d}"
+
+            verificaciones = get_collection('verificaciones_reset')
+            verificaciones.update_one(
+                {"Email": email},
+                {"$set": {
+                    "Email": email,
+                    "codigo": codigo,
+                    "intentos": 0,
+                    "creado_en": datetime.now(),
+                    "expira_en": datetime.now() + timedelta(minutes=15)
+                }},
+                upsert=True
+            )
+
+            try:
+                asunto = "Código para restablecer tu contraseña"
+                mensaje = f"Tu código es: {codigo}. Vence en 15 minutos."
+                send_mail(asunto, mensaje, settings.DEFAULT_FROM_EMAIL, [email])
+            except Exception:
+                pass
+
+            try:
+                registrar_actividad(email, 'solicitar_reset_password', 'Autenticación', 'Se solicitó código de reset')
+            except Exception:
+                pass
+
+            return Response({"message": "Código enviado al correo"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Error interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class VerificarCodigoResetPasswordView(APIView):
+    permission_classes = []  
+    def post(self, request):
+        try:
+            email = request.data.get("Email") or request.data.get("email")
+            codigo = request.data.get("codigo")
+            nueva_password = request.data.get("nueva_password") or request.data.get("password")
+
+            if not all([email, codigo, nueva_password]):
+                return Response({"error": "Email, código y nueva contraseña son obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
+            if len(nueva_password) < 6:
+                return Response({"error": "La contraseña debe tener al menos 6 caracteres"}, status=status.HTTP_400_BAD_REQUEST)
+
+            verificaciones = get_collection('verificaciones_reset')
+            solicitud = verificaciones.find_one({"Email": email})
+            if not solicitud:
+                return Response({"error": "No hay una solicitud de reset para este correo"}, status=status.HTTP_404_NOT_FOUND)
+
+            if solicitud.get('expira_en') and datetime.now() > solicitud['expira_en']:
+                return Response({"error": "El código ha expirado"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if solicitud.get('codigo') != codigo:
+                verificaciones.update_one({"Email": email}, {"$inc": {"intentos": 1}})
+                return Response({"error": "Código incorrecto"}, status=status.HTTP_400_BAD_REQUEST)
+            usuarios = get_collection(Usuario)
+            salt = bcrypt.gensalt()
+            hashed = bcrypt.hashpw(nueva_password.encode("utf-8"), salt).decode("utf-8")
+            upd = usuarios.update_one({"Email": email}, {"$set": {"Password": hashed}})
+            if upd.matched_count == 0:
+                return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+            verificaciones.delete_one({"Email": email})
+
+            try:
+                registrar_actividad(email, 'reset_password_exitoso', 'Autenticación', 'Contraseña actualizada')
+            except Exception:
+                pass
+
+            return Response({"message": "Contraseña actualizada exitosamente"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Error interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ReenviarCodigoResetPasswordView(APIView):
+    permission_classes = []  
+    def post(self, request):
+        try:
+            email = request.data.get("Email") or request.data.get("email")
+            if not email:
+                return Response({"error": "Email requerido"}, status=status.HTTP_400_BAD_REQUEST)
+
+            verificaciones = get_collection('verificaciones_reset')
+            sol = verificaciones.find_one({"Email": email})
+            if not sol:
+                return Response({"error": "No hay una solicitud de reset para este correo"}, status=status.HTTP_404_NOT_FOUND)
+
+            import random
+            codigo = f"{random.randint(0, 999999):06d}"
+            verificaciones.update_one(
+                {"Email": email},
+                {"$set": {"codigo": codigo, "expira_en": datetime.now() + timedelta(minutes=15), "intentos": 0}}
+            )
+
+            try:
+                asunto = "Nuevo código para restablecer tu contraseña"
+                mensaje = f"Tu nuevo código es: {codigo}. Vence en 15 minutos."
+                send_mail(asunto, mensaje, settings.DEFAULT_FROM_EMAIL, [email])
+            except Exception:
+                pass
+
+            return Response({"message": "Código reenviado"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Error interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VerificarPasswordActualView(APIView):
+    permission_classes = [] 
+
+    def post(self, request):
+        email = request.headers.get('X-User-Email') or request.data.get('Email')
+        password_actual = request.data.get('password_actual')
+        if not email or not password_actual:
+            return Response({"error": "Email y password_actual son requeridos"}, status=status.HTTP_400_BAD_REQUEST)
+
+        usuarios = get_collection(Usuario)
+        user = usuarios.find_one({"Email": email})
+        if not user:
+            return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        stored_hash = (user.get("Password") or "").encode("utf-8")
+        try:
+            ok = bcrypt.checkpw(password_actual.encode("utf-8"), stored_hash)
+        except Exception:
+            return Response({"error": "Formato de contraseña inválido"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not ok:
+            return Response({"error": "Contraseña actual incorrecta"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Contraseña verificada"}, status=status.HTTP_200_OK)

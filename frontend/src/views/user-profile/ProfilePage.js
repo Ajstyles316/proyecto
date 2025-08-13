@@ -34,7 +34,7 @@ const ProfilePage = () => {
   const [form, setForm] = useState({
     Nombre: user?.Nombre || '',
     Unidad: user?.Unidad || '',
-    Cargo: user?.Cargo || '',
+    CI: user?.CI || '',
     Email: user?.Email || '',
     Password: '',
     confirmPassword: '',
@@ -44,22 +44,21 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [opciones, setOpciones] = useState({ cargos: [], unidades: [] });
+  const [opciones, setOpciones] = useState({ unidades: [] });
   const [loadingOpciones, setLoadingOpciones] = useState(true);
 
   useEffect(() => {
-    // Obtener opciones de cargos y unidades
+    // Obtener opciones de unidades
     const fetchOpciones = async () => {
       try {
         const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
         if (!res.ok) throw new Error("No se pudieron cargar las opciones");
         const data = await res.json();
         setOpciones({
-          cargos: data.cargos || [],
           unidades: data.unidades || [],
         });
       } catch (e) {
-        setOpciones({ cargos: [], unidades: [] });
+        setOpciones({ unidades: [] });
       } finally {
         setLoadingOpciones(false);
       }
@@ -95,7 +94,7 @@ const ProfilePage = () => {
     setLoading(true);
     setError('');
     setSuccess('');
-    // Validaciones
+
     if (!EMAIL_REGEX.test(form.Email)) {
       setError('Correo inválido. Solo se permiten @gmail.com, @enc.cof.gob.bo o @tec.cof.gob.bo');
       setLoading(false);
@@ -113,16 +112,17 @@ const ProfilePage = () => {
         return;
       }
     }
+
     try {
-      // Solo enviar los campos que se quieren actualizar
       const payload = {
         Nombre: form.Nombre,
         Unidad: form.Unidad,
-        Cargo: form.Cargo,
+        CI: form.CI,
         Email: form.Email,
         imagen: form.imagen,
       };
       if (form.Password) payload.Password = form.Password;
+
       const res = await fetch('http://localhost:8000/api/usuarios/me/', {
         method: 'PUT',
         headers: {
@@ -133,7 +133,7 @@ const ProfilePage = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al actualizar');
-      setUser(data); // Actualiza el contexto
+      setUser(data);
       setSuccess('Datos actualizados correctamente');
       setForm(f => ({ ...f, Password: '', confirmPassword: '' }));
     } catch (err) {
@@ -143,17 +143,15 @@ const ProfilePage = () => {
     }
   };
 
-  // Helper texts
   const helperTexts = {
     Nombre: "Ejemplo: Juan Pérez",
-    Cargo: "Selecciona tu cargo",
     Unidad: "Selecciona tu unidad",
+    CI: "Ingrese su carnet de identidad, número y ciudad expedido",
     Email: "Ejemplo: usuario@gmail.com, usuario@enc.cof.gob.bo, usuario@tec.cof.gob.bo",
     Password: "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!",
     confirmPassword: "Repite la contraseña",
   };
 
-  // Helper para mostrar errores en negro
   const errorHelper = (msg) => msg ? <span style={{ color: 'black' }}>{msg}</span> : '';
 
   return (
@@ -205,29 +203,23 @@ const ProfilePage = () => {
                     </IconButton>
                   </CustomTooltip>
                 </Box>
+
                 <Box display="flex" alignItems="center">
                   <TextField
-                    select
-                    label="Cargo"
-                    name="Cargo"
-                    value={form.Cargo}
+                    label="Carnet de Identidad"
+                    name="CI"
+                    value={form.CI}
                     onChange={handleChange}
                     fullWidth
                     required
-                    helperText={errorHelper(error && error.toLowerCase().includes('cargo') ? error : '')}
-                  >
-                    {opciones.cargos.filter(cargo => cargo !== 'Admin' && cargo !== 'admin').map((cargo) => (
-                      <MenuItem key={cargo} value={cargo === 'Tecnico' ? 'Técnico' : cargo}>
-                        {cargo === 'Tecnico' ? 'Técnico' : cargo}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <CustomTooltip title={helperTexts.Cargo} placement="right">
+                  />
+                  <CustomTooltip title={helperTexts.CI} placement="right">
                     <IconButton size="small" sx={{ ml: 1 }}>
                       <HelpOutline fontSize="small" />
                     </IconButton>
                   </CustomTooltip>
                 </Box>
+
                 <Box display="flex" alignItems="center">
                   <TextField
                     select
@@ -280,7 +272,6 @@ const ProfilePage = () => {
                     onChange={handleChange}
                     fullWidth
                     type="password"
-                    helperText={errorHelper(error && error.toLowerCase().includes('nueva') ? error : '')}
                   />
                   <CustomTooltip title={helperTexts.Password} placement="right">
                     <IconButton size="small" sx={{ ml: 1 }}>
@@ -296,7 +287,6 @@ const ProfilePage = () => {
                     onChange={handleChange}
                     fullWidth
                     type="password"
-                    helperText={errorHelper(error && error.toLowerCase().includes('coinciden') ? error : '')}
                   />
                   <CustomTooltip title={helperTexts.confirmPassword} placement="right">
                     <IconButton size="small" sx={{ ml: 1 }}>
@@ -322,4 +312,4 @@ const ProfilePage = () => {
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

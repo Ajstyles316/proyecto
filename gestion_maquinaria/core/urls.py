@@ -30,7 +30,7 @@ from .views import (
     test_api,  # <-- importar la vista de prueba
     RegistrosDesactivadosView,  # <-- importar la nueva vista
     TodosRegistrosDesactivadosView,  # <-- importar la nueva vista
-    # Vistas de secciones
+    VerificarPasswordActualView,
     HistorialControlListView,
     HistorialControlDetailView,
     ActaAsignacionListView,
@@ -45,6 +45,9 @@ from .views import (
     SOATDetailView,
     ImpuestoListView,
     ImpuestoDetailView,
+    SolicitarResetPasswordView,
+    VerificarCodigoResetPasswordView,
+    ReenviarCodigoResetPasswordView
 )
 
 router = DefaultRouter()
@@ -69,6 +72,10 @@ urlpatterns = [
     path('usuarios/<str:id>/permisos/', UsuarioPermisosUpdateView.as_view(), name='usuario-permisos-update'),
     path('usuarios/<str:id>/reactivar/', UsuarioDeleteView.as_view(), name='usuario-reactivar'),
     path('usuarios/<str:id>/', UsuarioDeleteView.as_view(), name='usuario-delete'),
+    path('api/usuarios/reset/solicitar/', SolicitarResetPasswordView.as_view()),
+    path('api/usuarios/reset/verificar/', VerificarCodigoResetPasswordView.as_view()),
+    path('api/usuarios/reset/reenviar/', ReenviarCodigoResetPasswordView.as_view()),
+    path('api/usuarios/verificar_password/', VerificarPasswordActualView.as_view()),
     path('api/depreciaciones/', DepreciacionesGeneralView.as_view(), name='depreciaciones-general'),
     path('api/depreciaciones/<str:maquinaria_id>/', DepreciacionesListView.as_view(), name='depreciaciones-list'),
     path('api/maquinaria/<str:maquinaria_id>/depreciaciones/<str:record_id>/', DepreciacionesDetailView.as_view(), name='depreciaciones-detail'),
