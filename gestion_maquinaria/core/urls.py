@@ -20,16 +20,16 @@ from .views import (
     sugerir_bien_uso,
     MaquinariasConDepreciacionView,
     MaquinariaConDepreciacionBuscarView,
-    UsuarioPermisosUpdateView,  # <-- importar la nueva vista
-    SeguimientoListView,  # <-- importar la nueva vista
-    UsuarioUpdateView,  # <-- importar la vista para /usuarios/me/
-    UsuarioOpcionesView,  # <-- importar la nueva vista de opciones
-    validar_password_usuario,  # <-- importar la nueva vista
-    reset_password_usuario,  # <-- importar la vista de reset password
-    limpiar_usuarios_duplicados,  # <-- importar la vista para limpiar duplicados
-    test_api,  # <-- importar la vista de prueba
-    RegistrosDesactivadosView,  # <-- importar la nueva vista
-    TodosRegistrosDesactivadosView,  # <-- importar la nueva vista
+    UsuarioPermisosUpdateView, 
+    SeguimientoListView, 
+    UsuarioUpdateView, 
+    UsuarioOpcionesView,  
+    validar_password_usuario, 
+    reset_password_usuario,  
+    limpiar_usuarios_duplicados,  
+    test_api,  
+    RegistrosDesactivadosView,
+    TodosRegistrosDesactivadosView, 
     VerificarPasswordActualView,
     HistorialControlListView,
     HistorialControlDetailView,

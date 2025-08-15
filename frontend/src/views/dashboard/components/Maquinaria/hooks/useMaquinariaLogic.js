@@ -218,7 +218,6 @@ const useMaquinariaLogic = () => {
   const filteredMaquinarias = maquinarias.filter((m) => {
   const search = searchQuery.toLowerCase();
   const matchesSearch =
-    m.gestion?.toLowerCase().includes(search) ||
     m.detalle?.toLowerCase().includes(search) ||
     m.unidad?.toLowerCase().includes(search) ||
     m.modelo?.toLowerCase().includes(search) ||

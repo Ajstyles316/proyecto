@@ -2744,8 +2744,6 @@ class DashboardStatsView(APIView):
             except Exception as e:
                 logger.warning(f"No se pudo calcular horas totales operativas: {e}")
                 horas_totales_operativas = 0
-
-            # Seguros próximos a vencer (ejemplo: próximos 30 días, si hay campo de fecha_vencimiento)
             seguros_proximos_vencer = 0
             try:
                 hoy = datetime.now()
@@ -3400,7 +3398,6 @@ class UsuarioDeleteView(APIView):
         return Response({'success': True}, status=status.HTTP_200_OK)
 
 class RegistrosDesactivadosView(APIView):
-    """Vista para obtener registros desactivados"""
     def get(self, request, maquinaria_id):
         # Verificar permisos de ADMINISTRADOR únicamente
         actor_email = request.headers.get('X-User-Email')
@@ -3418,8 +3415,8 @@ class RegistrosDesactivadosView(APIView):
         collections = [
             ('controles', 'Control'),
             ('asignacion', 'Asignación'),
-            ('mantenimientos', 'Mantenimiento'),
-            ('seguros', 'Seguro'),
+            ('mantenimiento', 'Mantenimiento'),
+            ('seguro', 'Seguro'),
             ('itv', 'ITV'),
             ('soat', 'SOAT'),
             ('impuesto', 'Impuesto')
@@ -3460,10 +3457,10 @@ class TodosRegistrosDesactivadosView(APIView):
         # Obtener todos los registros desactivados de todas las colecciones
         collections = [
             ('usuarios', 'Usuario'),
-            ('controles', 'Control'),
-            ('asignacion', 'Asignación'),
-            ('mantenimientos', 'Mantenimiento'),
-            ('seguros', 'Seguro'),
+            ('historial_control', 'Control'),
+            ('acta_asignacion', 'Asignación'),
+            ('mantenimiento', 'Mantenimiento'),
+            ('seguro', 'Seguro'),
             ('itv', 'ITV'),
             ('soat', 'SOAT'),
             ('impuesto', 'Impuesto'),

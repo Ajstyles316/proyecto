@@ -1,10 +1,9 @@
 export const fieldLabels = {
   Maquinaria: [
-    { name: 'gestion', label: 'Gestión' },
     { name: 'placa', label: 'Placa' },
-    { name: 'detalle', label: 'Detalle' },
+    { name: 'detalle', label: 'Descripción' },
     { name: 'unidad', label: 'Unidad' },
-    { name: 'adqui', label: 'Adqui.' },
+    { name: 'adqui', label: 'Adquisición' },
     { name: 'codigo', label: 'Código' },
     { name: 'tipo', label: 'Tipo' },
     { name: 'marca', label: 'Marca' },

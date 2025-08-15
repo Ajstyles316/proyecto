@@ -128,7 +128,7 @@ class ImpuestoSerializer(serializers.Serializer):
 
 class MaquinariaSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
-    gestion = serializers.CharField(max_length=100, required=True)
+    gestion = serializers.CharField(max_length=100, required=False)
     placa = serializers.CharField(max_length=50, required=True)
     detalle = serializers.CharField(max_length=200, required=True)
     unidad = serializers.CharField(max_length=100, required=True)

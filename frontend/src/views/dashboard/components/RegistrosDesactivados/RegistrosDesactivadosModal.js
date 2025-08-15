@@ -124,7 +124,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
       // Mapeo de tipos a endpoints
       const tipoToEndpoint = {
         'Usuario': 'usuarios',
-        'Control': 'control',
+        'Control': 'historial_control',
         'Asignación': 'asignacion',
         'Mantenimiento': 'mantenimiento',
         'Seguro': 'seguros',
@@ -205,7 +205,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
 
       const tipoToEndpoint = {
         'Usuario': 'usuarios',
-        'Control': 'control',
+        'Control': 'historial_control',
         'Asignación': 'asignacion',
         'Mantenimiento': 'mantenimiento',
         'Seguro': 'seguros',

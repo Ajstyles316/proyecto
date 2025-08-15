@@ -123,7 +123,7 @@ const MaquinariaDetalle = ({
                           [field.name]: e.target.value,
                         },
                       }));
-                      if (!e.target.value && !['adqui', 'codigo', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis', 'imagen'].includes(field.name)) {
+                      if (!e.target.value && !['adqui', 'gestion', 'tipo', 'marca', 'modelo', 'color', 'nro_motor', 'nro_chasis', 'imagen'].includes(field.name)) {
                         setNewMaquinariaErrors({
                           ...newMaquinariaErrors,
                           [field.name]: 'Este campo es obligatorio'

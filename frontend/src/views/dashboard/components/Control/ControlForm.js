@@ -96,11 +96,11 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
             multiline
             minRows={4}
             label="Observación"
-            name="observaciones"
-            value={form.observaciones || ''}
-            onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
-            error={!!errors.observaciones}
-            helperText={errors.observaciones}
+            name="observacion"
+            value={form.observacion || ''}
+            onChange={(e) => setForm({ ...form, observacion: e.target.value })}
+            error={!!errors.observacion}
+            helperText={errors.observacion}
             disabled={isReadOnly}
           />
         </Grid>
@@ -133,6 +133,7 @@ ControlForm.propTypes = {
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
   isReadOnly: PropTypes.bool,
+  submitLoading: PropTypes.bool
 };
 
 export default ControlForm;
