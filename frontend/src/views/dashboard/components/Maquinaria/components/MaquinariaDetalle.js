@@ -205,12 +205,12 @@ const MaquinariaDetalle = ({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
           {SECTIONS.map(sec => (
             <Button
-              key={sec}
-              variant={activeSection === sec ? 'contained' : 'outlined'}
-              onClick={() => setActiveSection(sec)}
+              key={sec.key}
+              variant={activeSection === sec.key ? 'contained' : 'outlined'}
+              onClick={() => setActiveSection(sec.key)}
               sx={{ minWidth: 120, justifyContent: 'flex-start', py: 1 }}
             >
-              {sec}
+              {sec.label}
             </Button>
           ))}
         </Box>

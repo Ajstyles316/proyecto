@@ -102,119 +102,110 @@ const calcularTiempoConexion = (seguimientoData, row) => {
 };
 
 const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios }) => {
-  const handleExport = () => {
-    // Importación dinámica CORRECTA para jsPDF v2.x
-    import('jspdf')
-      .then(jsPDFModule => {
-        const jsPDF = jsPDFModule.default;
-        
-        // IMPORTANTE: Importamos jspdf-autotable SIN usar su resultado
-        // Esto registra el plugin automáticamente en jsPDF
-        return import('jspdf-autotable').then(() => {
-          // Ahora jsPDF tiene el método autoTable disponible
-          const doc = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: 'a4'
-          });
-          
-          // Encabezado profesional
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(16);
-          doc.setTextColor(40, 40, 40);
-          doc.text('REGISTRO DE ACTIVIDAD DEL SISTEMA', 14, 20);
-          
-          // Información de la empresa
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          doc.text('Empresa: Corporación Industrial S.A.', 14, 28);
-          doc.text(`Fecha de exportación: ${new Date().toLocaleDateString('es-ES')}`, 14, 34);
-          doc.text(`Total de registros: ${filteredData.length}`, 14, 40);
-          
-          // Línea divisoria
-          doc.setDrawColor(200, 200, 200);
-          doc.setLineWidth(0.5);
-          doc.line(14, 44, 280, 44);
-          
-          // Preparar datos para la tabla
-          const tableColumn = ["Fecha/Hora", "Usuario", "Acción", "Módulo", "Mensaje"];
-          const tableRows = [];
-          
-          filteredData.forEach(row => {
-            const user = seguimientoUsuarios.find(u => u.email === row.usuario_email);
-            const userName = user ? user.nombre : row.usuario_email || 'Usuario desconocido';
-            
-            let message = '';
-            if (typeof row.mensaje === 'object' && row.mensaje !== null) {
-              message = Object.entries(row.mensaje).map(([k, v]) => 
-                `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`).join('\n');
-            } else {
-              message = capitalizeWords(row.mensaje) || '-';
-            }
-            
-            if (row.accion === 'login' || row.accion === 'logout') {
-              const tiempoConexion = calcularTiempoConexion(seguimientoData, row);
-              if (tiempoConexion) {
-                message += `\nTiempo de conexión: ${tiempoConexion}`;
-              }
-            }
-            
-            tableRows.push([
-              row.fecha_hora ? new Date(row.fecha_hora).toLocaleString('es-ES') : '-',
-              userName,
-              formatAccion(row.accion),
-              capitalizeWords(row.modulo),
-              message.replace(/\n/g, ' | ')
-            ]);
-          });
-          
-          // Generar tabla en PDF - AHORA FUNCIONARÁ
-          doc.autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: 48,
-            theme: 'grid',
-            headStyles: {
-              fillColor: [25, 118, 210],
-              textColor: 255,
-              fontSize: 10,
-              fontStyle: 'bold'
-            },
-            styles: {
-              fontSize: 8,
-              cellPadding: 3,
-              lineColor: [220, 220, 220],
-              lineWidth: 0.1
-            },
-            columnStyles: {
-              0: { cellWidth: 35 },
-              1: { cellWidth: 35 },
-              2: { cellWidth: 25 },
-              3: { cellWidth: 25 },
-              4: { cellWidth: 100 }
-            },
-            didDrawPage: function(data) {
-              const str = `Página ${doc.internal.getNumberOfPages()}`;
-              doc.setFontSize(8);
-              doc.setTextColor(150);
-              doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
-              
-              doc.setFont('helvetica', 'bold');
-              doc.setTextColor(25, 118, 210);
-              doc.text('CI S.A.', 260, doc.internal.pageSize.height - 10);
-            }
-          });
-          
-          doc.save(`registro_actividad_${new Date().toISOString().slice(0,10)}.pdf`);
-        });
-      })
-      .catch(err => {
-        console.error('Error al generar PDF:', err);
-        alert('Hubo un error al generar el PDF. Por favor, intente nuevamente.');
-      });
-  };
-  
+  const handleExport = async () => {
+  try {
+    // Importaciones dinámicas correctas (ESM)
+    const { jsPDF } = await import('jspdf');                 // named export
+    const autoTable = (await import('jspdf-autotable')).default; // función
+
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Encabezado
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(40, 40, 40);
+    doc.text('REGISTRO DE ACTIVIDAD DEL SISTEMA', 14, 20);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Empresa: Corporación Industrial S.A.', 14, 28);
+    doc.text(`Fecha de exportación: ${new Date().toLocaleDateString('es-ES')}`, 14, 34);
+    doc.text(`Total de registros: ${filteredData.length}`, 14, 40);
+
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(14, 44, 280, 44);
+
+    // Columnas y filas
+    const tableColumn = ["Fecha/Hora", "Usuario", "Acción", "Módulo", "Mensaje"];
+    const tableRows = [];
+
+    filteredData.forEach(row => {
+      const user = seguimientoUsuarios.find(u => u.email === row.usuario_email);
+      const userName = user ? user.nombre : row.usuario_email || 'Usuario desconocido';
+
+      let message = '';
+      if (typeof row.mensaje === 'object' && row.mensaje !== null) {
+        message = Object.entries(row.mensaje)
+          .map(([k, v]) => `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`)
+          .join('\n');
+      } else {
+        message = capitalizeWords(row.mensaje) || '-';
+      }
+
+      if (row.accion === 'login' || row.accion === 'logout') {
+        const tiempoConexion = calcularTiempoConexion(seguimientoData, row);
+        if (tiempoConexion) message += `\nTiempo de conexión: ${tiempoConexion}`;
+      }
+
+      tableRows.push([
+        row.fecha_hora ? new Date(row.fecha_hora).toLocaleString('es-ES') : '-',
+        userName,
+        formatAccion(row.accion),
+        capitalizeWords(row.modulo),
+        message.replace(/\n/g, ' | ')
+      ]);
+    });
+
+    // Usar la función autoTable(doc, options)
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 48,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [25, 118, 210],
+        textColor: 255,
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 100 }
+      },
+      didDrawPage(data) {
+        const str = `Página ${doc.internal.getNumberOfPages()}`;
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(25, 118, 210);
+        doc.text('CI S.A.', 260, doc.internal.pageSize.height - 10);
+      }
+    });
+
+    doc.save(`registro_actividad_${new Date().toISOString().slice(0,10)}.pdf`);
+  } catch (err) {
+    console.error('Error al generar PDF:', err);
+    alert('Hubo un error al generar el PDF. Por favor, intente nuevamente.');
+  }
+};
+
   return (
     <Button
       variant="contained"

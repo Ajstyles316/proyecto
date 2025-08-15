@@ -1,27 +1,78 @@
-import jsPDF from 'jspdf';
+// importaciones corregidas para ESM
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
-import { maquinariaFields, depFields} from './fields';
+import { maquinariaFields, depFields } from './fields';
 import { formatDateOnly, cleanRow, formatHeader, formatCurrency, calcularDepreciacionAnual } from './exportHelpers';
 
-// Función para crear un sello/carimbo elegante
+// ================= utilidades =================
+
+const isDateLike = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
+
+const fmt = (v) => {
+  if (v == null) return '-';
+  if (isDateLike(v)) {
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('es-ES');
+  }
+  if (typeof v === 'number') return String(v);
+  return String(v);
+};
+
+const ensureArray = (v) => (Array.isArray(v) ? v : []);
+
+const dedupeBy = (rows, keys) => {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    const k = (keys || Object.keys(r)).map((x) => (r?.[x] ?? '')).join('|');
+    if (!seen.has(k)) {
+      seen.add(k);
+      out.push(r);
+    }
+  }
+  return out;
+};
+
+// Llaves de deduplicado por módulo (clave para Pronóstico)
+const DEDUPE_KEYS = {
+  maquinaria: ['placa', 'detalle', 'unidad'],
+  control: ['placa', 'fecha_ingreso', 'estado', 'ubicacion'],
+  itv: ['placa', 'detalle', 'importe'],
+  depreciaciones: ['placa', 'detalle', 'fecha_compra', 'costo_activo'],
+  pronosticos: ['placa', 'fecha_mantenimiento', 'resultado', 'riesgo', 'probabilidad'],
+  asignacion: ['placa', 'fecha_asignacion', 'recorrido_km'],
+  mantenimiento: ['placa', 'tipo', 'gestion', 'ubicacion'],
+  soat: ['placa', 'importe_2024', 'importe_2025'],
+  seguros: ['placa', 'numero_2024', 'importe'],
+  impuestos: ['placa', 'importe_2023', 'importe_2024'],
+};
+
+// Anchos de columnas (evita saltos innecesarios)
+const COLUMN_WIDTHS = {
+  pronosticos: {
+    0: { cellWidth: '12%' }, // Placa
+    1: { cellWidth: '15%' }, // Detalle
+    2: { cellWidth: '12%' }, // Fecha Asignación
+    3: { cellWidth: '8%' },  // Horas Operación
+    4: { cellWidth: '8%' },  // Recorrido
+    5: { cellWidth: '8%' },  // Resultado
+    6: { cellWidth: '8%' },  // Riesgo
+    7: { cellWidth: '8%' },  // Probabilidad
+    8: { cellWidth: '12%' }, // Fecha Mantenimiento
+    9: { cellWidth: '8%' },  // Urgencia
+    10:{ cellWidth: '15%' }, // Recomendaciones
+  },
+};
+
+// Funciones de sello y dashboard (se mantienen por si las usas luego)
 function createElegantStamp(doc, x, y, width, height) {
   const centerX = x + width / 2;
   const centerY = y + height / 2;
   const radius = Math.min(width, height) / 2 - 2;
-  
-  // Círculo exterior del sello
-  doc.setDrawColor(30, 77, 183);
-  doc.setLineWidth(0.5);
-  doc.circle(centerX, centerY, radius, 'S');
-  
-  // Círculo interior
-  doc.setDrawColor(30, 77, 183);
-  doc.setLineWidth(0.2);
-  doc.circle(centerX, centerY, radius - 3, 'S');
-  
-  // Líneas decorativas internas
-  doc.setDrawColor(30, 77, 183);
+  doc.setDrawColor(30, 77, 183); doc.setLineWidth(0.5); doc.circle(centerX, centerY, radius, 'S');
+  doc.setLineWidth(0.2); doc.circle(centerX, centerY, radius - 3, 'S');
   doc.setLineWidth(0.1);
   for (let i = 0; i < 8; i++) {
     const angle = (i * Math.PI) / 4;
@@ -31,99 +82,45 @@ function createElegantStamp(doc, x, y, width, height) {
     const endY = centerY + Math.sin(angle) * (radius - 15);
     doc.line(startX, startY, endX, endY);
   }
-  
-  // Punto central
-  doc.setFillColor(30, 77, 183);
-  doc.circle(centerX, centerY, 1, 'F');
+  doc.setFillColor(30, 77, 183); doc.circle(centerX, centerY, 1, 'F');
 }
 
-// Función para crear un dashboard visual simple
 function createSimpleDashboard(doc, x, y, width, height) {
-  const centerX = x + width / 2;
-  const centerY = y + height / 2;
-  
-  // Rectángulo principal
-  doc.setDrawColor(30, 77, 183);
-  doc.setLineWidth(0.3);
-  doc.rect(x, y, width, height, 'S');
-  
-  // Líneas divisorias internas
-  doc.setLineWidth(0.1);
-  doc.line(x, centerY, x + width, centerY);
-  doc.line(centerX, y, centerX, y + height);
-  
-  // Puntos en las esquinas
+  const centerX = x + width / 2; const centerY = y + height / 2;
+  doc.setDrawColor(30, 77, 183); doc.setLineWidth(0.3); doc.rect(x, y, width, height, 'S');
+  doc.setLineWidth(0.1); doc.line(x, centerY, x + width, centerY); doc.line(centerX, y, centerX, y + height);
   doc.setFillColor(30, 77, 183);
-  doc.circle(x + 3, y + 3, 1, 'F');
-  doc.circle(x + width - 3, y + 3, 1, 'F');
-  doc.circle(x + 3, y + height - 3, 1, 'F');
-  doc.circle(x + width - 3, y + height - 3, 1, 'F');
-  
-  // Líneas decorativas
-  doc.setDrawColor(30, 77, 183);
-  doc.setLineWidth(0.2);
-  doc.line(x + 8, y + 8, x + 12, y + 8);
-  doc.line(x + width - 12, y + 8, x + width - 8, y + 8);
-  doc.line(x + 8, y + height - 8, x + 12, y + height - 8);
-  doc.line(x + width - 12, y + height - 8, x + width - 8, y + height - 8);
+  doc.circle(x + 3, y + 3, 1, 'F'); doc.circle(x + width - 3, y + 3, 1, 'F');
+  doc.circle(x + 3, y + height - 3, 1, 'F'); doc.circle(x + width - 3, y + height - 3, 1, 'F');
+  doc.setDrawColor(30, 77, 183); doc.setLineWidth(0.2);
+  doc.line(x + 8, y + 8, x + 12, y + 8); doc.line(x + width - 12, y + 8, x + width - 8, y + 8);
+  doc.line(x + 8, y + height - 8, x + 12, y + height - 8); doc.line(x + width - 12, y + height - 8, x + width - 8, y + height - 8);
 }
 
-// Función para obtener fecha y hora formateada
+// fecha/hora
 function getFormattedDateTime() {
   const now = new Date();
-  const options = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  };
-  return now.toLocaleDateString('es-ES', options);
+  return now.toLocaleDateString('es-ES', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
 }
 
-// Función para obtener solo la fecha
-function getFormattedDate() {
-  const now = new Date();
-  const options = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  };
-  return now.toLocaleDateString('es-ES', options);
-}
-
-// Función para obtener solo la hora
-function getFormattedTime() {
-  const now = new Date();
-  const options = {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  };
-  return now.toLocaleTimeString('es-ES', options);
-}
+// ================= export individual =================
 
 function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos }) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  
-  // === ENCABEZADO SIMPLE ===
+
+  // Encabezado (logo + títulos)
   const logoWidth = 38, logoHeight = 24;
   const logoY = 15, logoX = 18;
-  
-  // Logo
-  const img = new Image();
-  img.src = logoCofa;
+  const img = new Image(); img.src = logoCofa;
   doc.addImage(img, 'PNG', logoX, logoY, logoWidth, logoHeight);
-  
-  // Información institucional
+
   doc.setTextColor(80, 80, 80);
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13); doc.setFont('helvetica', 'bold');
   const lines = [
     'MINISTERIO DE DEFENSA',
     'CORPORACIÓN DE LAS FF.AA. PARA EL DESARROLLO NACIONAL',
@@ -135,34 +132,21 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   const textMarginLeft = logoX + logoWidth + 10;
   const textMarginRight = 18;
   const textWidth = pageWidth - textMarginLeft - textMarginRight;
-  
-  lines.forEach((line, i) => {
-    doc.text(line, textMarginLeft + textWidth / 2, textY + i * lineHeight, { align: 'center' });
-  });
-  
-  // === LÍNEA SEPARADORA ===
-  doc.setDrawColor(30, 77, 183);
-  doc.setLineWidth(0.5);
+  lines.forEach((line, i) => doc.text(line, textMarginLeft + textWidth / 2, textY + i * lineHeight, { align: 'center' }));
+
+  doc.setDrawColor(30, 77, 183); doc.setLineWidth(0.5);
   doc.line(18, logoY + logoHeight + 8, pageWidth - 18, logoY + logoHeight + 8);
-  
-  // === TÍTULO DEL REPORTE ===
+
   let y = logoY + logoHeight + 20;
-  
-  // === SECCIÓN DE DATOS PRINCIPALES ===
-  doc.setFontSize(14);
-  doc.setTextColor(30, 77, 183);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Datos de la Maquinaria', pageWidth / 2, y, { align: 'center' });
-  y += 9;
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(33, 33, 33);
-  doc.text('A continuación se presentan los datos principales de la maquinaria seleccionada.', 40, y, { maxWidth: pageWidth - 80 });
-  y += 9;
-  
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
+
+  // Datos de la Maquinaria
+  doc.setFontSize(14); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
+  doc.text('Datos de la Maquinaria', pageWidth / 2, y, { align: 'center' }); y += 9;
+
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(33, 33, 33);
+  doc.text('A continuación se presentan los datos principales de la maquinaria seleccionada.', 40, y, { maxWidth: pageWidth - 80 }); y += 9;
+
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold');
   const maqRows = maquinariaFields.map(f => [f.label, maquinaria[f.key] || 'No se encontraron datos']);
   autoTable(doc, {
     startY: y,
@@ -177,25 +161,16 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     pageBreak: 'avoid',
   });
   y = doc.lastAutoTable.finalY + 6;
-  
-  // === FUNCIÓN PARA RENDERIZAR SECCIONES ===
+
+  // Render genérico de sección
   function renderSection(title, data, opts = {}) {
-    if (title === 'Mantenimiento') {
-      doc.addPage();
-      y = 20;
-      
-      // Repetir encabezado en nueva página
-    }
-    
-    doc.setFontSize(13);
-    doc.setTextColor(30, 77, 183);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, pageWidth / 2, y, { align: 'center' });
-    y += 9;
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(33, 33, 33);
+    // título visible para Control
+    const titleVisible = title === 'Control' ? 'Control y Seguimiento' : title;
+
+    doc.setFontSize(13); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
+    doc.text(titleVisible, pageWidth / 2, y, { align: 'center' }); y += 9;
+
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(33, 33, 33);
     let intro = '';
     switch (title) {
       case 'Control':
@@ -222,40 +197,28 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       default:
         intro = '';
     }
-    if (intro) {
-      doc.text(intro, 40, y, { maxWidth: pageWidth - 80 });
-      y += 9;
-    }
-    doc.setFont('helvetica', 'bold');
+    if (intro) { doc.text(intro, 40, y, { maxWidth: pageWidth - 80 }); y += 9; }
+
     if (!data || data.length === 0) {
       autoTable(doc, {
-        startY: y,
-        head: [['Mensaje']],
-        body: [['No se encontraron datos']],
+        startY: y, head: [['Mensaje']], body: [['No se encontraron datos']],
         styles: { fontSize: 10, cellPadding: 2, rowHeight: 10 },
         headStyles: { fillColor: [30, 77, 183], textColor: 255 },
         bodyStyles: { textColor: 33 },
         margin: { left: 40, right: 40 },
-        tableLineColor: [30, 77, 183],
-        tableLineWidth: 0.2,
-        pageBreak: 'avoid',
+        tableLineColor: [30, 77, 183], tableLineWidth: 0.2, pageBreak: 'avoid',
       });
       y = doc.lastAutoTable.finalY + 6;
       return;
     }
-    let rows = data.map(cleanRow);
+
+    // limpieza y columnas
+    let rows = ensureArray(data).map(cleanRow);
     let keys = Object.keys(rows[0] || {});
-    // Excluir campos no deseados en todas las tablas relevantes
-    if ([
-      'control', 'asignación', 'asignacion', 'mantenimiento', 'soat', 'seguros', 'itv', 'impuestos',
-      'depreciacion', 'depreciación'
-    ].some(tabla => title.toLowerCase().includes(tabla))) {
-      keys = keys.filter(k => !['bien_uso', 'bien_de_uso', 'vida_util', 'costo_activo'].includes(k.toLowerCase()));
-    }
-    if (opts.skipDates) {
-      keys = keys.filter(k => !k.toLowerCase().includes('creacion') && !k.toLowerCase().includes('actualizacion'));
-    }
-    let tableOptions = {
+    if (opts.skipDates) keys = keys.filter(k => !k.toLowerCase().includes('creacion') && !k.toLowerCase().includes('actualizacion'));
+
+    // tabla
+    autoTable(doc, {
       startY: y,
       head: [keys.map(formatHeader)],
       body: rows.map(r => keys.map(k => r[k] ?? 'No se encontraron datos')),
@@ -263,42 +226,13 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       headStyles: { fillColor: [30, 77, 183], textColor: 255 },
       bodyStyles: { textColor: 33 },
       margin: { left: 40, right: 40 },
-      tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2,
-      pageBreak: 'avoid',
-    };
-    if (opts.pronostico) {
-      keys = keys.filter(k => k !== 'fecha_creacion');
-      rows = rows.map(r => {
-        if (r.recomendaciones) {
-          if (Array.isArray(r.recomendaciones)) {
-            r.recomendaciones = r.recomendaciones.slice(0, 3).map(rec => `- ${rec}`).join('\n');
-          } else if (typeof r.recomendaciones === 'string') {
-            r.recomendaciones = r.recomendaciones.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
-          }
-        }
-        return r;
-      });
-      tableOptions = {
-        ...tableOptions,
-        margin: { left: 20, right: 20 },
-        columnStyles: {
-          recomendaciones: { cellWidth: 120 }
-        },
-        didParseCell: function (data) {
-          if (data.column.dataKey === 'recomendaciones') {
-            data.cell.styles.cellPadding = 2;
-            data.cell.text = data.cell.raw.split('\n');
-          }
-        },
-        pageBreak: 'avoid',
-      };
-    }
-    autoTable(doc, tableOptions);
+      tableLineColor: [30, 77, 183], tableLineWidth: 0.2,
+      pageBreak: 'auto',
+    });
     y = doc.lastAutoTable.finalY + 6;
   }
-  
-  // Renderizar todas las secciones
+
+  // Secciones
   renderSection('Control', control);
   renderSection('Asignación', asignacion);
   renderSection('Mantenimiento', mantenimiento);
@@ -306,33 +240,21 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   renderSection('Seguros', seguros);
   renderSection('ITV', itv);
   renderSection('Impuestos', impuestos);
-  
-  // === SECCIÓN DE DEPRECIACIÓN ===
-  doc.addPage();
-  y = 20;
-  
-  // Repetir encabezado
-  doc.setFontSize(12);
-  doc.setTextColor(30, 77, 183);
-  doc.setFont('helvetica', 'bold');
+
+  // Depreciación (se mantiene)
+  doc.addPage(); y = 20;
+  doc.setFontSize(12); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
   doc.text('REPORTE DETALLADO DE MAQUINARIA', pageWidth / 2, 15, { align: 'center' });
-  
-  doc.setFontSize(13);
-  doc.setTextColor(30, 77, 183);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Tabla de Depreciación Anual', pageWidth / 2, y, { align: 'center' });
-  y += 9;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(33, 33, 33);
-  doc.text('La siguiente tabla muestra el cálculo de la depreciación anual, la depreciación acumulada y el valor en libros de la maquinaria para cada año.', 40, y, { maxWidth: pageWidth - 80 });
-  y += 9;
-  doc.setFont('helvetica', 'bold');
+
+  doc.setFontSize(13); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
+  doc.text('Tabla de Depreciación Anual', pageWidth / 2, y, { align: 'center' }); y += 9;
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(33, 33, 33);
+  doc.text('La siguiente tabla muestra el cálculo de la depreciación anual, la depreciación acumulada y el valor en libros.', 40, y, { maxWidth: pageWidth - 80 }); y += 9;
+
   let depAnual = null;
-  if (depreciaciones && depreciaciones.length > 0 && depreciaciones[0].depreciacion_por_anio && Array.isArray(depreciaciones[0].depreciacion_por_anio) && depreciaciones[0].depreciacion_por_anio.length > 0) {
+  if (depreciaciones?.[0]?.depreciacion_por_anio?.length) {
     depAnual = depreciaciones[0].depreciacion_por_anio;
-  } else if (depreciaciones && depreciaciones.length > 0) {
-    // Fallback: calcular en frontend
+  } else if (depreciaciones?.length) {
     const dep = depreciaciones[0];
     depAnual = calcularDepreciacionAnual({
       costo_activo: Number(dep.costo_activo) || 0,
@@ -343,36 +265,28 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       coeficiente: dep.coeficiente ? Number(dep.coeficiente) : null
     });
   }
-  if (depAnual && depAnual.length > 0) {
+
+  if (depAnual?.length) {
     autoTable(doc, {
       startY: y,
       head: [['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros']],
       body: depAnual.map(row => [
-        row.anio ?? '-',
-        formatCurrency(row.valor_anual_depreciado ?? row.valor),
-        formatCurrency(row.depreciacion_acumulada),
-        formatCurrency(row.valor_en_libros)
+        row.anio ?? '-', formatCurrency(row.valor_anual_depreciado ?? row.valor),
+        formatCurrency(row.depreciacion_acumulada), formatCurrency(row.valor_en_libros)
       ]),
       styles: { fontSize: 10, cellPadding: 2 },
       headStyles: { fillColor: [30, 77, 183], textColor: 255 },
       bodyStyles: { textColor: 33 },
       margin: { left: 40, right: 40 },
-      tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2
+      tableLineColor: [30, 77, 183], tableLineWidth: 0.2
     });
     y = doc.lastAutoTable.finalY + 6;
   } else {
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(33, 33, 33);
-    doc.text('No se encontraron datos de depreciación anual para esta maquinaria.', 40, y, { maxWidth: pageWidth - 80 });
-    y += 9;
-    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(33, 33, 33);
+    doc.text('No se encontraron datos de depreciación anual para esta maquinaria.', 40, y, { maxWidth: pageWidth - 80 }); y += 9;
     if (!depreciaciones?.length) {
       autoTable(doc, {
-        startY: y,
-        head: [['Mensaje']],
-        body: [['No se encontraron datos']],
+        startY: y, head: [['Mensaje']], body: [['No se encontraron datos']],
         styles: { fontSize: 10, cellPadding: 2 },
         headStyles: { fillColor: [30, 77, 183], textColor: 255 },
         bodyStyles: { textColor: 33 },
@@ -384,17 +298,13 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
         const cleaned = {};
         depFields.forEach(f => {
           const value = dep[f.key];
-          cleaned[f.label] = f.key.toLowerCase().includes('fecha')
-            ? formatDateOnly(value)
-            : value || '-';
+          cleaned[f.label] = f.key.toLowerCase().includes('fecha') ? formatDateOnly(value) : (value || '-');
         });
         return cleaned;
       });
       const keys = Object.keys(depData[0] || {});
       autoTable(doc, {
-        startY: y,
-        head: [keys],
-        body: depData.map(r => keys.map(k => r[k])),
+        startY: y, head: [keys], body: depData.map(r => keys.map(k => r[k])),
         styles: { fontSize: 10, cellPadding: 2 },
         headStyles: { fillColor: [30, 77, 183], textColor: 255 },
         bodyStyles: { textColor: 33 },
@@ -403,83 +313,53 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       y = doc.lastAutoTable.finalY + 6;
     }
   }
-  
-  // === SECCIÓN DE PRONÓSTICOS ===
-  doc.addPage();
-  y = 20;
-  
-  // Repetir encabezado
-  doc.setFontSize(12);
-  doc.setTextColor(30, 77, 183);
-  doc.setFont('helvetica', 'bold');
+
+  // Pronósticos (individual) – deduplicado y formato vertical limpio
+  doc.addPage(); y = 20;
+  doc.setFontSize(12); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
   doc.text('REPORTE DETALLADO DE MAQUINARIA', pageWidth / 2, 15, { align: 'center' });
-  
-  doc.setFontSize(13);
-  doc.setTextColor(30, 77, 183);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Pronósticos', pageWidth / 2, y, { align: 'center' });
-  y += 9;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(33, 33, 33);
-  doc.text('En esta sección se presentan los pronósticos de mantenimiento y riesgo para la maquinaria, incluyendo recomendaciones específicas.', 40, y, { maxWidth: pageWidth - 80 });
-  y += 9;
-  doc.setFont('helvetica', 'bold');
-  const pronosticosSinFecha = pronosticos.map(p => {
-    const { fecha_creacion, creado_en, ...rest } = p;
-    return rest;
-  });
-  function renderPronosticoTable(title, data) {
-    if (!data || data.length === 0) {
-      autoTable(doc, {
-        startY: y,
-        head: [['Mensaje']],
-        body: [['No se encontraron datos']],
-        styles: { fontSize: 10, cellPadding: 2 },
-        headStyles: { fillColor: [30, 77, 183], textColor: 255 },
-        bodyStyles: { textColor: 33 },
-        margin: { left: 40, right: 40 },
-        tableLineColor: [30, 77, 183],
-        tableLineWidth: 0.2,
-      });
-      y = doc.lastAutoTable.finalY + 6;
-      return;
-    }
-    const cleanedData = data.map(item => {
+  doc.setFontSize(13); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
+  doc.text('Pronósticos', pageWidth / 2, y, { align: 'center' }); y += 9;
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(33, 33, 33);
+  doc.text('En esta sección se presentan los pronósticos de mantenimiento y riesgo para la maquinaria.', 40, y, { maxWidth: pageWidth - 80 }); y += 9;
+
+  const pronosticosClean = ensureArray(pronosticos).map(({ fecha_creacion, creado_en, ...rest }) => rest);
+  const pronDedupe = dedupeBy(pronosticosClean, DEDUPE_KEYS.pronosticos);
+
+  if (!pronDedupe.length) {
+    autoTable(doc, {
+      startY: y, head: [['Mensaje']], body: [['No se encontraron datos']],
+      styles: { fontSize: 10, cellPadding: 2 },
+      headStyles: { fillColor: [30, 77, 183], textColor: 255 },
+      bodyStyles: { textColor: 33 },
+      margin: { left: 40, right: 40 },
+    });
+  } else {
+    const cleanedData = pronDedupe.map(item => {
       const cleaned = {};
       Object.entries(item).forEach(([key, value]) => {
-        if (key === 'fecha_creacion' || key === 'creado_en') return;
         if (key === 'id' || key === '_id' || key.endsWith('_id')) return;
         if (key === 'recomendaciones') {
-          if (Array.isArray(value)) {
-            cleaned[key] = value.slice(0, 3).map(rec => `- ${rec}`).join('\n');
-          } else if (typeof value === 'string') {
-            cleaned[key] = value.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
-          } else {
-            cleaned[key] = '-';
-          }
+          if (Array.isArray(value)) cleaned[key] = value.slice(0, 3).map(rec => `- ${rec}`).join('\n');
+          else if (typeof value === 'string') cleaned[key] = value.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
+          else cleaned[key] = '-';
         } else if (key.toLowerCase().includes('fecha') && value) {
           cleaned[key] = formatDateOnly(value);
         } else {
-          cleaned[key] = value || '-';
+          cleaned[key] = value ?? '-';
         }
       });
       return cleaned;
     });
-    let keys = Object.keys(cleanedData[0] || {});
-    keys = keys.filter(k => k !== 'id' && k !== '_id' && !k.endsWith('_id'));
-    // Formato vertical para pronósticos
+
+    const keys = Object.keys(cleanedData[0] || {});
     const header = ['Campo', 'Valor'];
-    const body = cleanedData.map(r => {
-      const campos = [];
-      keys.forEach(k => {
-        if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-          campos.push([formatHeader(k), r[k]]);
-        }
-      });
-      return campos;
-    }).flat();
-    
+    const body = cleanedData.flatMap(r =>
+      keys
+        .filter(k => r[k] !== undefined && r[k] !== null && r[k] !== '')
+        .map(k => [formatHeader(k), r[k]])
+    );
+
     autoTable(doc, {
       startY: y,
       head: [header],
@@ -488,14 +368,9 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       headStyles: { fillColor: [30, 77, 183], textColor: 255 },
       bodyStyles: { textColor: 33 },
       margin: { left: 20, right: 20 },
-      tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2,
-      columnStyles: {
-        0: { cellWidth: '40%' },
-        1: { cellWidth: '60%' }
-      },
-      didParseCell: function (data) {
-        // Permitir saltos de línea en las celdas de recomendaciones
+      tableLineColor: [30, 77, 183], tableLineWidth: 0.2,
+      didParseCell(data) {
+        // multilínea para recomendaciones
         if (data.section === 'body' && data.column.dataKey === 1) {
           const cellValue = data.cell.raw;
           if (typeof cellValue === 'string' && cellValue.includes('\n')) {
@@ -505,156 +380,125 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
         }
       }
     });
-    y = doc.lastAutoTable.finalY + 6;
   }
-  renderPronosticoTable('Pronósticos', pronosticosSinFecha);
-  
-  // === PIE DE PÁGINA CON INFORMACIÓN ADICIONAL ===
+
+  // Pie de página
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     const pageY = doc.internal.pageSize.getHeight() - 10;
-    
-    // Línea separadora
-    doc.setDrawColor(30, 77, 183);
-    doc.setLineWidth(0.2);
+    doc.setDrawColor(30, 77, 183); doc.setLineWidth(0.2);
     doc.line(18, pageY - 5, pageWidth - 18, pageY - 5);
-    
-    // Información del pie de página
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8); doc.setTextColor(80, 80, 80); doc.setFont('helvetica', 'normal');
     doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageY, { align: 'center' });
     doc.text(`Generado el: ${getFormattedDateTime()}`, 18, pageY);
     doc.text(`Sistema de Gestión de Maquinaria`, pageWidth - 18, pageY, { align: 'right' });
   }
-  
+
   doc.save(`reporte_${maquinaria.placa || maquinaria.codigo || 'maquinaria'}.pdf`);
 }
 
-// NUEVA FUNCIÓN PARA EXPORTACIÓN MASIVA HORIZONTAL
+// ================= export masivo =================
+
 function exportPDFMasivo(data, filename = 'reporte') {
   const doc = new jsPDF({ orientation: 'landscape' });
-  let page = 0;
+  let sectionIndex = 0;
 
-  // Helper para crear tabla horizontal con formato de dos columnas
+  // helper tabla por sección (una tabla por módulo, deduplicada)
   function addTable(title, rows, fields = null, tablaKey = '') {
-    if (!rows || rows.length === 0) return;
-    if (page > 0) doc.addPage();
-    page++;
-    
-    doc.setFontSize(13);
-    doc.setTextColor(30, 77, 183);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, 14, 18);
-    
-    let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
-    // Para tablas que no son maquinaria, usar solo campos específicos
-    if (tablaKey && tablaKey !== 'maquinaria') {
+    const raw = ensureArray(rows);
+    if (!raw.length) return;
+
+    // deduplicado por módulo
+    const deduped = dedupeBy(raw, DEDUPE_KEYS[tablaKey]);
+
+    if (sectionIndex > 0) doc.addPage();
+    sectionIndex++;
+
+    // título visible (Control => Control y Seguimiento)
+    const visibleTitle = tablaKey === 'control' ? 'Control y Seguimiento' : title;
+    doc.setFontSize(13); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
+    doc.text(`${visibleTitle} (${deduped.length})`, 14, 18);
+
+    // columnas
+    let keys = fields ? fields.map(f => f.key) : Object.keys(deduped[0] || {});
+
+    if (tablaKey && tablaKey !== 'maquinaria' && !fields) {
       const camposPermitidos = {
         control: ['placa', 'detalle', 'ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
         asignacion: ['placa', 'detalle', 'fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
         mantenimiento: ['placa', 'detalle', 'tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
         soat: ['placa', 'detalle', 'importe_2024', 'importe_2025'],
-        seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle'],
-        itv: ['placa', 'detalle', 'detalle', 'importe'],
+        seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle_seg'],
+        // itv puede venir como 'detalle' o 'detalle_itv'
+        itv: ['placa', 'detalle', 'detalle_itv', 'importe'],
         impuestos: ['placa', 'detalle', 'importe_2023', 'importe_2024'],
         depreciaciones: ['placa', 'detalle', 'costo_activo', 'fecha_compra', 'vida_util', 'bien_uso', 'metodo_depreciacion', 'valor_residual', 'coeficiente'],
-        pronosticos: ['placa', 'detalle', 'riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
+        pronosticos: ['placa', 'detalle', 'fecha_asig', 'horas_op', 'recorrido', 'resultado', 'riesgo', 'probabilidad', 'fecha_mantenimiento', 'urgencia', 'recomendaciones'],
       };
-      
-      // Obtener los campos permitidos para esta tabla
-      const camposTabla = camposPermitidos[tablaKey] || ['placa', 'detalle'];
-      
-      // Filtrar solo los campos que existen en los datos y excluir fechas
-      keys = camposTabla.filter(campo => 
-        rows.some(row => row[campo] !== undefined) &&
-        campo !== 'fecha_creacion' &&
-        campo !== 'fecha_actualizacion'
-      );
+
+      // elegir columnas que existan
+      const candidatos = camposPermitidos[tablaKey] || ['placa', 'detalle'];
+      keys = candidatos.filter(c => deduped.some(r => r[c] !== undefined && r[c] !== null));
+      // excluir metadata
+      keys = keys.filter(k => !/fecha_creacion|fecha_actualizacion|^id$|^_id$|_id$/.test(k));
     }
-    
-    // Para pronósticos usar formato horizontal, para el resto horizontal
-    let header, body;
-    if (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) {
-      // Formato horizontal para pronósticos - igual que en Excel
-      // Los datos ya vienen con placa y detalle agregados desde ExportarReportes.jsx
-      header = ['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones'];
-      body = rows.map(r => [
+
+    let head, body, columnStyles = {};
+    if (tablaKey === 'pronosticos') {
+      // encabezado fijo para pronósticos (horizontal)
+      head = [['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones']];
+      body = deduped.map(r => [
         r.placa || '',
         r.detalle || '',
-        r.fecha_asig || '',
-        r.horas_op || '',
-        r.recorrido || '',
-        r.resultado || '',
-        r.riesgo || '',
-        r.probabilidad || '',
-        r.fecha_mantenimiento || '',
-        r.urgencia || '',
-        Array.isArray(r.recomendaciones) ? r.recomendaciones.join('; ') : (r.recomendaciones || '')
+        fmt(r.fecha_asig),
+        r.horas_op ?? '',
+        r.recorrido ?? '',
+        r.resultado ?? '',
+        r.riesgo ?? '',
+        r.probabilidad ?? '',
+        fmt(r.fecha_mantenimiento),
+        r.urgencia ?? '',
+        Array.isArray(r.recomendaciones) ? r.recomendaciones.slice(0, 3).join('; ') : (r.recomendaciones || '')
       ]);
+      columnStyles = COLUMN_WIDTHS.pronosticos;
     } else {
-      // Formato horizontal para el resto de tablas
-      header = keys.map(formatHeader);
-      body = rows.map(r => {
-        return keys.map(k => {
-          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-            // Formatear fechas correctamente
-            let valor = r[k];
-            if (k.toLowerCase().includes('fecha') && valor) {
-              valor = formatDateOnly(valor);
-            }
-            return valor;
-          }
-          return '';
-        });
-      });
+      head = [keys.map(formatHeader)];
+      body = deduped.map(r => keys.map(k => {
+        let v = r[k];
+        if (k.toLowerCase().includes('fecha')) v = fmt(v);
+        return v ?? '';
+      }));
     }
-    
-     autoTable(doc, {
-       startY: 24,
-       head: [header],
-       body,
-       styles: { fontSize: 8, cellPadding: 2 },
-       headStyles: { fillColor: [30, 77, 183], textColor: 255 },
-       bodyStyles: { textColor: 33 },
-       margin: { left: 10, right: 10 },
-       tableLineColor: [30, 77, 183],
-       tableLineWidth: 0.2,
-       pageBreak: 'auto',
-       theme: 'grid',
-       columnStyles: (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) ? {
-         0: { cellWidth: '12%' }, // Placa
-         1: { cellWidth: '15%' }, // Detalle
-         2: { cellWidth: '12%' }, // Fecha Asignación
-         3: { cellWidth: '8%' },  // Horas Operación
-         4: { cellWidth: '8%' },  // Recorrido
-         5: { cellWidth: '8%' },  // Resultado
-         6: { cellWidth: '8%' },  // Riesgo
-         7: { cellWidth: '8%' },  // Probabilidad
-         8: { cellWidth: '12%' }, // Fecha Mantenimiento
-         9: { cellWidth: '8%' },  // Urgencia
-         10: { cellWidth: '15%' } // Recomendaciones
-       } : {},
-       didParseCell: (tablaKey === 'pronosticos' || title.toLowerCase().includes('pronóstico') || title.toLowerCase().includes('pronostico')) ? function (data) {
-         // Permitir saltos de línea en las celdas de recomendaciones
-         if (data.section === 'body' && data.column.dataKey === 10) {
-           const cellValue = data.cell.raw;
-           if (typeof cellValue === 'string' && cellValue.includes(';')) {
-             data.cell.styles.cellPadding = 3;
-             data.cell.text = cellValue.split(';').map(rec => rec.trim());
-           }
-         }
-       } : undefined,
-     });
+
+    autoTable(doc, {
+      startY: 24,
+      head,
+      body,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [30, 77, 183], textColor: 255 },
+      bodyStyles: { textColor: 33 },
+      margin: { left: 10, right: 10 },
+      tableLineColor: [30, 77, 183], tableLineWidth: 0.2,
+      pageBreak: 'auto',
+      theme: 'grid',
+      columnStyles,
+      didParseCell: tablaKey === 'pronosticos' ? function (data) {
+        // multilínea para recomendaciones
+        if (data.section === 'body' && data.column.dataKey === 10) {
+          const cellValue = data.cell.raw;
+          if (typeof cellValue === 'string' && cellValue.includes(';')) {
+            data.cell.styles.cellPadding = 3;
+            data.cell.text = cellValue.split(';').map(rec => rec.trim());
+          }
+        }
+      } : undefined,
+    });
   }
 
-  // Maquinaria
-  if (data.maquinaria && data.maquinaria.length > 0) {
-    addTable('Maquinaria', data.maquinaria, maquinariaFields, 'maquinaria');
-  }
+  // Orden fijo de secciones (coherente con tu UI)
+  if (data.maquinaria?.length) addTable('Maquinaria', data.maquinaria, maquinariaFields, 'maquinaria');
 
-  // Otras tablas
   const tablas = [
     { key: 'control', label: 'Control' },
     { key: 'asignacion', label: 'Asignación' },
@@ -666,28 +510,22 @@ function exportPDFMasivo(data, filename = 'reporte') {
     { key: 'depreciaciones', label: 'Depreciación', fields: depFields },
     { key: 'pronosticos', label: 'Pronóstico' },
   ];
+
   for (const t of tablas) {
-    if (data[t.key] && data[t.key].length > 0) {
+    if (data[t.key]?.length) {
       addTable(t.label, data[t.key], t.fields || null, t.key);
     }
   }
 
-  // === PIE DE PÁGINA CON INFORMACIÓN ADICIONAL ===
+  // pie de página
   const totalPages = doc.internal.getNumberOfPages();
   const pageWidth = doc.internal.pageSize.getWidth();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     const pageY = doc.internal.pageSize.getHeight() - 10;
-    
-    // Línea separadora
-    doc.setDrawColor(30, 77, 183);
-    doc.setLineWidth(0.2);
+    doc.setDrawColor(30, 77, 183); doc.setLineWidth(0.2);
     doc.line(18, pageY - 5, pageWidth - 18, pageY - 5);
-    
-    // Información del pie de página
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8); doc.setTextColor(80, 80, 80); doc.setFont('helvetica', 'normal');
     doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageY, { align: 'center' });
     doc.text(`Generado el: ${getFormattedDateTime()}`, 18, pageY);
     doc.text(`Sistema de Gestión de Maquinaria`, pageWidth - 18, pageY, { align: 'right' });
@@ -697,4 +535,4 @@ function exportPDFMasivo(data, filename = 'reporte') {
 }
 
 export default exportPDF;
-export { exportPDFMasivo }; 
+export { exportPDFMasivo };
