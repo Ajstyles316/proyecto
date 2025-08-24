@@ -66,7 +66,7 @@ const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading, isRe
       <TableHead>
         <TableRow sx={{ bgcolor: 'grey.50' }}>
           <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Número 2024</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>N° 2024</TableCell>
           <TableCell sx={{ fontWeight: 600 }}>Importe</TableCell>
           <TableCell sx={{ fontWeight: 600 }}>Detalle</TableCell>
           {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}

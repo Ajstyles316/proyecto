@@ -112,7 +112,6 @@ function exportXLS(data, filename = 'reporte') {
     { key: 'seguros', label: 'Seguros' },
     { key: 'itv', label: 'ITV' },
     { key: 'impuestos', label: 'Impuestos' },
-    { key: 'depreciaciones', label: 'Depreciación' },
     { key: 'pronosticos', label: 'Pronóstico' },
   ];
   for (const t of tablas) {
@@ -184,8 +183,6 @@ function exportXLS(data, filename = 'reporte') {
       XLSX.utils.book_append_sheet(wb, sheet, t.label);
     }
   }
-
-  // Depreciación anual (si existe y no está vacía)
   if (data.depreciaciones && data.depreciaciones.length > 0 && data.depreciaciones[0].depreciacion_por_anio && Array.isArray(data.depreciaciones[0].depreciacion_por_anio) && data.depreciaciones[0].depreciacion_por_anio.length > 0) {
     const depAnual = data.depreciaciones[0].depreciacion_por_anio;
     const depSheet = XLSX.utils.aoa_to_sheet([

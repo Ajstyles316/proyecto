@@ -153,7 +153,7 @@ const DepreciacionesMain = () => {
           metodo,
           vida_util,
           depreciacion_por_anio: tabla,
-          advertencia: 'Datos temporales (sin historial previo). Puede guardar para crear el registro.',
+          advertencia: 'Solo puedes visualizar los registros',
         };
       }
       setDepreciacionActual(datosIniciales);

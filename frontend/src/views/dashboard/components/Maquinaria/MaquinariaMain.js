@@ -78,7 +78,7 @@ const Maquinaria = () => {
       {!canCreateMaquinaria && !isReadOnly && user?.Cargo?.toLowerCase() !== 'tecnico' && (
         <Box mb={2}>
           <Alert severity="info">
-            No tienes permisos para crear maquinaria. Solo puedes visualizar los registros.
+            Solo puedes visualizar los registros.
           </Alert>
         </Box>
       )}

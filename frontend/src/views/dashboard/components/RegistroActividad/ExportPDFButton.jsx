@@ -123,7 +123,7 @@ const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text('Empresa: Corporación Industrial S.A.', 14, 28);
+    doc.text('Corporación de las Fuerzas Armadas de Desarrollo Nacional - COFADENA', 14, 28);
     doc.text(`Fecha de exportación: ${new Date().toLocaleDateString('es-ES')}`, 14, 34);
     doc.text(`Total de registros: ${filteredData.length}`, 14, 40);
 
@@ -193,9 +193,7 @@ const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios 
         doc.setTextColor(150);
         doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
 
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(25, 118, 210);
-        doc.text('CI S.A.', 260, doc.internal.pageSize.height - 10);
+        
       }
     });
 

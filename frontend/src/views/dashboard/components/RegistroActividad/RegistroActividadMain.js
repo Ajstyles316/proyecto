@@ -67,6 +67,7 @@ const getAccionChip = (accion) => {
     'crear': 'success',
     'actualizar': 'info',
     'eliminar': 'error',
+    'eliminar_permanentemente': 'error',
     'login': 'primary',
     'logout': 'secondary',
     'cambio_permisos': 'warning',

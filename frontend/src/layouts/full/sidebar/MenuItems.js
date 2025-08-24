@@ -2,20 +2,20 @@ import { uniqueId } from 'lodash';
 
 import {
   IconLayoutDashboard,
-  IconLogin,
-  IconAperture,
-  IconAlignBoxLeftBottom,
   IconTable,
+  IconTrendingDown,
+  IconBriefcase,
+  IconChartLine,
+  IconReport,
   IconUsers,
+  IconLogout,
 } from '@tabler/icons-react';
 
-// Función para cerrar sesión
+// Función para cerrar sesión (sin cambios)
 const handleLogout = async () => {
   try {
-    // Obtener el usuario actual del localStorage
     const user = JSON.parse(localStorage.getItem("user"));
     if (user && user.Email) {
-      // Llamar al endpoint de logout
       await fetch("http://localhost:8000/api/logout/", {
         method: "POST",
         headers: {
@@ -27,7 +27,6 @@ const handleLogout = async () => {
   } catch (error) {
     console.error("Error al registrar logout:", error);
   } finally {
-    // Limpiar localStorage y redirigir
     localStorage.removeItem("user");
     window.location.href = "/login";
   }
@@ -57,25 +56,25 @@ const baseMenuItems = [
   {
     id: uniqueId(),
     title: 'Depreciaciones',
-    icon: IconTable,
+    icon: IconTrendingDown, // Icono de tendencia a la baja para depreciaciones
     href: '/depreciaciones',
   },
   {
     id: uniqueId(),
     title: 'Activos',
-    icon: IconTable,
+    icon: IconBriefcase, // Maletín para representar activos
     href: '/activos',
   },
   {
     id: uniqueId(),
     title: 'Pronóstico',
-    icon: IconAlignBoxLeftBottom,
+    icon: IconChartLine, // Gráfico de líneas para pronósticos
     href: '/pronostico',
   },
   {
     id: uniqueId(),
     title: 'Reportes',
-    icon: IconAperture,
+    icon: IconReport, // Icono específico para reportes
     href: '/reportes',
   },
   {
@@ -92,7 +91,7 @@ const baseMenuItems = [
   {
     id: uniqueId(),
     title: 'Cerrar Sesión',
-    icon: IconLogin,
+    icon: IconLogout, // Icono específico para logout
     href: '/login',
     onClick: handleLogout,
   },
