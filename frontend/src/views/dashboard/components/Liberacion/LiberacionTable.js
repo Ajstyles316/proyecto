@@ -14,41 +14,58 @@ import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import { useUser } from '../../../../components/UserContext';
 
-const ControlTable = ({ controls, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+const LiberacionTable = ({ liberaciones, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
+  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   
   const formatDate = (dateString) => {
     if (!dateString) return '';
+    
+    // Si ya está en formato YYYY-MM-DD, devolverlo tal como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // Si está en formato DD/MM/YYYY, convertirlo
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+      const [day, month, year] = dateString.split('/');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    // Para otros formatos, intentar con Date
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return '';
-      return date.toLocaleDateString('es-ES');
+      return date.toISOString().split('T')[0];
     } catch (error) {
       return '';
     }
   };
 
+
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
         <CircularProgress color="primary" />
-        <Typography variant="body1" sx={{ ml: 2 }}>Cargando controles...</Typography>
+        <Typography variant="body1" sx={{ ml: 2 }}>Cargando liberaciones...</Typography>
       </Box>
     );
   }
 
-  if (controls.length === 0) {
+  if (liberaciones.length === 0) {
     return (
       <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
-        No hay registros de control para esta maquinaria.
+        No hay registros de liberación para esta maquinaria.
       </Typography>
     );
   }
 
   // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
-  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
+
+
 
   return (
     <Table sx={{
@@ -65,47 +82,43 @@ const ControlTable = ({ controls, onEdit, onDelete, loading, isReadOnly, canEdit
     }}>
       <TableHead>
         <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Fecha de Inicio</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Fecha Final</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Proyecto</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Ubicación</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Estado</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Tiempo</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Operador</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Unidad</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Fecha de Liberación</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Kilometraje Entregado</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Gerente</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Encargado</TableCell>
           {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {controls.map((control) => (
-          <TableRow key={control._id} sx={{
+        {liberaciones.map((liberacion, index) => (
+          <TableRow key={liberacion._id} sx={{
             '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
           }}>
-            <TableCell>{formatDate(control.fecha_inicio)}</TableCell>
-            <TableCell>{formatDate(control.fecha_final)}</TableCell>
-            <TableCell>{control.proyecto}</TableCell>
-            <TableCell>{control.ubicacion}</TableCell>
-            <TableCell>{control.estado}</TableCell>
-            <TableCell>{control.tiempo}</TableCell>
-            <TableCell>{control.operador}</TableCell>
+            <TableCell>{liberacion.unidad}</TableCell>
+            <TableCell>{formatDate(liberacion.fecha_liberacion)}</TableCell>
+            <TableCell>{liberacion.kilometraje_entregado}</TableCell>
+            <TableCell>{liberacion.gerente}</TableCell>
+            <TableCell>{liberacion.encargado}</TableCell>
             {showActionsColumn && (
               <TableCell align="right">
                 {(isEncargado || canEdit) && (
-                  <IconButton
-                    size="small"
+                  <IconButton 
+                    size="small" 
                     color="primary"
-                    onClick={() => onEdit(control)}
+                    onClick={() => onEdit(liberacion)}
                   >
                     <EditIcon sx={{ color: '#03a9f4' }} />
                   </IconButton>
                 )}
                 {(isEncargado || canDelete) && (
-                  <IconButton
-                    size="small"
+                  <IconButton 
+                    size="small" 
                     color="error"
-                    onClick={() => onDelete(control._id)}
-                    disabled={deleteLoading[control._id]}
+                    onClick={() => onDelete(liberacion._id)}
+                    disabled={deleteLoading[liberacion._id]}
                   >
-                    {deleteLoading[control._id] ? (
+                    {deleteLoading[liberacion._id] ? (
                       <CircularProgress size={16} color="error" />
                     ) : (
                       <BlockIcon sx={{ color: '#f44336' }} />
@@ -121,16 +134,8 @@ const ControlTable = ({ controls, onEdit, onDelete, loading, isReadOnly, canEdit
   );
 };
 
-ControlTable.propTypes = {
-  controls: PropTypes.arrayOf(PropTypes.shape({
-    _id: PropTypes.string.isRequired,
-    ubicacion: PropTypes.string.isRequired,
-    gerente: PropTypes.string,
-    encargado: PropTypes.string,
-    estado: PropTypes.string,
-    hoja_tramite: PropTypes.string,
-    observacion: PropTypes.string, // aún se valida, solo no se muestra
-  })).isRequired,
+LiberacionTable.propTypes = {
+  liberaciones: PropTypes.array.isRequired,
   maquinariaPlaca: PropTypes.string.isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
@@ -140,4 +145,4 @@ ControlTable.propTypes = {
   canDelete: PropTypes.bool,
 };
 
-export default ControlTable;
+export default LiberacionTable;

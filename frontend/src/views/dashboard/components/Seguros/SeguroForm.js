@@ -8,14 +8,21 @@ import {
   Paper,
   Grid,
   CircularProgress,
+  IconButton,
 } from '@mui/material';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
 const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false }) => {
   const [form, setForm] = useState({
-    numero_2024: '',
+    fecha_inicial: '',
+    fecha_final: '',
+    numero_poliza: '',
+    compania_aseguradora: '',
     importe: '',
-    detalle: '',
+    archivo_pdf: null,
+    nombre_archivo: '',
   });
   const [errors, setErrors] = useState({});
   const isReadOnly = useIsReadOnly();
@@ -27,17 +34,23 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
   useEffect(() => {
     if (initialData) {
       setForm({
-        numero_2024: initialData.numero_2024 || '',
+        fecha_inicial: initialData.fecha_inicial || '',
+        fecha_final: initialData.fecha_final || '',
+        numero_poliza: initialData.numero_poliza || '',
+        compania_aseguradora: initialData.compania_aseguradora || '',
         importe: initialData.importe || '',
-        detalle: initialData.detalle || '',
+        archivo_pdf: initialData.archivo_pdf || null,
+        nombre_archivo: initialData.nombre_archivo || '',
       });
     }
   }, [initialData]);
 
   const fieldLabels = [
-    { name: 'numero_2024', label: 'N° 2024', required: false },
-    { name: 'importe', label: 'Importe', type: 'number', required: false },
-    { name: 'detalle', label: 'Detalle', required: false },
+    { name: 'fecha_inicial', label: 'Fecha Inicial', type: 'date', required: true },
+    { name: 'fecha_final', label: 'Fecha Final', type: 'date', required: true },
+    { name: 'numero_poliza', label: 'N° Póliza', required: true },
+    { name: 'compania_aseguradora', label: 'Compañía Aseguradora', required: true },
+    { name: 'importe', label: 'Importe', type: 'number', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -54,10 +67,70 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setForm({
+        ...form,
+        archivo_pdf: file,
+        nombre_archivo: file.name
+      });
+    } else {
+      alert('Por favor selecciona un archivo PDF válido');
+    }
+  };
+
+  const removeFile = () => {
+    setForm({
+      ...form,
+      archivo_pdf: null,
+      nombre_archivo: ''
+    });
+  };
+
+  // Función para limpiar archivo en edición
+  const clearFile = () => {
+    if (isEditing && initialData?.archivo_pdf) {
+      // En edición, marcar que se quiere eliminar el archivo existente
+      setForm({
+        ...form,
+        archivo_pdf: null,
+        nombre_archivo: '',
+        _remove_existing_file: true // Marca para eliminar archivo existente
+      });
+    } else {
+      removeFile();
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(form);
+      // Crear FormData para enviar archivo
+      const formData = new FormData();
+      Object.keys(form).forEach(key => {
+        if (key === 'archivo_pdf') {
+          // Para archivos PDF, manejar diferente en edición vs creación
+          if (form[key]) {
+            // Hay un archivo nuevo o existente
+            formData.append(key, form[key]);
+            if (form.nombre_archivo) {
+              formData.append('nombre_archivo', form.nombre_archivo);
+            }
+          } else if (isEditing && initialData?.archivo_pdf && !form._remove_existing_file) {
+            // En edición, si no hay archivo nuevo pero hay uno existente y no se quiere eliminar, mantenerlo
+            formData.append(key, initialData.archivo_pdf);
+            if (initialData.nombre_archivo) {
+              formData.append('nombre_archivo', initialData.nombre_archivo);
+            }
+          }
+          // Si _remove_existing_file es true, no se envía el archivo (se elimina)
+        } else if (key !== 'archivo_pdf' && key !== '_remove_existing_file' && form[key] !== null && form[key] !== undefined && form[key] !== '') {
+          // Solo enviar campos que tengan valor (no vacíos)
+          formData.append(key, form[key]);
+        }
+      });
+      onSubmit(formData);
     }
   };
 
@@ -79,6 +152,7 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
                 type={field.type || 'text'}
                 value={form[field.name] || ''}
                 onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
                 error={!!errors[field.name]}
                 helperText={errors[field.name]}
                 required={field.required}
@@ -91,6 +165,57 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
               />
             </Grid>
           ))}
+          
+          {/* Campo de archivo PDF */}
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <input
+                accept=".pdf"
+                style={{ display: 'none' }}
+                id="pdf-file-input"
+                type="file"
+                onChange={handleFileChange}
+                disabled={isReadOnly}
+              />
+              <label htmlFor="pdf-file-input">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<AttachFileIcon />}
+                  disabled={isReadOnly}
+                >
+                  {isEditing ? 'Cambiar PDF' : 'Adjuntar PDF'}
+                </Button>
+              </label>
+              
+              {/* Mostrar archivo actual o nuevo */}
+              {(form.nombre_archivo || (isEditing && initialData?.nombre_archivo)) && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {form.nombre_archivo || initialData?.nombre_archivo}
+                    {isEditing && !form.nombre_archivo && initialData?.nombre_archivo && ' (actual)'}
+                  </Typography>
+                  {(form.archivo_pdf || (isEditing && initialData?.archivo_pdf)) && (
+                                         <IconButton
+                       size="small"
+                       onClick={clearFile}
+                       disabled={isReadOnly}
+                       title="Eliminar archivo"
+                     >
+                       <DeleteIcon />
+                     </IconButton>
+                  )}
+                </Box>
+              )}
+              
+              {/* Información adicional en edición */}
+              {isEditing && initialData?.archivo_pdf && !form.archivo_pdf && (
+                <Typography variant="caption" color="text.secondary">
+                  (Manteniendo archivo actual)
+                </Typography>
+              )}
+            </Box>
+          </Grid>
         </Grid>
         <Box sx={{ 
           display: 'flex', 
@@ -118,11 +243,16 @@ SeguroForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.shape({
-    numero_2024: PropTypes.string,
+    fecha_inicial: PropTypes.string,
+    fecha_final: PropTypes.string,
+    numero_poliza: PropTypes.string,
+    compania_aseguradora: PropTypes.string,
     importe: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    detalle: PropTypes.string,
+    archivo_pdf: PropTypes.object,
+    nombre_archivo: PropTypes.string,
   }),
   isEditing: PropTypes.bool,
+  submitLoading: PropTypes.bool
 };
 
 export default SeguroForm; 

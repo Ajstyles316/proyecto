@@ -3,6 +3,7 @@ import { Box, Paper, Button, Avatar, Typography, Grid, TextField, MenuItem } fro
 import { SECTIONS } from '../utils/constants';
 import ControlMain from '../../Control/ControlMain';
 import AsignacionMain from '../../Asignacion/AsignacionMain';
+import LiberacionMain from '../../Liberacion/LiberacionMain';
 import MantenimientoMain from '../../Mantenimiento/MantenimientoMain';
 import SeguroMain from '../../Seguros/SeguroMain';
 import ITVMain from '../../ITV/ITVMain';
@@ -44,6 +45,7 @@ const MaquinariaDetalle = ({
     switch (activeSection) {
       case 'Control': return <ControlMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Asignación': return <AsignacionMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
+      case 'Liberación': return <LiberacionMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Mantenimiento': return <MantenimientoMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Seguros': return <SeguroMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'ITV': return <ITVMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;

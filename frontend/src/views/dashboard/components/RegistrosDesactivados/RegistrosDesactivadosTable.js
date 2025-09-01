@@ -133,10 +133,13 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
           title: 'Control',
           fields: [
             { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Estado', value: formatValue(record['Estado'] || record['estado']) },
+            { label: 'Fecha de inicio', value: formatValue(record['Fecha de inicio'] || record['fecha_inicio']) },
+            { label: 'Fecha Final', value: formatValue(record['Fecha Final'] || record['fecha_final']) },
+            { label: 'Proyecto', value: formatValue(record['Proyecto'] || record['proyecto']) },
             { label: 'Ubicación', value: formatValue(record['Ubicación'] || record['ubicacion']) },
-            { label: 'Gerente', value: formatValue(record['Gerente'] || record['gerente']) },
-            { label: 'Encargado', value: formatValue(record['Encargado'] || record['encargado']) },
+            { label: 'Estado', value: formatValue(record['Estado'] || record['estado']) },
+            { label: 'Tiempo', value: formatValue(record['Tiempo'] || record['tiempo']) },
+            { label: 'Operador', value: formatValue(record['Operador'] || record['operador']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -145,8 +148,24 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
           title: 'Asignación',
           fields: [
             { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Encargado', value: formatValue(record['Encargado'] || record['encargado']) },
+            { label: 'Unidad', value: formatValue(record['Unidad'] || record['unidad']) },
             { label: 'Fecha de Asignación', value: formatValue(record['Fecha de Asignación'] || record['fecha_asignacion']) },
+            { label: 'Kilometraje', value: formatValue(record['Kilometraje'] || record['kilometraje']) },
+            { label: 'Gerente', value: formatValue(record['Gerente'] || record['gerente']) },
+            { label: 'Encargado', value: formatValue(record['Encargado'] || record['encargado']) },
+            { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
+          ]
+        };
+      case 'Liberación':
+        return {
+          title: 'Liberación',
+          fields: [
+            { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
+            { label: 'Unidad', value: formatValue(record['Unidad'] || record['unidad']) },
+            { label: 'Fecha de Liberación', value: formatValue(record['Fecha de Liberación'] || record['fecha_liberacion']) },
+            { label: 'Kilometraje Entregado', value: formatValue(record['Kilometraje Entregado'] || record['kilometraje_entregado']) },
+            { label: 'Gerente', value: formatValue(record['Gerente'] || record['gerente']) },
+            { label: 'Encargado', value: formatValue(record['Encargado'] || record['encargado']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -155,9 +174,10 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
           title: 'Mantenimiento',
           fields: [
             { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Tipo', value: formatValue(record['Tipo'] || record['tipo']) },
-            { label: 'Cantidad', value: record['Cantidad'] || record['cantidad'] || '—' },
-            { label: 'Ubicación', value: formatValue(record['Ubicación'] || record['ubicacion']) },
+            { label: 'Tipo', value: formatValue(record['Tipo'] || record['tipo_mantenimiento']) },
+            { label: 'Consumo Combustible', value: record['Consumo Combustible'] || record['consumo_combustible'] || '—' },
+            { label: 'Consumo Lubricante', value: record['Consumo Lubricante'] || record['consumo_lubricantes'] || '—' },
+            { label: 'Mano de Obra', value: formatValue(record['Mano de Obra'] || record['mano_obra']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -165,10 +185,13 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
         return {
           title: 'Seguro',
           fields: [
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'N° 2024', value: record['N° 2024'] || record['numero_2024'] || '—' },
+            { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
+            { label: 'Fecha inicial', value: formatValue(record['Fecha inicial'] || record['fecha_inicial']) },
+            { label: 'Fecha Final', value: formatValue(record['Fecha Final'] || record['fecha_final']) },
+            { label: 'N° Póliza', value: record['N° Póliza'] || record['numero_poliza'] || '—' },
+            { label: 'Compañía Aseguradora', value: formatValue(record['Compañía Aseguradora'] || record['compania_aseguradora']) },
             { label: 'Importe', value: record['Importe'] || record['importe'] || '—' },
-            { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
+            { label: 'Nombre del Archivo', value: formatValue(record['Nombre del Archivo'] || record['nombre_archivo']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -176,9 +199,9 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
         return {
           title: 'ITV',
           fields: [
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Detalle', value: formatValue(record['Detalle'] || record['detalle']) },
-            { label: 'Importe', value: record['Importe'] || record['importe'] || '—' },
+            { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
+            { label: 'Gestión', value: formatValue(record['Gestión'] || record['gestion']) },
+            { label: 'Nombre del Archivo', value: formatValue(record['Nombre del Archivo'] || record['nombre_archivo']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -186,9 +209,9 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
         return {
           title: 'SOAT',
           fields: [
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Importe 2024', value: record['Importe 2024'] || record['importe_2024'] || '—' },
-            { label: 'Importe 2025', value: record['Importe 2025'] || record['importe_2025'] || '—' },
+            { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
+            { label: 'Gestión', value: formatValue(record['Gestión'] || record['gestion']) },
+            { label: 'Nombre del Archivo', value: formatValue(record['Nombre del Archivo'] || record['nombre_archivo']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
@@ -196,9 +219,9 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
         return {
           title: 'Impuesto',
           fields: [
-            { label: 'Maquinaria', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Importe 2023', value: record['Importe 2023'] || record['importe_2023'] || '—' },
-            { label: 'Importe 2024', value: record['Importe 2024'] || record['importe_2024'] || '—' },
+            { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
+            { label: 'Gestión', value: formatValue(record['Gestión'] || record['gestion']) },
+            { label: 'Nombre del Archivo', value: formatValue(record['Nombre del Archivo'] || record['nombre_archivo']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };

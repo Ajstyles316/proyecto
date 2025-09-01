@@ -8,29 +8,29 @@ import {
   Alert,
   Paper,
 } from '@mui/material';
-import AsignacionForm from './AsignacionForm';
-import AsignacionTable from './AsignacionTable';
+import LiberacionForm from './LiberacionForm';
+import LiberacionTable from './LiberacionTable';
 import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
 import { useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/hooks';
 import { useUnidades } from 'src/components/hooks';
 import BlockIcon from '@mui/icons-material/Block';
 
-const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
-  const [asignaciones, setAsignaciones] = useState([]);
+const LiberacionMain = ({ maquinariaId, maquinariaPlaca }) => {
+  const [liberaciones, setLiberaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showForm, setShowForm] = useState(false);
-  const [editingAsignacion, setEditingAsignacion] = useState(null);
+  const [editingLiberacion, setEditingLiberacion] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState({});
   const { user } = useUser();
   const { normalizeUnidadForDB } = useUnidades();
-  const canView = useCanView('Asignación');
-  const canCreate = useCanCreate('Asignación');
-  const canEdit = useCanEdit('Asignación');
-  const canDelete = useCanDelete('Asignación');
+  const canView = useCanView('Liberación');
+  const canCreate = useCanCreate('Liberación');
+  const canEdit = useCanEdit('Liberación');
+  const canDelete = useCanDelete('Liberación');
   const isReadOnly = useIsReadOnly();
-  const isPermissionDenied = useIsPermissionDenied('Asignación');
+  const isPermissionDenied = useIsPermissionDenied('Liberación');
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
 
 
@@ -44,7 +44,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
           Acceso Denegado
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          No tienes permisos para acceder al módulo de Asignación.
+          No tienes permisos para acceder al módulo de Liberación.
         </Typography>
       </Paper>
     );
@@ -55,20 +55,20 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
     return null;
   }
 
-  const fetchAsignaciones = useCallback(async () => {
+  const fetchLiberaciones = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/`, {
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/`, {
         headers: {
           'X-User-Email': user.Email
         }
       });
-      if (!response.ok) throw new Error('Error al cargar asignaciones');
+      if (!response.ok) throw new Error('Error al cargar liberaciones');
       const data = await response.json();
-      setAsignaciones(Array.isArray(data) ? data : []);
+      setLiberaciones(Array.isArray(data) ? data : []);
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
-      setAsignaciones([]);
+      setLiberaciones([]);
     } finally {
       setLoading(false);
     }
@@ -76,37 +76,35 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
 
   useEffect(() => {
     if (maquinariaId) {
-      fetchAsignaciones();
+      fetchLiberaciones();
     }
-  }, [maquinariaId, fetchAsignaciones]);
+  }, [maquinariaId, fetchLiberaciones]);
 
   const handleResetForm = () => {
     setShowForm(false);
-    setEditingAsignacion(null);
+    setEditingLiberacion(null);
   };
 
-  const handleOpenEditForm = (asignacion) => {
-    setEditingAsignacion(asignacion);
+  const handleOpenEditForm = (liberacion) => {
+    setEditingLiberacion(liberacion);
     setShowForm(true);
   };
 
   const handleSubmit = async (formData) => {
     setSubmitLoading(true);
-    const url = editingAsignacion 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${editingAsignacion._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/`;
+    const url = editingLiberacion 
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/${editingLiberacion._id}/` 
+      : `http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/`;
 
-    const method = editingAsignacion ? 'PUT' : 'POST';
+    const method = editingLiberacion ? 'PUT' : 'POST';
 
     const payload = {
       ...formData,
       maquinaria: maquinariaId,
-      unidad: formData.unidad ? normalizeUnidadForDB(formData.unidad) : formData.unidad,
-      fecha_asignacion: formData.fecha_asignacion ? new Date(formData.fecha_asignacion).toISOString().split('T')[0] : null,
       fecha_liberacion: formData.fecha_liberacion ? new Date(formData.fecha_liberacion).toISOString().split('T')[0] : null,
-      recorrido_km: Number(formData.recorrido_km) || 0,
-      recorrido_entregado: Number(formData.recorrido_entregado) || 0,
-      ...(editingAsignacion ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
+      kilometraje_entregado: Number(formData.kilometraje_entregado) || 0,
+      unidad: normalizeUnidadForDB(formData.unidad),
+      ...(editingLiberacion ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
     try {
@@ -126,12 +124,12 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
 
       setSnackbar({ 
         open: true, 
-        message: `Asignación ${editingAsignacion ? 'actualizada' : 'creada'} exitosamente!`, 
+        message: `Liberación ${editingLiberacion ? 'actualizada' : 'creada'} exitosamente!`, 
         severity: 'success' 
       });
       
       handleResetForm();
-      fetchAsignaciones();
+      fetchLiberaciones();
     } catch (error) {
       setSnackbar({ 
         open: true, 
@@ -147,15 +145,15 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${id}/`, {
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email
         }
       });
       if (!response.ok) throw new Error('Error al desactivar');
-      setSnackbar({ open: true, message: 'Asignación desactivada exitosamente!', severity: 'success' });
-      fetchAsignaciones();
+      setSnackbar({ open: true, message: 'Liberación desactivada exitosamente!', severity: 'success' });
+      fetchLiberaciones();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     } finally {
@@ -185,7 +183,7 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">Asignaciones</Typography>
+        <Typography variant="h6">Liberaciones</Typography>
         <Box sx={{ 
           display: 'flex', 
           gap: 1, 
@@ -203,24 +201,24 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
             }}
             disabled={!canCreate}
           >
-            {showForm ? 'Cancelar' : 'Nueva Asignación'}
+            {showForm ? 'Cancelar' : 'Nueva Liberación'}
           </Button>
         </Box>
       </Box>
 
       {showForm && (
-        <AsignacionForm
+        <LiberacionForm
           onSubmit={handleSubmit}
           onCancel={handleResetForm}
-          initialData={editingAsignacion}
-          isEditing={!!editingAsignacion}
-          isReadOnly={editingAsignacion && !canEdit && !isEncargado}
+          initialData={editingLiberacion}
+          isEditing={!!editingLiberacion}
+          isReadOnly={editingLiberacion && !canEdit && !isEncargado}
           submitLoading={submitLoading}
         />
       )}
 
-      <AsignacionTable
-        asignaciones={asignaciones}
+      <LiberacionTable
+        liberaciones={liberaciones}
         maquinariaPlaca={maquinariaPlaca}
         onEdit={handleOpenEditForm}
         onDelete={handleDelete}
@@ -234,9 +232,9 @@ const AsignacionMain = ({ maquinariaId, maquinariaPlaca }) => {
   );
 };
 
-AsignacionMain.propTypes = {
+LiberacionMain.propTypes = {
   maquinariaId: PropTypes.string.isRequired,
   maquinariaPlaca: PropTypes.string.isRequired,
 };
 
-export default AsignacionMain; 
+export default LiberacionMain;

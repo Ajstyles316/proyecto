@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework.renderers import JSONRenderer
 from rest_framework.routers import DefaultRouter
 from rest_framework.response import Response
@@ -12,6 +14,7 @@ from core.views import (
     MaquinariaListView, MaquinariaDetailView, MaquinariaOptionsView,
     HistorialControlListView, HistorialControlDetailView,
     ActaAsignacionListView, ActaAsignacionDetailView,
+    LiberacionListView, LiberacionDetailView,
     MantenimientoListView, MantenimientoDetailView,
     SeguroListView, SeguroDetailView,
     ITVListView, ITVDetailView,
@@ -57,6 +60,10 @@ urlpatterns = [
 
     path('api/maquinaria/<str:maquinaria_id>/asignacion/', ActaAsignacionListView.as_view(), name='actaasignacion-list'),
     path('api/maquinaria/<str:maquinaria_id>/asignacion/<str:record_id>/', ActaAsignacionDetailView.as_view(), name='actaasignacion-detail'),
+    
+    path('api/maquinaria/<str:maquinaria_id>/liberacion/', LiberacionListView.as_view(), name='liberacion-list'),
+    path('api/maquinaria/<str:maquinaria_id>/liberacion/<str:record_id>/', LiberacionDetailView.as_view(), name='liberacion-detail'),
+
 
     path('api/maquinaria/<str:maquinaria_id>/mantenimiento/', MantenimientoListView.as_view(), name='mantenimiento-list'),
     path('api/maquinaria/<str:maquinaria_id>/mantenimiento/<str:record_id>/', MantenimientoDetailView.as_view(), name='mantenimiento-detail'),
@@ -86,3 +93,7 @@ urlpatterns = [
     path('api/registros-desactivados/', TodosRegistrosDesactivadosView.as_view(), name='todos-registros-desactivados'),
     path('api/test/', test_api, name='test-api'),
 ]
+
+# Servir archivos media en desarrollo
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

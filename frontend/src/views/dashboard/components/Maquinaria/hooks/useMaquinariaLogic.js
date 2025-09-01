@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fieldLabels } from "../utils/fieldLabels";
 import { useUser } from "../../../../../components/UserContext";
+import { useUnidades } from "../../../../../components/hooks";
 
 const useMaquinariaLogic = () => {
   const [maquinarias, setMaquinarias] = useState([]);
@@ -24,6 +25,7 @@ const useMaquinariaLogic = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const { user } = useUser();
+  const { unidades, normalizeUnidadForDB, normalizeUnidadForDisplay } = useUnidades();
 
   useEffect(() => {
     fetchMaquinarias();
@@ -97,6 +99,11 @@ const useMaquinariaLogic = () => {
 
       const maquinariaData = cleanData(sectionForm.Maquinaria);
       
+      // Normalizar la unidad antes de enviar al backend
+      if (maquinariaData.unidad) {
+        maquinariaData.unidad = normalizeUnidadForDB(maquinariaData.unidad);
+      }
+
       // Asegurar que la fecha esté en el formato correcto
       if (maquinariaData.fecha_registro) {
         maquinariaData.fecha_registro = new Date(maquinariaData.fecha_registro).toISOString().split('T')[0];
@@ -180,6 +187,12 @@ const useMaquinariaLogic = () => {
     };
 
     const cleanedData = cleanData(formattedData);
+    
+    // Normalizar la unidad antes de enviar al backend
+    if (cleanedData.unidad) {
+      cleanedData.unidad = normalizeUnidadForDB(cleanedData.unidad);
+    }
+    
     console.log("Body a enviar:", cleanedData); // <- Agregado
 
     const response = await fetch("http://localhost:8000/api/maquinaria/", {
@@ -224,9 +237,13 @@ const useMaquinariaLogic = () => {
     m.codigo?.toLowerCase().includes(search) ||
     m.color?.toLowerCase().includes(search) ||
     m.placa?.toLowerCase().includes(search) ||
+    m.nro_motor?.toLowerCase().includes(search) ||
+    m.nro_chasis?.toLowerCase().includes(search) ||
     m.marca?.toLowerCase().includes(search);
 
-  const matchesUnidad = !unidadFilter || m.unidad === unidadFilter;
+  const matchesUnidad = !unidadFilter || 
+    (unidadFilter === 'OFICINA CENTRAL' && m.unidad === 'OFICINA CENTRAL') ||
+    (unidadFilter !== 'OFICINA CENTRAL' && m.unidad === unidadFilter);
 
   return matchesSearch && matchesUnidad;
 });
@@ -282,11 +299,7 @@ const useMaquinariaLogic = () => {
   }
 };
   
-  const unidadesUnicas = [...new Set(
-  maquinarias
-    .map(m => m.unidad?.trim())
-    .filter(u => u && u !== "")
-)].sort();
+  const unidadesUnicas = unidades; // Usar las unidades normalizadas del hook
 
   const adquisicionesUnicas = [...new Set(
   maquinarias.map(m => m.adqui?.trim()).filter(a => a && a !== "")
@@ -371,7 +384,8 @@ const metodosUnicos = [...new Set(
     actionLoading,
     updateLoading,
     deleteLoading,
-    createLoading
+    createLoading,
+    normalizeUnidadForDisplay
   };
 };
 

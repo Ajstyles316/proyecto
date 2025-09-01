@@ -80,6 +80,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
         case 'Asignación':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${recordId}/`;
           break;
+        case 'Liberación':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/${recordId}/`;
+          break;
         case 'Mantenimiento':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${recordId}/`;
           break;
@@ -154,6 +157,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
           break;
         case 'Asignación':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${recordId}/?permanent=true`;
+          break;
+        case 'Liberación':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/${recordId}/?permanent=true`;
           break;
         case 'Mantenimiento':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${recordId}/?permanent=true`;

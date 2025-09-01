@@ -1,127 +1,152 @@
 import PropTypes from 'prop-types';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  IconButton,
-  Typography,
-  Box,
-  CircularProgress,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
+  IconButton, Tooltip, Typography, Box, CircularProgress
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BlockIcon from '@mui/icons-material/Block';
-import { useUser } from '../../../../components/UserContext';
 
-const ImpuestoTable = ({ impuestos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
-  const { user } = useUser();
-  const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
-  const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
-  
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return '';
-      return date.toLocaleDateString('es-ES');
-    } catch (error) {
-      return '';
+const ImpuestoTable = ({ 
+  impuestos, 
+  onEdit, 
+  onDelete, 
+  loading = false,
+  isReadOnly = false,
+  canEdit = true,
+  canDelete = true,
+  deleteLoading = {},
+  showActionsColumn = true 
+}) => {
+  const handleDownloadPDF = (impuesto) => {
+    if (impuesto.archivo_pdf) {
+      try {
+        const byteCharacters = atob(impuesto.archivo_pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = impuesto.nombre_archivo || 'impuesto.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error descargando PDF:', error);
+        alert('Error al descargar el archivo PDF');
+      }
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
-        <CircularProgress color="primary" />
-        <Typography variant="body1" sx={{ ml: 2 }}>Cargando impuestos...</Typography>
+      <Box sx={{ textAlign: 'center', py: 3 }}>
+        <CircularProgress />
+        <Typography variant="body1" sx={{ mt: 2 }}>
+          Cargando Impuestos...
+        </Typography>
       </Box>
     );
   }
 
-  if (impuestos.length === 0) {
+  if (!impuestos || impuestos.length === 0) {
     return (
-      <Typography variant="body1" color="textSecondary" sx={{ textAlign: 'center', py: 5 }}>
-        No hay registros de impuestos para esta maquinaria.
-      </Typography>
+      <Box sx={{ textAlign: 'center', py: 3 }}>
+        <Typography variant="body1" color="text.secondary">
+          No hay registros de Impuesto disponibles
+        </Typography>
+      </Box>
     );
   }
 
-  // Mostrar columna de acciones para encargados y otros roles con permisos (excepto técnicos)
-  const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
-
   return (
-    <Table sx={{
-      '& .MuiTableCell-root': {
-        borderBottom: '1px solid rgba(224, 224, 224, 1)',
-      },
-      '& .MuiTableRow-root:hover': {
-        backgroundColor: 'rgba(25, 118, 210, 0.04)',
-      },
-      '& .MuiTableHead-root .MuiTableCell-root': {
-        borderBottom: '2px solid rgba(224, 224, 224, 1)',
-        fontWeight: 600,
-      }
-    }}>
-      <TableHead>
-        <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Importe 2023</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Importe 2024</TableCell>
-          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {impuestos.map((impuesto, index) => (
-          <TableRow key={impuesto._id} sx={{
-            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
-          }}>
-            <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{impuesto.importe_2023}</TableCell>
-            <TableCell>{impuesto.importe_2024}</TableCell>
-            {showActionsColumn && (
-              <TableCell align="right">
-                {(isEncargado || canEdit) && (
-                  <IconButton 
-                    size="small" 
-                    color="primary"
-                    onClick={() => onEdit(impuesto)}
-                  >
-                    <EditIcon sx={{ color: '#03a9f4' }} />
-                  </IconButton>
-                )}
-                {(isEncargado || canDelete) && (
-                  <IconButton 
-                    size="small" 
-                    color="error"
-                    onClick={() => onDelete(impuesto._id)}
-                    disabled={deleteLoading[impuesto._id]}
-                  >
-                    {deleteLoading[impuesto._id] ? (
-                      <CircularProgress size={16} color="error" />
-                    ) : (
-                      <BlockIcon sx={{ color: '#f44336' }} />
-                    )}
-                  </IconButton>
+    <TableContainer component={Paper} sx={{ boxShadow: 2 }}>
+      <Table>
+        <TableHead>
+          <TableRow sx={{ bgcolor: 'grey.50' }}>
+            <TableCell sx={{ fontWeight: 600 }}>Gestión</TableCell>
+            <TableCell sx={{ fontWeight: 600 }}>Archivo</TableCell>
+            {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {impuestos.map((impuesto) => (
+            <TableRow key={impuesto._id} sx={{
+              '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
+            }}>
+              <TableCell>{impuesto.gestion}</TableCell>
+              <TableCell>
+                {impuesto.archivo_pdf ? (
+                  <Tooltip title="Descargar PDF">
+                    <IconButton 
+                      size="small" 
+                      color="primary"
+                      onClick={() => handleDownloadPDF(impuesto)}
+                    >
+                      <PictureAsPdfIcon />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Sin archivo</Typography>
                 )}
               </TableCell>
-            )}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+              {showActionsColumn && (
+                <TableCell align="right">
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    {canEdit && !isReadOnly && (
+                      <Tooltip title="Editar">
+                        <IconButton 
+                          size="small" 
+                          color="primary"
+                          onClick={() => onEdit(impuesto)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {canDelete && !isReadOnly && (
+                      <Tooltip title="Eliminar">
+                        <IconButton 
+                          size="small" 
+                          color="error"
+                          onClick={() => onDelete(impuesto._id)}
+                          disabled={deleteLoading[impuesto._id]}
+                        >
+                          {deleteLoading[impuesto._id] ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <BlockIcon />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 
 ImpuestoTable.propTypes = {
   impuestos: PropTypes.array.isRequired,
-  maquinariaPlaca: PropTypes.string.isRequired,
+  maquinariaPlaca: PropTypes.string,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
-  loading: PropTypes.bool.isRequired,
-  isReadOnly: PropTypes.bool.isRequired,
+  loading: PropTypes.bool,
+  isReadOnly: PropTypes.bool,
   canEdit: PropTypes.bool,
   canDelete: PropTypes.bool,
+  deleteLoading: PropTypes.object,
+  showActionsColumn: PropTypes.bool
 };
 
 export default ImpuestoTable; 

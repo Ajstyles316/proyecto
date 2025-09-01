@@ -51,18 +51,8 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
     return null;
   }
 
-  console.log('SOATMain - User:', user?.Email, 'Cargo:', user?.Cargo);
-  console.log('SOATMain - canView:', canView, 'canCreate:', canCreate, 'canEdit:', canEdit, 'canDelete:', canDelete);
-  
-  // Debug más visible para técnicos
-  if (user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico') {
-    console.log('🔍 TÉCNICO DETECTADO - canEdit:', canEdit, 'canDelete:', canDelete);
-    if (canEdit || canDelete) {
-      console.log('❌ ERROR: Técnico tiene permisos de edición/eliminación cuando no debería');
-    }
-  }
-
-  const fetchSoats = useCallback(async () => {
+  const fetchSOATs = useCallback(async () => {
+    if (!maquinariaId) return;
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/`);
@@ -78,8 +68,8 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   }, [maquinariaId]);
 
   useEffect(() => {
-    if (maquinariaId) fetchSoats();
-  }, [maquinariaId, fetchSoats]);
+    fetchSOATs();
+  }, [fetchSOATs]);
 
   const handleResetForm = () => {
     setShowForm(false);
@@ -93,27 +83,59 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
 
   const handleSubmit = async (formData) => {
     setSubmitLoading(true);
-    const method = editingSOAT ? 'PUT' : 'POST';
-    const url = editingSOAT
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${editingSOAT._id}/`
+    const url = editingSOAT 
+      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${editingSOAT._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/`;
+    const method = editingSOAT ? 'PUT' : 'POST';
     
-    const payload = {
-      ...formData,
-      maquinaria: maquinariaId,
-      importe_2024: Number(formData.importe_2024) || 0,
-      importe_2025: Number(formData.importe_2025) || 0,
-      ...(editingSOAT ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
-    };
+    if (formData instanceof FormData) {
+      console.log('FormData detectado para SOAT:', {
+        isEditing: editingSOAT,
+        hasFile: formData.get('archivo_pdf'),
+        fileType: formData.get('archivo_pdf')?.constructor?.name
+      });
+      
+      if (editingSOAT) {
+        console.log('Editando SOAT existente');
+        // Handle file for update
+        if (formData.get('archivo_pdf') && formData.get('archivo_pdf') instanceof File) {
+          console.log('Archivo PDF nuevo detectado en edición de SOAT');
+        } else if (editingSOAT.archivo_pdf) {
+          console.log('Manteniendo archivo PDF existente de SOAT');
+          formData.append('archivo_pdf', editingSOAT.archivo_pdf);
+          formData.append('nombre_archivo', editingSOAT.nombre_archivo || '');
+        }
+      } else {
+        console.log('Creando nuevo SOAT');
+        formData.append('maquinaria', maquinariaId);
+        formData.append('registrado_por', user?.Nombre || user?.Email || 'Usuario');
+      }
+    } else {
+      console.log('Objeto normal detectado para SOAT, convirtiendo a payload');
+      const payload = {
+        ...formData,
+        maquinaria: maquinariaId,
+        ...(editingSOAT ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
+      };
+      formData = payload;
+    }
     
     try {
+      const headers = { 'X-User-Email': user.Email };
+      if (!(formData instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      console.log('Enviando petición SOAT:', {
+        method,
+        url,
+        headers,
+        isFormData: formData instanceof FormData,
+        bodyType: formData instanceof FormData ? 'FormData' : 'JSON'
+      });
       const response = await fetch(url, {
         method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-User-Email': user.Email
-        },
-        body: JSON.stringify(payload),
+        headers,
+        body: formData instanceof FormData ? formData : JSON.stringify(formData),
       });
       
       if (!response.ok) {
@@ -128,7 +150,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       });
       
       handleResetForm();
-      fetchSoats();
+      fetchSOATs();
     } catch (error) {
       setSnackbar({ 
         open: true, 
@@ -141,7 +163,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres desactivar este registro?')) return;
+    if (!window.confirm('¿Desactivar este SOAT?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${id}/`, {
@@ -152,7 +174,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
       });
       if (!response.ok) throw new Error('Error al desactivar');
       setSnackbar({ open: true, message: 'SOAT desactivado exitosamente!', severity: 'success' });
-      fetchSoats();
+      fetchSOATs();
     } catch (error) {
       setSnackbar({ open: true, message: `Error: ${error.message}`, severity: 'error' });
     } finally {
@@ -164,15 +186,12 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
 
   return (
     <Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
 
       <Box sx={{ 
@@ -232,6 +251,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
         canEdit={canEdit}
         canDelete={canDelete || isEncargado}
         deleteLoading={deleteLoading}
+        showActionsColumn={!(user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico')}
       />
     </Box>
   );

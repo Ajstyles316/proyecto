@@ -1,6 +1,7 @@
 import { useContext } from 'react';
 import { UserContext } from './UserContext';
 import { useMediaQuery } from '@mui/material';
+import { useState, useEffect } from 'react';
 
 export const useUser = () => useContext(UserContext);
 
@@ -652,5 +653,56 @@ export const useCardConfig = () => {
     borderRadius: isMobile ? '8px' : isTablet ? '12px' : '16px',
     elevation: isMobile ? 2 : isTablet ? 3 : 4,
     minHeight: isMobile ? '80px' : isTablet ? '100px' : '120px',
+  };
+}; 
+
+// Hook para manejar unidades de manera consistente
+export const useUnidades = () => {
+  const [unidades, setUnidades] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUnidades = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/usuarios/opciones/");
+        if (!response.ok) throw new Error("No se pudieron cargar las opciones");
+        const data = await response.json();
+        setUnidades(data.unidades || []);
+      } catch (error) {
+        console.error("Error cargando unidades:", error);
+        setUnidades([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUnidades();
+  }, []);
+
+  // Convertir unidad de display a valor de base de datos
+  const normalizeUnidadForDB = (unidadDisplay) => {
+    if (unidadDisplay === 'OFICINA CENTRAL') {
+      return 'OF. CENTRAL';
+    }
+    return unidadDisplay;
+  };
+
+  // Convertir unidad de base de datos a display
+  const normalizeUnidadForDisplay = (unidadDB) => {
+    if (unidadDB === 'OF. CENTRAL') {
+      return 'OFICINA CENTRAL';
+    }
+    return unidadDB;
+  };
+
+  // Normalizar todas las unidades para display
+  const unidadesNormalizadas = unidades.map(normalizeUnidadForDisplay);
+
+  return {
+    unidades: unidadesNormalizadas,
+    unidadesDB: unidades, // Unidades originales de la base de datos
+    loading,
+    normalizeUnidadForDB,
+    normalizeUnidadForDisplay
   };
 }; 

@@ -8,11 +8,21 @@ import {
   Paper,
   Grid,
   CircularProgress,
+  IconButton,
 } from '@mui/material';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import DeleteIcon from '@mui/icons-material/Delete';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useIsReadOnly, useUser } from '../../../../components/UserContext';
 
 const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
-  const [form, setForm] = useState(initialData || {});
+  const [form, setForm] = useState({
+    gestion: '',
+    archivo_pdf: null,
+    nombre_archivo: '',
+    _remove_existing_file: false,
+    ...initialData
+  });
   const [errors, setErrors] = useState({});
   const { user } = useUser();
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
@@ -20,8 +30,7 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading =
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'detalle', label: 'Detalle', required: false },
-    { name: 'importe', label: 'Importe', type: 'number', required: false },
+    { name: 'gestion', label: 'Gestión', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -38,9 +47,55 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading =
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validateForm()) return;
-    onSubmit(form);
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setForm({
+        ...form,
+        archivo_pdf: file,
+        nombre_archivo: file.name,
+        _remove_existing_file: false
+      });
+    }
+  };
+
+  const clearFile = () => {
+    if (isEditing && initialData?.archivo_pdf) {
+      setForm({
+        ...form,
+        archivo_pdf: null,
+        nombre_archivo: '',
+        _remove_existing_file: true
+      });
+    } else {
+      setForm({ ...form, archivo_pdf: null, nombre_archivo: '' });
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (validateForm()) {
+      const formData = new FormData();
+      Object.keys(form).forEach(key => {
+        if (key === 'archivo_pdf') {
+          if (form[key]) { // New file selected
+            formData.append(key, form[key]);
+            if (form.nombre_archivo) {
+              formData.append('nombre_archivo', form.nombre_archivo);
+            }
+          } else if (isEditing && initialData?.archivo_pdf && !form._remove_existing_file) {
+            // Keep existing file if not removed
+            formData.append(key, initialData.archivo_pdf);
+            if (initialData.nombre_archivo) {
+              formData.append('nombre_archivo', initialData.nombre_archivo);
+            }
+          }
+        } else if (key !== 'archivo_pdf' && key !== '_remove_existing_file' && form[key] !== null && form[key] !== undefined && form[key] !== '') {
+          formData.append(key, form[key]);
+        }
+      });
+      onSubmit(formData);
+    }
   };
 
   return (
@@ -72,6 +127,57 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading =
             />
           </Grid>
         ))}
+        
+        {/* Archivo PDF */}
+        <Grid item xs={12}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Archivo PDF
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <input
+              accept="application/pdf"
+              style={{ display: 'none' }}
+              id="pdf-file-input"
+              type="file"
+              onChange={handleFileChange}
+              disabled={isReadOnly}
+            />
+            <label htmlFor="pdf-file-input">
+              <Button 
+                variant="outlined" 
+                component="span" 
+                startIcon={<AttachFileIcon />}
+                disabled={isReadOnly}
+              >
+                {isEditing ? 'Cambiar PDF' : 'Adjuntar PDF'}
+              </Button>
+            </label>
+            {(form.nombre_archivo || (isEditing && initialData?.nombre_archivo)) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PictureAsPdfIcon color="error" />
+                <Typography variant="body2" color="text.secondary">
+                  {form.nombre_archivo || initialData?.nombre_archivo}
+                  {isEditing && !form.nombre_archivo && initialData?.nombre_archivo && ' (actual)'}
+                </Typography>
+                {(form.archivo_pdf || (isEditing && initialData?.archivo_pdf)) && (
+                  <IconButton 
+                    size="small" 
+                    onClick={clearFile} 
+                    disabled={isReadOnly} 
+                    title="Eliminar archivo"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                )}
+              </Box>
+            )}
+            {isEditing && initialData?.archivo_pdf && !form.archivo_pdf && (
+              <Typography variant="caption" color="text.secondary">
+                (Manteniendo archivo actual)
+              </Typography>
+            )}
+          </Box>
+        </Grid>
       </Grid>
       <Box sx={{ 
         display: 'flex', 
@@ -100,6 +206,7 @@ ITVForm.propTypes = {
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
   isReadOnly: PropTypes.bool,
+  submitLoading: PropTypes.bool
 };
 
 export default ITVForm; 

@@ -56,7 +56,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
     setLoading(true);
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`);
-      if (!response.ok) throw new Error('Error al cargar impuestos');
+      if (!response.ok) throw new Error('Error al cargar Impuestos');
       const data = await response.json();
       setImpuestos(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -86,32 +86,63 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
     const url = editingImpuesto 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${editingImpuesto._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`;
-
     const method = editingImpuesto ? 'PUT' : 'POST';
-
-    const payload = {
-      ...formData,
-      maquinaria: maquinariaId,
-      importe_2023: Number(formData.importe_2023) || 0,
-      importe_2024: Number(formData.importe_2024) || 0,
-      ...(editingImpuesto ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
-    };
-
+    
+    if (formData instanceof FormData) {
+      console.log('FormData detectado para Impuesto:', {
+        isEditing: editingImpuesto,
+        hasFile: formData.get('archivo_pdf'),
+        fileType: formData.get('archivo_pdf')?.constructor?.name
+      });
+      
+      if (editingImpuesto) {
+        console.log('Editando Impuesto existente');
+        // Handle file for update
+        if (formData.get('archivo_pdf') && formData.get('archivo_pdf') instanceof File) {
+          console.log('Archivo PDF nuevo detectado en edición de Impuesto');
+        } else if (editingImpuesto.archivo_pdf) {
+          console.log('Manteniendo archivo PDF existente de Impuesto');
+          formData.append('archivo_pdf', editingImpuesto.archivo_pdf);
+          formData.append('nombre_archivo', editingImpuesto.nombre_archivo || '');
+        }
+      } else {
+        console.log('Creando nuevo Impuesto');
+        formData.append('maquinaria', maquinariaId);
+        formData.append('registrado_por', user?.Nombre || user?.Email || 'Usuario');
+      }
+    } else {
+      console.log('Objeto normal detectado para Impuesto, convirtiendo a payload');
+      const payload = {
+        ...formData,
+        maquinaria: maquinariaId,
+        ...(editingImpuesto ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
+      };
+      formData = payload;
+    }
+    
     try {
+      const headers = { 'X-User-Email': user.Email };
+      if (!(formData instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      console.log('Enviando petición Impuesto:', {
+        method,
+        url,
+        headers,
+        isFormData: formData instanceof FormData,
+        bodyType: formData instanceof FormData ? 'FormData' : 'JSON'
+      });
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Email': user.Email
-        },
-        body: JSON.stringify(payload),
+        headers,
+        body: formData instanceof FormData ? formData : JSON.stringify(formData),
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || 'Error en la operación');
+        throw new Error(errorData.error || 'Error en la operación');
       }
-
+      
       setSnackbar({ 
         open: true, 
         message: `Impuesto ${editingImpuesto ? 'actualizado' : 'creado'} exitosamente!`, 
@@ -132,7 +163,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres desactivar este impuesto?')) return;
+    if (!window.confirm('¿Desactivar este Impuesto?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${id}/`, {
@@ -155,15 +186,12 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
 
   return (
     <Box>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
 
       <Box sx={{ 
@@ -223,6 +251,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
         canEdit={canEdit}
         canDelete={canDelete || isEncargado}
         deleteLoading={deleteLoading}
+        showActionsColumn={!(user?.Cargo?.toLowerCase() === 'admin' || user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico')}
       />
     </Box>
   );

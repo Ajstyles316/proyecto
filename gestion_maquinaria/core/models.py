@@ -9,10 +9,13 @@ class Maquinaria:
     collection_name = "maquinaria"
 
 class HistorialControl:
-    collection_name = "historial_control"
+    collection_name = "control"
 
 class ActaAsignacion:
-    collection_name = "acta_asignacion"
+    collection_name = "asignacion"
+
+class Liberacion:
+    collection_name = "liberacion"
 
 class Mantenimiento:
     collection_name = "mantenimiento"

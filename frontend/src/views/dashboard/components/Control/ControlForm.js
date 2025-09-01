@@ -19,16 +19,21 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
   const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
   const canEditAuthFields = isEncargado || isAdmin;
 
-  const fieldLabels = [
-    { name: 'ubicacion', label: 'Ubicación', required: false },
-    { name: 'gerente', label: 'Gerente', required: false },
-    { name: 'encargado', label: 'Encargado de Activos', required: false },
-    { name: 'estado', label: 'Estado', required: false },
-    { name: 'hoja_tramite', label: 'Hoja de Trámite', required: false },
-    { name: 'fecha_ingreso', label: 'Fecha de Ingreso', type: 'date', required: false },
-    { name: 'registrado_por', label: 'Registrado por', readonly: true },
-    { name: 'validado_por', label: 'Validado por', readonly: true },
-    { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
+  // Usar los fieldLabels correctos del archivo centralizado
+  const controlFields = [
+    { name: 'fecha_inicio', label: 'Fecha de Inicio', required: true },
+    { name: 'fecha_final', label: 'Fecha Final', required: true },
+    { name: 'proyecto', label: 'Proyecto', required: true },
+    { name: 'ubicacion', label: 'Ubicación', required: true },
+    { name: 'estado', label: 'Estado', required: true},
+    { name: 'tiempo', label: 'Tiempo', required: true },
+    { name: 'operador', label: 'Operador', required: true },
+    // Solo mostrar estos campos cuando se está editando (no al crear nuevo)
+    ...(isEditing ? [
+      { name: 'registrado_por', label: 'Registrado por', readonly: true },
+      { name: 'validado_por', label: 'Validado por', readonly: true },
+      { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
+    ] : []),
   ];
 
   useEffect(() => {
@@ -42,7 +47,7 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
 
   const validateForm = () => {
     const newErrors = {};
-    fieldLabels.forEach(field => {
+    controlFields.forEach(field => {
       if (field.required && !form[field.name]) {
         newErrors[field.name] = `${field.label} es obligatorio`;
       }
@@ -64,10 +69,8 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
       </Typography>
 
       <Grid container spacing={2}>
-        {fieldLabels.filter(field => 
-          isEditing || !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)
-        ).map((field) => (
-          <Grid item xs={12} sm={6} key={field.name}>
+        {controlFields.map((field) => (
+          <Grid item xs={12} sm={field.multiline ? 12 : 6} key={field.name}>
             <TextField
               fullWidth
               label={field.label}
@@ -76,11 +79,12 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
               value={form[field.name] || ''}
               onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
               InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
+              multiline={field.multiline}
+              minRows={field.multiline ? 4 : undefined}
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
-              disabled={
-                isReadOnly || 
+              disabled={isReadOnly ||
                 (field.name === 'registrado_por') ||
                 (field.name === 'validado_por' && !canEditAuthFields) ||
                 (field.name === 'autorizado_por' && !canEditAuthFields)
@@ -88,22 +92,6 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
             />
           </Grid>
         ))}
-
-        {/* Campo de Observación visible siempre, grande y multiline */}
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            multiline
-            minRows={4}
-            label="Observación"
-            name="observacion"
-            value={form.observacion || ''}
-            onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-            error={!!errors.observacion}
-            helperText={errors.observacion}
-            disabled={isReadOnly}
-          />
-        </Grid>
       </Grid>
 
       <Box sx={{

@@ -35,6 +35,8 @@ from .views import (
     HistorialControlDetailView,
     ActaAsignacionListView,
     ActaAsignacionDetailView,
+    LiberacionListView,
+    LiberacionDetailView,
     MantenimientoListView,
     MantenimientoDetailView,
     SeguroListView,
@@ -99,6 +101,10 @@ urlpatterns = [
     path('api/maquinaria/<str:maquinaria_id>/asignacion/', include([
         path('', ActaAsignacionListView.as_view(), name='asignacion-list'),
         path('<str:record_id>/', ActaAsignacionDetailView.as_view(), name='asignacion-detail'),
+    ])),
+    path('api/maquinaria/<str:maquinaria_id>/liberacion/', include([
+        path('', LiberacionListView.as_view(), name='liberacion-list'),
+        path('<str:record_id>/', LiberacionDetailView.as_view(), name='liberacion-detail'),
     ])),
     path('api/maquinaria/<str:maquinaria_id>/mantenimiento/', include([
         path('', MantenimientoListView.as_view(), name='mantenimiento-list'),

@@ -1,6 +1,7 @@
 export const SECTIONS = [
   { key: 'Maquinaria', label: 'Maquinaria' },
   { key: 'Asignación', label: 'Asignación' },
+  { key: 'Liberación', label: 'Liberación' },
   { key: 'Control', label: 'Control y Seguimiento' },
   { key: 'Mantenimiento', label: 'Mantenimiento' },
   { key: 'Seguros', label: 'Seguros' },

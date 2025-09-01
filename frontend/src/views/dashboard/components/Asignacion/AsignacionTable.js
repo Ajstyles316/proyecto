@@ -14,7 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import { useUser } from '../../../../components/UserContext';
 
-const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+const AsignacionTable = ({ asignaciones, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
@@ -82,25 +82,23 @@ const AsignacionTable = ({ asignaciones, maquinariaPlaca, onEdit, onDelete, load
     }}>
       <TableHead>
         <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Fecha Asignación</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Fecha Liberación</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Recorrido Asignado (Km)</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Recorrido Entregado (Km)</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Unidad</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Fecha de Asignación</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Kilometraje</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Gerente</TableCell>
           <TableCell sx={{ fontWeight: 600 }}>Encargado</TableCell>
           {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {asignaciones.map((asignacion, index) => (
+        {asignaciones.map((asignacion) => (
           <TableRow key={asignacion._id} sx={{
             '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
           }}>
-            <TableCell>{maquinariaPlaca}</TableCell>
+            <TableCell>{asignacion.unidad}</TableCell>
             <TableCell>{formatDate(asignacion.fecha_asignacion)}</TableCell>
-            <TableCell>{formatDate(asignacion.fecha_liberacion)}</TableCell>
-            <TableCell>{asignacion.recorrido_km}</TableCell>
-            <TableCell>{asignacion.recorrido_entregado}</TableCell>
+            <TableCell>{asignacion.kilometraje}</TableCell>
+            <TableCell>{asignacion.gerente}</TableCell>
             <TableCell>{asignacion.encargado}</TableCell>
             {showActionsColumn && (
               <TableCell align="right">

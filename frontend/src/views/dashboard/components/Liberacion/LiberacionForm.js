@@ -13,7 +13,7 @@ import {
 import { useUser } from '../../../../components/UserContext';
 import { useUnidades } from '../../../../components/hooks';
 
-const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
+const LiberacionForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading = false }) => {
   const [form, setForm] = useState(initialData || {});
   const [errors, setErrors] = useState({});
   const { user } = useUser();
@@ -24,8 +24,8 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLo
 
   const fieldLabels = [
     { name: 'unidad', label: 'Unidad', type: 'text', required: true },
-    { name: 'fecha_asignacion', label: 'Fecha de Asignación', type: 'date', required: true },
-    { name: 'kilometraje', label: 'Kilometraje', type: 'number', required: true },
+    { name: 'fecha_liberacion', label: 'Fecha de Liberación', type: 'date', required: true },
+    { name: 'kilometraje_entregado', label: 'Kilometraje Entregado', type: 'number', required: true },
     { name: 'gerente', label: 'Gerente', type: 'text', required: true },
     { name: 'encargado', label: 'Encargado', type: 'text', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
@@ -52,7 +52,7 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLo
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="subtitle1" sx={{ mb: 2 }}>
-        {isEditing ? 'Editar Asignación' : 'Nueva Asignación'}
+        {isEditing ? 'Editar Liberación' : 'Nueva Liberación'}
       </Typography>
       <Grid container spacing={2}>
         {fieldLabels.filter(field => 
@@ -123,7 +123,7 @@ const AsignacionForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLo
   );
 };
 
-AsignacionForm.propTypes = {
+LiberacionForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   initialData: PropTypes.object,
@@ -132,4 +132,4 @@ AsignacionForm.propTypes = {
   submitLoading: PropTypes.bool
 };
 
-export default AsignacionForm; 
+export default LiberacionForm;

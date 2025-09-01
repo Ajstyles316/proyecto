@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import {
   Table,
@@ -15,7 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import { useUser } from '../../../../components/UserContext';
 
-const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
@@ -66,24 +65,24 @@ const MantenimientoTable = ({ mantenimientos, maquinariaPlaca, onEdit, onDelete,
     }}>
       <TableHead>
         <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
           <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Cantidad</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Gestión</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Ubicación</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Combustible</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Lubricantes</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Mano de Obra</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Técnico</TableCell>
           {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {mantenimientos.map((mantenimiento, index) => (
+        {mantenimientos.map((mantenimiento) => (
           <TableRow key={mantenimiento._id} sx={{
             '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
           }}>
-            <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{mantenimiento.tipo}</TableCell>
-            <TableCell>{mantenimiento.cantidad}</TableCell>
-            <TableCell>{mantenimiento.gestion}</TableCell>
-            <TableCell>{mantenimiento.ubicacion}</TableCell>
+            <TableCell>{mantenimiento.tipo_mantenimiento}</TableCell>
+            <TableCell>{mantenimiento.consumo_combustible ? `${mantenimiento.consumo_combustible} Lts` : '-'}</TableCell>
+            <TableCell>{mantenimiento.consumo_lubricantes ? `${mantenimiento.consumo_lubricantes} Lts` : '-'}</TableCell>
+            <TableCell>{mantenimiento.mano_obra ? `$${mantenimiento.mano_obra}` : '-'}</TableCell>
+            <TableCell>{mantenimiento.tecnico_responsable}</TableCell>
             {showActionsColumn && (
               <TableCell align="right">
                 {(isEncargado || canEdit) && (

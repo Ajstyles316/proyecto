@@ -30,6 +30,12 @@ export async function fetchAsignacion(maquinariaId) {
   return await res.json();
 }
 
+export async function fetchLiberacion(maquinariaId) {
+  const res = await fetch(`${API_BASE}/maquinaria/${maquinariaId}/liberacion/`);
+  if (!res.ok) return [];
+  return await res.json();
+}
+
 export async function fetchMantenimiento(maquinariaId) {
   const res = await fetch(`${API_BASE}/maquinaria/${maquinariaId}/mantenimiento/`);
   if (!res.ok) return [];

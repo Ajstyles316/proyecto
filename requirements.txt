@@ -23,6 +23,7 @@ defusedxml==0.7.1
 Django==4.2
 django-cors-headers==4.1.0
 djangorestframework==3.14.0
+Pillow==11.3.0
 dnspython==2.7.0
 dtale==3.18.2
 et_xmlfile==2.0.0

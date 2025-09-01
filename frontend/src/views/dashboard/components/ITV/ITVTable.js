@@ -9,12 +9,14 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useUser } from '../../../../components/UserContext';
 
-const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+const ITVTable = ({ itvs, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
@@ -27,6 +29,31 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
       return date.toLocaleDateString('es-ES');
     } catch (error) {
       return '';
+    }
+  };
+
+  const handleDownloadPDF = (itv) => {
+    if (itv.archivo_pdf) {
+      try {
+        const byteCharacters = atob(itv.archivo_pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = itv.nombre_archivo || 'itv.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error descargando PDF:', error);
+        alert('Error al descargar el archivo PDF');
+      }
     }
   };
 
@@ -65,20 +92,32 @@ const ITVTable = ({ itvs, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly
     }}>
       <TableHead>
         <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Detalle</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Importe</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Gestión</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Archivo</TableCell>
           {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {itvs.map((itv, index) => (
+        {itvs.map((itv) => (
           <TableRow key={itv._id} sx={{
             '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
           }}>
-            <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{itv.detalle}</TableCell>
-            <TableCell>{itv.importe}</TableCell>
+            <TableCell>{itv.gestion}</TableCell>
+            <TableCell>
+              {itv.archivo_pdf ? (
+                <Tooltip title="Descargar PDF">
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => handleDownloadPDF(itv)}
+                  >
+                    <PictureAsPdfIcon />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin archivo</Typography>
+              )}
+            </TableCell>
             {showActionsColumn && (
               <TableCell align="right">
                 {(isEncargado || canEdit) && (

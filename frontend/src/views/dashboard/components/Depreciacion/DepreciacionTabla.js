@@ -28,40 +28,97 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [metodoFilter, setMetodoFilter] = useState('');
+  const [bienUsoFilter, setBienUsoFilter] = useState('');
+
+  // Lógica para determinar bien de uso, vida útil y coeficiente en base al tipo y detalle
+  const determinarBienUsoYVidaUtil = (tipo, detalle) => {
+    const reglas = [
+      { tipos: ['vehículo', 'vehiculos', 'camión', 'camion', 'auto', 'camioneta'], bien_de_uso: 'Vehículos automotores', vida_util: 5 },
+      { tipos: ['maquinaria', 'excavadora', 'retroexcavadora', 'cargador'], bien_de_uso: 'Maquinaria pesada', vida_util: 8 },
+      { tipos: ['equipo', 'herramienta'], bien_de_uso: 'Equipos de construcción', vida_util: 5 },
+      { tipos: ['oficina', 'computadora', 'impresora'], bien_de_uso: 'Equipos de oficina', vida_util: 4 },
+      { tipos: ['mueble', 'enseres'], bien_de_uso: 'Muebles y enseres', vida_util: 10 },
+    ];
+    
+    const texto = `${tipo || ''} ${detalle || ''}`.toLowerCase();
+    for (const regla of reglas) {
+      if (regla.tipos.some(t => texto.includes(t))) {
+        return { bien_de_uso: regla.bien_de_uso, vida_util: regla.vida_util };
+      }
+    }
+    return { bien_de_uso: 'Otros bienes', vida_util: 5 };
+  };
+
+  // Obtener bien_de_uso de un item (usado en filtros)
+  const getBienDeUso = (item) => {
+    // Si ya tiene bien_de_uso, usarlo
+    if (item.bien_de_uso && item.bien_de_uso.trim() !== '') {
+      return item.bien_de_uso;
+    }
+    
+    // Si no, calcularlo
+    const { bien_de_uso } = determinarBienUsoYVidaUtil(item.tipo, item.detalle);
+    return bien_de_uso;
+  };
+
+  // Calcular opciones únicas para los filtros (corregido)
+  const metodoOptions = useMemo(() => {
+    const options = new Set();
+    (maquinarias || []).forEach(item => {
+      if (item.metodo_depreciacion && item.metodo_depreciacion.trim() !== '') {
+        options.add(item.metodo_depreciacion);
+      }
+    });
+    return Array.from(options).sort();
+  }, [maquinarias]);
+
+  const bienUsoOptions = useMemo(() => {
+    const options = new Set();
+    (maquinarias || []).forEach(item => {
+      const bienDeUso = getBienDeUso(item);
+      if (bienDeUso && bienDeUso.trim() !== '') {
+        options.add(bienDeUso);
+      }
+    });
+    return Array.from(options).sort();
+  }, [maquinarias, getBienDeUso]);
 
   const filteredRows = useMemo(() => {
     return (maquinarias || []).filter((item) => {
       const term = searchTerm.toLowerCase();
+      
+      // Obtener bien de uso para el filtro
+      const bienDeUso = getBienDeUso(item);
+      
+      // Verificar filtros
+      const metodoMatch = metodoFilter ? 
+        (item.metodo_depreciacion || '').toLowerCase() === metodoFilter.toLowerCase() : 
+        true;
+      
+      const bienUsoMatch = bienUsoFilter ? 
+        bienDeUso.toLowerCase() === bienUsoFilter.toLowerCase() : 
+        true;
+      
       return (
-        (item.placa || '').toLowerCase().includes(term) ||
-        (item.detalle || '').toLowerCase().includes(term) ||
-        (item.metodo_depreciacion || '').toLowerCase().includes(term) ||
-        (item.codigo || '').toLowerCase().includes(term)
+        metodoMatch &&
+        bienUsoMatch &&
+        (
+          (item.placa || '').toLowerCase().includes(term) ||
+          (item.detalle || '').toLowerCase().includes(term) ||
+          (item.metodo_depreciacion || '').toLowerCase().includes(term) ||
+          (item.codigo || '').toLowerCase().includes(term)
+        )
       );
     });
-  }, [searchTerm, maquinarias]);
+  }, [searchTerm, maquinarias, metodoFilter, bienUsoFilter, getBienDeUso]);
 
   const totalPages = pageSize === 'Todos' ? 1 : Math.ceil(filteredRows.length / parseInt(pageSize, 10));
-  // Lógica para determinar bien de uso, vida útil y coeficiente en base al tipo y detalle
-  function determinarBienUsoYVidaUtil(tipo, detalle) {
-    const reglas = [
-      { tipos: ['vehículo', 'vehiculos', 'camión', 'camion', 'auto', 'camioneta'], bien_uso: 'Vehículos automotores', vida_util: 5 },
-      { tipos: ['maquinaria', 'excavadora', 'retroexcavadora', 'cargador'], bien_uso: 'Maquinaria pesada', vida_util: 8 },
-      { tipos: ['equipo', 'herramienta'], bien_uso: 'Equipos de construcción', vida_util: 5 },
-      { tipos: ['oficina', 'computadora', 'impresora'], bien_uso: 'Equipos de oficina', vida_util: 4 },
-      { tipos: ['mueble', 'enseres'], bien_uso: 'Muebles y enseres', vida_util: 10 },
-    ];
-    const texto = `${tipo || ''} ${detalle || ''}`.toLowerCase();
-    for (const regla of reglas) {
-      if (regla.tipos.some(t => texto.includes(t))) {
-        return { bien_de_uso: regla.bien_uso, vida_util: regla.vida_util };
-      }
-    }
-    return { bien_de_uso: 'Otros bienes', vida_util: 5 };
-  }
+  
   // Enriquecer cada maquinaria antes de mostrarla
-  function enriquecerMaquinaria(row) {
+  const enriquecerMaquinaria = (row) => {
     if (row.bien_de_uso && row.vida_util && row.costo_activo !== undefined && row.costo_activo !== null) return row;
+    
     const enriquecido = determinarBienUsoYVidaUtil(row.tipo, row.detalle);
     return {
       ...row,
@@ -69,7 +126,7 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
       vida_util: row.vida_util || enriquecido.vida_util,
       costo_activo: row.costo_activo !== undefined && row.costo_activo !== null ? row.costo_activo : 0,
     };
-  }
+  };
   
   const currentRows = useMemo(() => {
     const enrichedRows = filteredRows.map(enriquecerMaquinaria);
@@ -110,9 +167,16 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
         />
       </Box>
 
-      {/* Controles de búsqueda y paginación */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box display="flex" alignItems="center" gap={1} sx={{ flexGrow: 1, maxWidth: '300px' }}>
+      {/* Controles de búsqueda y filtros */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        mb: 3,
+        flexWrap: 'wrap',
+        gap: 2,
+        flexDirection: { xs: 'column', sm: 'row' }
+      }}>
+        <Box display="flex" alignItems="center" gap={1} sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: '300px' } }}>
           <Search sx={{ color: 'text.secondary' }} />
           <TextField
             label="Buscar"
@@ -131,26 +195,94 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
             }}
           />
         </Box>
-        <Select
-          value={pageSize}
-          onChange={(e) => {
-            setPageSize(e.target.value);
-            setCurrentPage(1);
-          }}
-          size="small"
-          sx={{ 
-            width: '200px',
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-            }
-          }}
-        >
-          {[10, 20, 50, 100, 'Todos'].map((size) => (
-            <MenuItem key={size} value={size}>
-              {size} registros
+        
+        <Box display="flex" gap={1} sx={{ flexWrap: 'wrap', minWidth: { xs: '100%', sm: 'auto' } }}>
+          {/* Filtro de Método de Depreciación */}
+          <Select
+            value={metodoFilter}
+            onChange={(e) => {
+              setMetodoFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            displayEmpty
+            size="small"
+            sx={{ 
+              minWidth: '150px',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+            renderValue={(selected) => {
+              if (!selected) {
+                return <span style={{ color: 'text.secondary' }}>Método de depreciación</span>;
+              }
+              return selected === 'linea_recta' ? 'Línea Recta' : selected;
+            }}
+          >
+            <MenuItem value="">
+              <em>Todos los métodos</em>
             </MenuItem>
-          ))}
-        </Select>
+            {metodoOptions.map((metodo) => (
+              <MenuItem key={metodo} value={metodo}>
+                {metodo === 'linea_recta' ? 'Línea Recta' : metodo}
+              </MenuItem>
+            ))}
+          </Select>
+
+          {/* Filtro de Bien de Uso - CORREGIDO */}
+          <Select
+            value={bienUsoFilter}
+            onChange={(e) => {
+              setBienUsoFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            displayEmpty
+            size="small"
+            sx={{ 
+              minWidth: '180px',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+            renderValue={(selected) => {
+              if (!selected) {
+                return <span style={{ color: 'text.secondary' }}>Bien de uso</span>;
+              }
+              return selected;
+            }}
+          >
+            <MenuItem value="">
+              <em>Todos los bienes</em>
+            </MenuItem>
+            {bienUsoOptions.map((bien) => (
+              <MenuItem key={bien} value={bien}>
+                {bien}
+              </MenuItem>
+            ))}
+          </Select>
+
+          {/* Selector de registros por página */}
+          <Select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(e.target.value);
+              setCurrentPage(1);
+            }}
+            size="small"
+            sx={{ 
+              width: '150px',
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              }
+            }}
+          >
+            {[10, 20, 50, 100, 'Todos'].map((size) => (
+              <MenuItem key={size} value={size}>
+                {size} registros
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
       </Box>
 
       {loading ? (
@@ -167,7 +299,9 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
             No se encontraron registros
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {searchTerm ? 'Intenta con otros términos de búsqueda' : 'No hay registros de maquinaria disponibles'}
+            {searchTerm || metodoFilter || bienUsoFilter ? 
+              'Intenta con otros términos de búsqueda o filtros' : 
+              'No hay registros de maquinaria disponibles'}
           </Typography>
         </Box>
       ) : (
@@ -378,12 +512,9 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
 };
 
 DepreciacionTabla.propTypes = {
-  depreciaciones: PropTypes.array.isRequired,
+  maquinarias: PropTypes.array.isRequired,
   handleVerDetalleClick: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
-  depreciacionesPorMaquinaria: PropTypes.object,
-  activos: PropTypes.array,
-  maquinarias:PropTypes.array
 };
 
 export default DepreciacionTabla;

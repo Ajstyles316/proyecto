@@ -121,6 +121,17 @@ const MaquinariaTabla = ({
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px'
                   }}>
+                    Código
+                  </TableCell>
+                  <TableCell sx={{ 
+                    p: { xs: 1, sm: 1.5 },
+                    fontWeight: 700,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    color: theme.palette.primary.main,
+                    borderBottom: `2px solid ${theme.palette.primary.main}`,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
                     Placa
                   </TableCell>
                   <TableCell sx={{ 
@@ -132,29 +143,7 @@ const MaquinariaTabla = ({
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px'
                   }}>
-                    Descripción Comercial
-                  </TableCell>
-                  <TableCell sx={{ 
-                    p: { xs: 1, sm: 1.5 },
-                    fontWeight: 700,
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    color: theme.palette.primary.main,
-                    borderBottom: `2px solid ${theme.palette.primary.main}`,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Unidad
-                  </TableCell>
-                  <TableCell sx={{ 
-                    p: { xs: 1, sm: 1.5 },
-                    fontWeight: 700,
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    color: theme.palette.primary.main,
-                    borderBottom: `2px solid ${theme.palette.primary.main}`,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Código
+                    Descripción
                   </TableCell>
                   <TableCell sx={{ 
                     display: { xs: 'none', sm: 'table-cell' },
@@ -193,6 +182,30 @@ const MaquinariaTabla = ({
                     Color
                   </TableCell>
                   <TableCell sx={{ 
+                    display: { xs: 'none', sm: 'table-cell' },
+                    p: { xs: 1, sm: 1.5 },
+                    fontWeight: 700,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    color: theme.palette.primary.main,
+                    borderBottom: `2px solid ${theme.palette.primary.main}`,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Nro. Chasis
+                  </TableCell>
+                  <TableCell sx={{ 
+                    display: { xs: 'none', sm: 'table-cell' },
+                    p: { xs: 1, sm: 1.5 },
+                    fontWeight: 700,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    color: theme.palette.primary.main,
+                    borderBottom: `2px solid ${theme.palette.primary.main}`,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Nro. Motor
+                  </TableCell>
+                  <TableCell sx={{ 
                     p: { xs: 1, sm: 1.5 },
                     fontWeight: 700,
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
@@ -226,6 +239,9 @@ const MaquinariaTabla = ({
                       }}
                     >
                       <TableCell sx={{ p: { xs: 1, sm: 1.5 } }}>
+                        {m.codigo || '—'}
+                      </TableCell>
+                      <TableCell sx={{ p: { xs: 1, sm: 1.5 } }}>
                         <Chip
                           label={m.placa || '—'}
                           size="small"
@@ -236,18 +252,6 @@ const MaquinariaTabla = ({
                       </TableCell>
                       <TableCell sx={{ p: { xs: 1, sm: 1.5 } }}>
                         {m.detalle}
-                      </TableCell>
-                      <TableCell sx={{ p: { xs: 1, sm: 1.5 } }}>
-                        <Chip
-                          label={m.unidad || '—'}
-                          size="small"
-                          variant="outlined"
-                          color="secondary"
-                          sx={{ fontSize: '0.75rem' }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ p: { xs: 1, sm: 1.5 } }}>
-                        {m.codigo || '—'}
                       </TableCell>
                       <TableCell sx={{ 
                         display: { xs: 'none', sm: 'table-cell' },
@@ -266,6 +270,18 @@ const MaquinariaTabla = ({
                         p: { xs: 1, sm: 1.5 }
                       }}>
                         {m.color || '—'}
+                      </TableCell>
+                      <TableCell sx={{ 
+                        display: { xs: 'none', sm: 'table-cell' },
+                        p: { xs: 1, sm: 1.5 }
+                      }}>
+                        {m.nro_chasis || '—'}
+                      </TableCell>
+                      <TableCell sx={{ 
+                        display: { xs: 'none', sm: 'table-cell' },
+                        p: { xs: 1, sm: 1.5 }
+                      }}>
+                        {m.nro_motor || '—'}
                       </TableCell>
                       <TableCell sx={{ p: { xs: 1, sm: 1.5 } }}>
                         <Button

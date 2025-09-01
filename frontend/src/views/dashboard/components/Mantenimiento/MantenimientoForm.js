@@ -20,10 +20,11 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submi
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'tipo', label: 'Tipo', required: true },
-    { name: 'cantidad', label: 'Cantidad', type: 'number', required: false },
-    { name: 'gestion', label: 'Gestión', required: true },
-    { name: 'ubicacion', label: 'Ubicación', required: true },
+    { name: 'tipo_mantenimiento', label: 'Tipo de Mantenimiento', required: true },
+    { name: 'consumo_combustible', label: 'Consumo de Combustible (Lts)', type: 'number', required: false },
+    { name: 'consumo_lubricantes', label: 'Consumo de Lubricantes (Lts)', type: 'number', required: false },
+    { name: 'mano_obra', label: 'Mano de Obra Bs.', type: 'number', required: false },
+    { name: 'tecnico_responsable', label: 'Técnico Responsable', required: true },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -102,6 +103,7 @@ MantenimientoForm.propTypes = {
   initialData: PropTypes.object,
   isEditing: PropTypes.bool,
   isReadOnly: PropTypes.bool,
+  submitLoading: PropTypes.bool
 };
 
 export default MantenimientoForm; 

@@ -1,4 +1,3 @@
-import React, { useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -9,11 +8,6 @@ import {
   LinearProgress,
   Stack
 } from '@mui/material';
-import {
-  TrendingUp,
-  Warning,
-  CheckCircle
-} from '@mui/icons-material';
 
 const ActivosAnalytics = ({ activos }) => {
   const analytics = useMemo(() => {

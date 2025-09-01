@@ -20,6 +20,7 @@ import {
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { useUser } from '../../../../components/UserContext';
 import ExportToPDFButton from './ExportPDFButton';
+import { fetchMaquinarias } from '../Reportes/serviciosAPI';
 
 const MODULOS_SEGUIMIENTO = [
   'Usuarios',
@@ -182,6 +183,7 @@ const RegistroActividadMain = () => {
   const { user } = useUser();
   const [seguimientoData, setSeguimientoData] = useState([]);
   const [usuariosRegistrados, setUsuariosRegistrados] = useState([]);
+  const [maquinarias, setMaquinarias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ usuario: '', modulo: '', desde: '', hasta: '' });
@@ -215,6 +217,14 @@ const RegistroActividadMain = () => {
       
       const seguimientoData = await seguimientoRes.json();
       setSeguimientoData(Array.isArray(seguimientoData) ? seguimientoData : []);
+      
+      // Cargar maquinarias para reemplazar IDs con placas
+      try {
+        const maquinariasData = await fetchMaquinarias();
+        setMaquinarias(maquinariasData);
+      } catch (maqError) {
+        console.warn('No se pudieron cargar las maquinarias:', maqError);
+      }
     } catch (err) {
       setError('No se pudo cargar el registro de actividad');
     } finally {
@@ -262,6 +272,32 @@ const RegistroActividadMain = () => {
     cargo: u.Cargo, 
     unidad: u.Unidad 
   }));
+
+  // Función para procesar mensaje y reemplazar IDs de maquinaria con placas
+  const procesarMensaje = (mensaje) => {
+    if (!mensaje || typeof mensaje !== 'string') return mensaje;
+    
+    // Buscar IDs de maquinaria en el mensaje (patrón: 24 caracteres hexadecimales)
+    const idPattern = /[a-f0-9]{24}/g;
+    let mensajeProcesado = mensaje;
+    
+    const idsEncontrados = mensaje.match(idPattern);
+    if (idsEncontrados) {
+      idsEncontrados.forEach(id => {
+        // Buscar la maquinaria correspondiente
+        const maquinaria = maquinarias.find(m => 
+          m._id === id || m._id?.$oid === id || m.id === id
+        );
+        
+        if (maquinaria && maquinaria.placa) {
+          // Reemplazar el ID con la placa
+          mensajeProcesado = mensajeProcesado.replace(id, maquinaria.placa);
+        }
+      });
+    }
+    
+    return mensajeProcesado;
+  };
 
   // Función para calcular tiempo de conexión
   const calcularTiempoConexion = (row) => {
@@ -505,7 +541,8 @@ const RegistroActividadMain = () => {
                               }
                             }
                             
-                            return mensaje;
+                            // Procesar mensaje para reemplazar IDs de maquinaria con placas
+                            return procesarMensaje(mensaje);
                           })()}
                         </Box>
                       </TableCell>

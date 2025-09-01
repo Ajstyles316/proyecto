@@ -1,8 +1,21 @@
 import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { maquinariaFields, depFields } from './fields';
-import { formatDateOnly, cleanRow, formatHeader, formatCurrency, calcularDepreciacionAnual } from './exportHelpers';
+import { 
+  maquinariaFields, 
+  depFields, 
+  controlFields, 
+  asignacionFields, 
+  liberacionFields, 
+  mantenimientoFields, 
+  seguroFields, 
+  itvFields, 
+  impuestoFields, 
+  soatFields,
+  pronosticoFields
+} from './fields';
+import { formatDateOnly, cleanRow, formatHeader, formatCurrency } from './helpers';
+import { calcularDepreciacionAnual } from './exportHelpers';
 
 const isDateLike = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v);
 
@@ -98,7 +111,21 @@ function addMainHeader(doc, pageWidth) {
   return textY + lines.length * lineHeight + 10;
 }
 
-function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos }) {
+function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, liberacion, mantenimiento, soat, seguros, itv, impuestos }) {
+  console.log('🔍 EXPORT PDF - Parámetros recibidos:', {
+    maquinaria: !!maquinaria,
+    depreciaciones: Array.isArray(depreciaciones) ? depreciaciones.length : 'No es array',
+    pronosticos: Array.isArray(pronosticos) ? pronosticos.length : 'No es array',
+    control: Array.isArray(control) ? control.length : 'No es array',
+    asignacion: Array.isArray(asignacion) ? asignacion.length : 'No es array',
+    liberacion: Array.isArray(liberacion) ? liberacion.length : 'No es array',
+    mantenimiento: Array.isArray(mantenimiento) ? mantenimiento.length : 'No es array',
+    soat: Array.isArray(soat) ? soat.length : 'No es array',
+    seguros: Array.isArray(seguros) ? seguros.length : 'No es array',
+    itv: Array.isArray(itv) ? itv.length : 'No es array',
+    impuestos: Array.isArray(impuestos) ? impuestos.length : 'No es array'
+  });
+  
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -113,7 +140,10 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   doc.text('A continuación se presentan los datos principales de la maquinaria seleccionada.', 30, y);
   y += 7;
 
-  const maqRows = maquinariaFields.map(f => [f.label, maquinaria[f.key] || 'No se encontraron datos']);
+  const maqRows = maquinariaFields
+    .filter(f => f.key !== 'gestion') 
+    .map(f => [f.label, maquinaria[f.key] || 'No se encontraron datos']);
+    
   autoTable(doc, {
     startY: y,
     head: [['Campo', 'Valor']],
@@ -175,14 +205,17 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       return;
     }
 
-    const rows = ensureArray(data).map(cleanRow);
+    const rows = ensureArray(data).map(row => cleanRow(row, title === 'Asignación' || title === 'Liberación'));
     const keys = Object.keys(rows[0] || {});
     
     let filteredKeys = [];
     
     if (title === 'Asignación') {
-      filteredKeys = ['placa', 'recorrido_km', 'recorrido_entregado', 'encargado', 'fecha_asignacion', 'fecha_liberacion']
-        .filter(k => keys.includes(k));
+      // Usar los campos definidos en fields.js para asignación
+      filteredKeys = asignacionFields.map(f => f.key).filter(k => keys.includes(k));
+    } else if (title === 'Liberación') {
+      // Usar los campos definidos en fields.js para liberación
+      filteredKeys = liberacionFields.map(f => f.key).filter(k => keys.includes(k));
     } else {
       filteredKeys = keys.filter(k =>
         !k.toLowerCase().includes('creacion') &&
@@ -223,6 +256,7 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   const sections = [
     { key: 'control', title: 'Control', intro: 'Esta sección muestra los controles realizados sobre la maquinaria.' },
     { key: 'asignacion', title: 'Asignación', intro: 'Aquí se detallan las asignaciones históricas de la maquinaria.' },
+    { key: 'liberacion', title: 'Liberación', intro: 'Aquí se detallan las liberaciones históricas de la maquinaria.' },
     { key: 'mantenimiento', title: 'Mantenimiento', intro: 'Se listan los mantenimientos realizados y programados para la maquinaria.' },
     { key: 'soat', title: 'SOAT', intro: 'Información sobre el seguro SOAT vigente o histórico de la maquinaria.' },
     { key: 'seguros', title: 'Seguros', intro: 'Detalle de otros seguros asociados a la maquinaria.' },
@@ -230,7 +264,27 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     { key: 'impuestos', title: 'Impuestos', intro: 'Historial de pagos y obligaciones tributarias de la maquinaria.' },
   ];
 
-  const dataMap = { control, asignacion, mantenimiento, soat, seguros, itv, impuestos };
+  const dataMap = { 
+    control: control || [], 
+    asignacion: asignacion || [], 
+    liberacion: liberacion || [], 
+    mantenimiento: mantenimiento || [], 
+    soat: soat || [], 
+    seguros: seguros || [], 
+    itv: itv || [], 
+    impuestos: impuestos || [] 
+  };
+  
+  console.log('🔍 EXPORT PDF - dataMap creado:', {
+    control: dataMap.control.length,
+    asignacion: dataMap.asignacion.length,
+    liberacion: dataMap.liberacion.length,
+    mantenimiento: dataMap.mantenimiento.length,
+    soat: dataMap.soat.length,
+    seguros: dataMap.seguros.length,
+    itv: dataMap.itv.length,
+    impuestos: dataMap.impuestos.length
+  });
 
   sections.forEach(sec => {
     if (y + 40 > pageHeight - 20) {
@@ -421,99 +475,185 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
 
 function exportPDFMasivo(data, filename = 'reporte') {
   const doc = new jsPDF({ orientation: 'landscape' });
-  let sectionIndex = 0;
+  let currentY = 20;
 
-  // helper tabla por sección (una tabla por módulo, deduplicada)
+  // Función para agregar tabla
   function addTable(title, rows, fields = null, tablaKey = '') {
-    const raw = ensureArray(rows);
-    if (!raw.length) return;
-
-    // deduplicado por módulo
-    const deduped = dedupeBy(raw, DEDUPE_KEYS[tablaKey]);
-
-    if (sectionIndex > 0) doc.addPage();
-    sectionIndex++;
-
-    // título visible (Control => Control y Seguimiento)
-    const visibleTitle = tablaKey === 'control' ? 'Control y Seguimiento' : title;
-    doc.setFontSize(13); doc.setTextColor(30, 77, 183); doc.setFont('helvetica', 'bold');
-    doc.text(`${visibleTitle} (${deduped.length})`, 14, 18);
-
-    // columnas
-    let keys = fields ? fields.map(f => f.key) : Object.keys(deduped[0] || {});
-
-    if (tablaKey && tablaKey !== 'maquinaria' && !fields) {
-      const camposPermitidos = {
-        control: ['placa', 'detalle', 'ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
-        asignacion: ['placa', 'detalle', 'fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
-        mantenimiento: ['placa', 'detalle', 'tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
-        soat: ['placa', 'detalle', 'importe_2024', 'importe_2025'],
-        seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle_seg'],
-        // itv puede venir como 'detalle' o 'detalle_itv'
-        itv: ['placa', 'detalle', 'detalle_itv', 'importe'],
-        impuestos: ['placa', 'detalle', 'importe_2023', 'importe_2024'],
-        depreciaciones: ['placa', 'detalle', 'costo_activo', 'fecha_compra', 'vida_util', 'bien_uso', 'metodo_depreciacion', 'valor_residual', 'coeficiente'],
-        pronosticos: ['placa', 'detalle', 'fecha_asig', 'horas_op', 'recorrido', 'resultado', 'riesgo', 'probabilidad', 'fecha_mantenimiento', 'urgencia', 'recomendaciones'],
-      };
-
-      // elegir columnas que existan
-      const candidatos = camposPermitidos[tablaKey] || ['placa', 'detalle'];
-      keys = candidatos.filter(c => deduped.some(r => r[c] !== undefined && r[c] !== null));
-      // excluir metadata
-      keys = keys.filter(k => !/fecha_creacion|fecha_actualizacion|^id$|^_id$|_id$/.test(k));
+    console.log(`🔍 ADD TABLE: ${title}`, { rows, fields, tablaKey });
+    if (!rows || rows.length === 0) {
+      console.log(`🔍 NO HAY ROWS PARA ${title}`);
+      return;
     }
 
-    let head, body, columnStyles = {};
-    if (tablaKey === 'pronosticos') {
-      // encabezado fijo para pronósticos (horizontal)
-      head = [['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones']];
-      body = deduped.map(r => [
-        r.placa || '',
-        r.detalle || '',
-        fmt(r.fecha_asig),
-        r.horas_op ?? '',
-        r.recorrido ?? '',
-        r.resultado ?? '',
-        r.riesgo ?? '',
-        r.probabilidad ?? '',
-        fmt(r.fecha_mantenimiento),
-        r.urgencia ?? '',
-        Array.isArray(r.recomendaciones) ? r.recomendaciones.slice(0, 3).join('; ') : (r.recomendaciones || '')
-      ]);
-      columnStyles = COLUMN_WIDTHS.pronosticos;
+    // Agregar nueva página si es necesario
+    if (currentY > 150) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    // Título de la sección con contador de registros
+    doc.setFontSize(14);
+    doc.setTextColor(30, 77, 183);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 20, currentY);
+    
+    // Agregar contador de registros (estilo botón)
+    const registrosText = `${rows.length} registros`;
+    const registrosWidth = doc.getTextWidth(registrosText);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const registrosX = pageWidth - 20 - registrosWidth;
+    
+    // Fondo azul para el contador
+    doc.setFillColor(30, 77, 183);
+    doc.rect(registrosX - 5, currentY - 3, registrosWidth + 10, 8, 'F');
+    
+    // Texto del contador
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.text(registrosText, registrosX, currentY + 2);
+    
+    // Restaurar color del texto
+    doc.setTextColor(30, 77, 183);
+    currentY += 15;
+
+    // Definir campos para cada tabla usando el archivo fields.js
+    let tableFields = [];
+    if (fields) {
+      tableFields = fields;
+      console.log(`🔍 CAMPOS ESPECÍFICOS PARA ${title}:`, tableFields);
     } else {
-      head = [keys.map(formatHeader)];
-      body = deduped.map(r => keys.map(k => {
-        let v = r[k];
-        if (k.toLowerCase().includes('fecha')) v = fmt(v);
-        return v ?? '';
-      }));
+      switch (tablaKey) {
+        case 'control':
+          tableFields = controlFields; // Solo los campos de control, sin placa/detalle
+          break;
+        case 'asignacion':
+          tableFields = asignacionFields; // Solo los campos de asignación, sin placa/detalle
+          break;
+        case 'liberacion':
+          tableFields = liberacionFields; // Solo los campos de liberación, sin placa/detalle
+          break;
+        case 'mantenimiento':
+          tableFields = mantenimientoFields; // Solo los campos de mantenimiento, sin placa/detalle
+          break;
+        case 'soat':
+          tableFields = soatFields; // Solo los campos de SOAT, sin placa/detalle
+          break;
+        case 'seguros':
+          tableFields = seguroFields; // Solo los campos de seguros, sin placa/detalle
+          break;
+        case 'itv':
+          tableFields = itvFields; // Solo los campos de ITV, sin placa/detalle
+          break;
+        case 'impuestos':
+          tableFields = impuestoFields; // Solo los campos de impuestos, sin placa/detalle
+          break;
+        case 'pronosticos':
+          tableFields = pronosticoFields; // Solo los campos de pronósticos, sin placa/detalle
+          break;
+        default:
+          tableFields = Object.keys(rows[0] || {}).map(key => ({ key, label: key }));
+      }
+      console.log(`🔍 CAMPOS SELECCIONADOS PARA ${title}:`, tableFields);
+    }
+    const existingFields = tableFields.filter(field => 
+      field.key !== 'archivo_pdf' && rows.some(row => row[field.key] !== undefined && row[field.key] !== null)
+    );
+
+    console.log(`🔍 CAMPOS EXISTENTES PARA ${title}:`, existingFields);
+    console.log(`🔍 PRIMER ROW PARA ${title}:`, rows[0]);
+    console.log(`🔍 TODOS LOS CAMPOS DISPONIBLES EN ROWS:`, rows.length > 0 ? Object.keys(rows[0]) : []);
+    console.log(`🔍 CAMPOS DEFINIDOS EN FIELDS.JS:`, tableFields.map(f => f.key));
+
+    if (existingFields.length === 0) {
+      console.log(`🔍 NO HAY CAMPOS EXISTENTES PARA ${title}`);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text('No hay datos para mostrar', 20, currentY);
+      currentY += 15;
+      return;
     }
 
+    // Preparar datos para la tabla
+    const headers = existingFields.map(field => field.label);
+    const tableData = rows.map(row => 
+      existingFields.map(field => {
+        let value = row[field.key];
+        if (field.key === 'nombre_archivo' && value) {
+          return value; // Solo mostrar el nombre del archivo sin formato especial
+        }
+        if (field.key.toLowerCase().includes('fecha') && value) {
+          // Formatear fecha como DD/MM/YYYY
+          if (typeof value === 'string' && value.includes('-')) {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              return date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            }
+          }
+          return fmt(value);
+        }
+        return value || '-';
+      })
+    );
+
+    // Crear tabla con formato mejorado
     autoTable(doc, {
-      startY: 24,
-      head,
-      body,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [30, 77, 183], textColor: 255 },
-      bodyStyles: { textColor: 33 },
-      margin: { left: 10, right: 10 },
-      tableLineColor: [30, 77, 183], tableLineWidth: 0.2,
+      startY: currentY,
+      head: [headers],
+      body: tableData,
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 3,
+        textColor: 33,
+        halign: 'center'
+      },
+      headStyles: { 
+        fillColor: [30, 77, 183], 
+        textColor: 255, 
+        fontStyle: 'bold',
+        fontSize: 10,
+        halign: 'center'
+      },
+      bodyStyles: { 
+        textColor: 33,
+        fontSize: 9
+      },
+      margin: { left: 20, right: 20 },
+      tableLineColor: [30, 77, 183],
+      tableLineWidth: 0.3,
       pageBreak: 'auto',
       theme: 'grid',
-      columnStyles,
-      didParseCell: tablaKey === 'pronosticos' ? function (data) {
-        // multilínea para recomendaciones
-        if (data.section === 'body' && data.column.dataKey === 10) {
-          const cellValue = data.cell.raw;
-          if (typeof cellValue === 'string' && cellValue.includes(';')) {
-            data.cell.styles.cellPadding = 3;
-            data.cell.text = cellValue.split(';').map(rec => rec.trim());
+      alternateRowStyles: { fillColor: [248, 249, 250] },
+      didParseCell: function(data) {
+        // Formatear fechas para que se vean como botones
+        if (data.section === 'body' && typeof data.cell.raw === 'string') {
+          const cellText = data.cell.raw;
+          if (cellText.includes('/') && cellText.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+            // Es una fecha, aplicar estilo de botón
+            data.cell.styles.fillColor = [173, 216, 230]; // Azul claro
+            data.cell.styles.textColor = [0, 0, 0]; // Texto negro
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.cellPadding = 4;
           }
         }
-      } : undefined,
+      },
+      didDrawCell: function(data) {
+        // Sin funcionalidad de enlaces de descarga
+      }
     });
+
+    // Sin funcionalidad de enlaces de descarga
+
+    currentY = doc.lastAutoTable.finalY + 15;
   }
+
+  // Debug: Ver qué datos están llegando
+  console.log('🔍 DATOS PARA PDF:', data);
+  console.log('🔍 CAMPOS ASIGNACIÓN:', asignacionFields);
+  console.log('🔍 CAMPOS LIBERACIÓN:', liberacionFields);
 
   // Orden fijo de secciones (coherente con tu UI)
   if (data.maquinaria?.length) addTable('Maquinaria', data.maquinaria, maquinariaFields, 'maquinaria');
@@ -521,6 +661,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
   const tablas = [
     { key: 'control', label: 'Control' },
     { key: 'asignacion', label: 'Asignación' },
+    { key: 'liberacion', label: 'Liberación' },
     { key: 'mantenimiento', label: 'Mantenimiento' },
     { key: 'soat', label: 'SOAT' },
     { key: 'seguros', label: 'Seguros' },
@@ -531,8 +672,12 @@ function exportPDFMasivo(data, filename = 'reporte') {
   ];
 
   for (const t of tablas) {
+    console.log(`🔍 PROCESANDO TABLA ${t.key}:`, data[t.key]);
     if (data[t.key]?.length) {
+      console.log(`🔍 AGREGANDO TABLA ${t.key} con ${data[t.key].length} registros`);
       addTable(t.label, data[t.key], t.fields || null, t.key);
+    } else {
+      console.log(`🔍 TABLA ${t.key} NO TIENE DATOS`);
     }
   }
 

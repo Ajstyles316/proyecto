@@ -3,7 +3,7 @@ import { Box, Button, Grid, Checkbox, FormControlLabel, FormGroup, FormControl, 
 import exportXLS from './exportacionExcel';
 import exportPDF, { exportPDFMasivo } from './exportacionPDF';
 import { maquinariaFields } from './fields';
-import { fetchMaquinarias, fetchControl, fetchITV, fetchDepreciaciones, fetchPronosticos, fetchAsignacion, fetchMantenimiento, fetchSOAT, fetchSeguros, fetchImpuestos } from './serviciosAPI';
+import { fetchMaquinarias, fetchControl, fetchITV, fetchDepreciaciones, fetchPronosticos, fetchAsignacion, fetchLiberacion, fetchMantenimiento, fetchSOAT, fetchSeguros, fetchImpuestos } from './serviciosAPI';
 import { useIsReadOnlyForModule } from 'src/components/hooks';
 
 const tablas = [
@@ -11,8 +11,8 @@ const tablas = [
   { key: 'control', label: 'Control' },
   { key: 'itv', label: 'ITV' },
   { key: 'depreciaciones', label: 'Depreciación' },
-  { key: 'pronosticos', label: 'Pronóstico' },
   { key: 'asignacion', label: 'Asignación' },
+  { key: 'liberacion', label: 'Liberación' },
   { key: 'mantenimiento', label: 'Mantenimiento' },
   { key: 'soat', label: 'SOAT' },
   { key: 'seguros', label: 'Seguros' },
@@ -26,6 +26,7 @@ const fetchers = {
   depreciaciones: fetchDepreciaciones,
   pronosticos: fetchPronosticos,
   asignacion: fetchAsignacion,
+  liberacion: fetchLiberacion,
   mantenimiento: fetchMantenimiento,
   soat: fetchSOAT,
   seguros: fetchSeguros,
@@ -64,7 +65,7 @@ const ExportarReportes = () => {
 
       // 2. Para cada tabla seleccionada, obtener todos los registros de las maquinarias filtradas
       const exportData = {
-        maquinaria: [], control: [], itv: [], depreciaciones: [], pronosticos: [], asignacion: [], mantenimiento: [], soat: [], seguros: [], impuestos: []
+        maquinaria: [], control: [], itv: [], depreciaciones: [], pronosticos: [], asignacion: [], liberacion: [], mantenimiento: [], soat: [], seguros: [], impuestos: []
       };
       if (tablasSeleccionadas.includes('maquinaria')) {
         // Exportar todos los campos relevantes de cada maquinaria filtrada (horizontal)
@@ -92,13 +93,14 @@ const ExportarReportes = () => {
             
             // Lista de campos que SÍ queremos incluir (campos específicos de cada tabla)
             const camposPermitidos = {
-              control: ['ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
-              asignacion: ['fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
-              mantenimiento: ['tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
-              soat: ['importe_2024', 'importe_2025'],
-              seguros: ['numero_2024', 'importe', 'detalle'],
-              itv: ['detalle', 'importe'],
-              impuestos: ['importe_2023', 'importe_2024'],
+              control: ['fecha_inicio', 'fecha_final', 'proyecto', 'ubicacion', 'estado', 'tiempo', 'operador'],
+              asignacion: ['unidad', 'fecha_asignacion', 'kilometraje', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
+              liberacion: ['unidad', 'fecha_liberacion', 'kilometraje_entregado', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
+              mantenimiento: ['tipo_mantenimiento', 'consumo_combustible', 'consumo_lubricantes', 'mano_obra', 'costo_total', 'tecnico_responsable'],
+              soat: ['gestion'],
+              seguros: ['fecha_inicial', 'fecha_final', 'numero_poliza', 'compania_aseguradora', 'importe'],
+              itv: ['gestion'],
+              impuestos: ['gestion'],
               depreciaciones: ['costo_activo', 'fecha_compra', 'vida_util', 'bien_uso', 'metodo_depreciacion', 'valor_residual', 'coeficiente'],
               pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
             };
@@ -113,9 +115,13 @@ const ExportarReportes = () => {
               }
             });
             
-            // EXCLUIR EXPLÍCITAMENTE las fechas de creación y actualización
-            delete cleaned.fecha_creacion;
-            delete cleaned.fecha_actualizacion;
+            // Solo excluir campos de auditoría si no están en la lista de campos permitidos
+            if (!camposTabla.includes('fecha_creacion')) {
+              delete cleaned.fecha_creacion;
+            }
+            if (!camposTabla.includes('fecha_actualizacion')) {
+              delete cleaned.fecha_actualizacion;
+            }
             
             return cleaned;
           });

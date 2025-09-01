@@ -183,7 +183,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 3,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">Historial de Control</Typography>
+        <Typography variant="h6">Control y Seguimiento</Typography>
         <Box sx={{ 
           display: 'flex', 
           gap: 1, 
@@ -212,7 +212,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
           onCancel={handleResetForm}
           initialData={editingControl}
           isEditing={!!editingControl}
-          isReadOnly={editingControl && !canEdit && !isEncargado}
+          isReadOnly={editingControl && !isEncargado}
           submitLoading={submitLoading}
         />
       )}
@@ -224,7 +224,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
         onDelete={handleDelete}
         loading={loading}
         isReadOnly={isReadOnly || (!canEdit && !isEncargado)}
-        canEdit={canEdit}
+        canEdit={isEncargado}
         canDelete={canDelete || isEncargado}
         deleteLoading={deleteLoading}
       />

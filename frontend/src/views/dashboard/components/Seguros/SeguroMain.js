@@ -93,21 +93,82 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
 
     const method = editingSeguro ? 'PUT' : 'POST';
 
-    const payload = {
-      ...formData,
-      maquinaria: maquinariaId,
-      importe: Number(formData.importe) || 0,
-      ...(editingSeguro ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
-    };
+    // Si es FormData, agregar los campos adicionales
+    if (formData instanceof FormData) {
+      console.log('FormData detectado:', {
+        isEditing: editingSeguro,
+        hasFile: formData.get('archivo_pdf'),
+        fileType: formData.get('archivo_pdf')?.constructor?.name
+      });
+      
+      // Para edición, solo enviar los campos que han cambiado
+      if (editingSeguro) {
+        console.log('Editando seguro existente');
+        // En edición, enviar todos los campos que estén en el FormData
+        if (formData.get('fecha_inicial')) {
+          formData.set('fecha_inicial', new Date(formData.get('fecha_inicial')).toISOString().split('T')[0]);
+        }
+        if (formData.get('fecha_final')) {
+          formData.set('fecha_final', new Date(formData.get('fecha_final')).toISOString().split('T')[0]);
+        }
+        if (formData.get('importe')) {
+          formData.set('importe', formData.get('importe'));
+        }
+        // Para archivos, si hay uno nuevo, enviarlo; si no, mantener el existente
+        if (formData.get('archivo_pdf') && formData.get('archivo_pdf') instanceof File) {
+          // Hay un archivo nuevo, mantenerlo
+          console.log('Archivo PDF nuevo detectado en edición');
+        } else if (editingSeguro.archivo_pdf) {
+          // Mantener el archivo existente
+          console.log('Manteniendo archivo PDF existente');
+          formData.append('archivo_pdf', editingSeguro.archivo_pdf);
+          formData.append('nombre_archivo', editingSeguro.nombre_archivo || '');
+        }
+      } else {
+        // Para creación, agregar todos los campos requeridos
+        console.log('Creando nuevo seguro');
+        formData.append('maquinaria', maquinariaId);
+        formData.append('fecha_inicial', formData.get('fecha_inicial') ? new Date(formData.get('fecha_inicial')).toISOString().split('T')[0] : '');
+        formData.append('fecha_final', formData.get('fecha_final') ? new Date(formData.get('fecha_final')).toISOString().split('T')[0] : '');
+        formData.append('importe', formData.get('importe') || '0');
+        formData.append('registrado_por', user?.Nombre || user?.Email || 'Usuario');
+      }
+    } else {
+      // Si es objeto normal, crear payload
+      console.log('Objeto normal detectado, convirtiendo a payload');
+      const payload = {
+        ...formData,
+        maquinaria: maquinariaId,
+        fecha_inicial: formData.fecha_inicial ? new Date(formData.fecha_inicial).toISOString().split('T')[0] : null,
+        fecha_final: formData.fecha_final ? new Date(formData.fecha_final).toISOString().split('T')[0] : null,
+        importe: Number(formData.importe) || 0,
+        ...(editingSeguro ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
+      };
+      formData = payload;
+    }
 
     try {
+      const headers = {
+        'X-User-Email': user.Email
+      };
+
+      // Solo agregar Content-Type si no es FormData
+      if (!(formData instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      console.log('Enviando petición:', {
+        method,
+        url,
+        headers,
+        isFormData: formData instanceof FormData,
+        bodyType: formData instanceof FormData ? 'FormData' : 'JSON'
+      });
+
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Email': user.Email
-        },
-        body: JSON.stringify(payload),
+        headers,
+        body: formData instanceof FormData ? formData : JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -176,7 +237,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
         mb: 2,
         flexWrap: 'wrap'
       }}>
-        <Typography variant="h6">Seguros</Typography>
+        <Typography variant="h6">Seguro Anual</Typography>
         <Box sx={{ 
           display: 'flex', 
           gap: 1, 

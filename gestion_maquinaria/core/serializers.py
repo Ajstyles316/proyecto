@@ -5,17 +5,15 @@ from bson import ObjectId
 class HistorialControlSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
+    fecha_inicio = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
+    fecha_final = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
+    proyecto = serializers.CharField(max_length=100, required=True)
     ubicacion = serializers.CharField(max_length=100, required=True)
-    gerente = serializers.CharField(max_length=100, allow_blank=True, required=False)
-    encargado = serializers.CharField(max_length=100, allow_blank=True, required=False)
-    hoja_tramite = serializers.CharField(max_length=200, allow_blank=True, required=False)
-    fecha_ingreso = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
-    observacion = serializers.CharField(allow_blank=True, required=False)
-    estado = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    estado = serializers.CharField(max_length=100, required=True)
+    tiempo = serializers.CharField(max_length=100, required=True)
+    operador = serializers.CharField(max_length=100, required=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
-
-
 
     def validate_maquinaria(self, value):
         try:
@@ -23,7 +21,15 @@ class HistorialControlSerializer(serializers.Serializer):
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
 
-    def validate_fecha(self, value):
+    def validate_fecha_inicio(self, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        return value
+
+    def validate_fecha_final(self, value):
         if isinstance(value, str):
             try:
                 return datetime.strptime(value, '%Y-%m-%d').date()
@@ -34,11 +40,11 @@ class HistorialControlSerializer(serializers.Serializer):
 class ActaAsignacionSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
+    unidad = serializers.CharField(max_length=100, required=True)
     fecha_asignacion = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
-    fecha_liberacion = serializers.DateField(allow_null=True, required=False, input_formats=['%Y-%m-%d'])
-    recorrido_km = serializers.FloatField(allow_null=True, required=False)
-    recorrido_entregado = serializers.FloatField(allow_null=True, required=False)
-    encargado = serializers.CharField(max_length=100, allow_blank=True, required=False)
+    kilometraje = serializers.FloatField(required=True)
+    gerente = serializers.CharField(max_length=100, required=True)
+    encargado = serializers.CharField(max_length=100, required=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
@@ -48,29 +54,34 @@ class ActaAsignacionSerializer(serializers.Serializer):
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
 
-    def validate_fechaAsignacion(self, value):
-        if isinstance(value, str):
-            try:
-                return datetime.strptime(value, '%Y-%m-%d').date()
-            except ValueError:
-                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
-        return value
+class LiberacionSerializer(serializers.Serializer):
+    _id = serializers.CharField(read_only=True)
+    maquinaria = serializers.CharField(write_only=True, required=True)
+    unidad = serializers.CharField(max_length=100, required=True)
+    fecha_liberacion = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
+    kilometraje_entregado = serializers.FloatField(required=True)
+    gerente = serializers.CharField(max_length=100, required=True)
+    encargado = serializers.CharField(max_length=100, required=True)
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
-    def validate_fechaLiberacion(self, value):
-        if value and isinstance(value, str):
-            try:
-                return datetime.strptime(value, '%Y-%m-%d').date()
-            except ValueError:
-                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
-        return value
+    def validate_maquinaria(self, value):
+        try:
+            return ObjectId(value)
+        except:
+            raise serializers.ValidationError("ID de maquinaria inválido")
 
 class MantenimientoSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    tipo = serializers.CharField(max_length=20)
-    cantidad = serializers.IntegerField(allow_null=True)  # Nuevo campo
-    gestion = serializers.CharField(max_length=100)
-    ubicacion = serializers.CharField(max_length=200)
+    tipo_mantenimiento = serializers.CharField(max_length=100, required=True)
+    consumo_combustible = serializers.FloatField(allow_null=True, required=False)
+    consumo_lubricantes = serializers.FloatField(allow_null=True, required=False)
+    mano_obra = serializers.FloatField(allow_null=True, required=False)
+    costo_total = serializers.FloatField(required=False)
+    tecnico_responsable = serializers.CharField(max_length=200, required=True)
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -81,50 +92,138 @@ class MantenimientoSerializer(serializers.Serializer):
 class SeguroSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    numero_2024 = serializers.IntegerField(required=False)  # Nuevo nombre
-    importe = serializers.FloatField(allow_null=True, required=False)
-    detalle = serializers.CharField(max_length=200, allow_blank=True, required=False)
+    fecha_inicial = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
+    fecha_final = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
+    numero_poliza = serializers.CharField(max_length=100, required=True)
+    compania_aseguradora = serializers.CharField(max_length=200, required=True)
+    importe = serializers.FloatField(required=True)
+    archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
+    nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
+    tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
     def validate_maquinaria(self, value):
         try:
             return ObjectId(value)
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
+
+    def validate_fecha_inicial(self, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        return value
+
+    def validate_fecha_final(self, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        return value
+
+    def validate_archivo_pdf(self, value):
+        # Permitir valores vacíos, null o strings válidos
+        if value is None or value == '':
+            return value
+        if isinstance(value, str):
+            # Verificar que sea base64 válido (opcional)
+            if value.startswith('data:application/pdf;base64,'):
+                return value
+            elif len(value) > 0:
+                return value
+        return value
 
 class ITVSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    detalle = serializers.CharField(max_length=200, allow_blank=True, required=False)
-    importe = serializers.FloatField(allow_null=True, required=False)
+    gestion = serializers.CharField(max_length=100, required=True)
+    archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
+    nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
+    tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
     def validate_maquinaria(self, value):
         try:
             return ObjectId(value)
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
+
+    def validate_archivo_pdf(self, value):
+        # Permitir valores vacíos, null o strings válidos
+        if value is None or value == '':
+            return value
+        if isinstance(value, str):
+            # Verificar que sea base64 válido (opcional)
+            if value.startswith('data:application/pdf;base64,'):
+                return value
+            elif len(value) > 0:
+                return value
+        return value
 
 class SOATSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    importe_2024 = serializers.FloatField(required=True)
-    importe_2025 = serializers.FloatField(required=True)
+    gestion = serializers.CharField(max_length=100, required=True)
+    archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
+    nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
+    tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
+
     def validate_maquinaria(self, value):
         try:
             return ObjectId(value)
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
+
+    def validate_archivo_pdf(self, value):
+        # Permitir valores vacíos, null o strings válidos
+        if value is None or value == '':
+            return value
+        if isinstance(value, str):
+            # Verificar que sea base64 válido (opcional)
+            if value.startswith('data:application/pdf;base64,'):
+                return value
+            elif len(value) > 0:
+                return value
+        return value
 
 class ImpuestoSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    importe_2023 = serializers.FloatField(required=True)
-    importe_2024 = serializers.FloatField(required=True)
+    gestion = serializers.CharField(max_length=100, required=True)
+    archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
+    nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
+    tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
+    tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
     def validate_maquinaria(self, value):
         try:
             return ObjectId(value)
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
+
+    def validate_archivo_pdf(self, value):
+        # Permitir valores vacíos, null o strings válidos
+        if value is None or value == '':
+            return value
+        if isinstance(value, str):
+            # Verificar que sea base64 válido (opcional)
+            if value.startswith('data:application/pdf;base64,'):
+                return value
+            elif len(value) > 0:
+                return value
+        return value
 
 class MaquinariaSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)

@@ -6,13 +6,13 @@ function exportXLS(data, filename = 'reporte') {
   const wb = XLSX.utils.book_new();
 
   // Helper para crear hoja horizontal con formato de dos columnas
-  function horizontalSheet(title, rows, fields = null) {
+  function horizontalSheet(title, rows, fields = null, tablaKey = '') {
     if (!rows || rows.length === 0) return null;
     let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
     
     // Para pronósticos usar formato vertical, para el resto horizontal
     let header, body;
-    if (tablaKey === 'pronosticos') {
+    if (tablaKey && tablaKey === 'pronosticos') {
       // Formato vertical solo para pronósticos
       header = ['Campo', 'Valor'];
       body = rows.map(r => {
@@ -92,7 +92,7 @@ function exportXLS(data, filename = 'reporte') {
         });
         return obj;
       });
-      const maqSheet = horizontalSheet('Maquinaria', maquis, maquinariaFields);
+      const maqSheet = horizontalSheet('Maquinaria', maquis, maquinariaFields, 'maquinaria');
       if (maqSheet) XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
     }
   } else if (!data.maquinaria || (Array.isArray(data.maquinaria) && data.maquinaria.length === 0)) {
@@ -107,6 +107,7 @@ function exportXLS(data, filename = 'reporte') {
   const tablas = [
     { key: 'control', label: 'Control' },
     { key: 'asignacion', label: 'Asignación' },
+    { key: 'liberacion', label: 'Liberación' },
     { key: 'mantenimiento', label: 'Mantenimiento' },
     { key: 'soat', label: 'SOAT' },
     { key: 'seguros', label: 'Seguros' },
@@ -118,14 +119,15 @@ function exportXLS(data, filename = 'reporte') {
     if (data[t.key] && data[t.key].length > 0) {
       // Solo incluir placa y detalle, más los campos específicos de cada tabla
       const camposPermitidos = {
-        control: ['placa', 'detalle', 'ubicacion', 'gerente', 'encargado', 'hoja_tramite', 'fecha_ingreso', 'observacion', 'estado'],
-        asignacion: ['placa', 'detalle', 'fecha_asignacion', 'fecha_liberacion', 'recorrido_km', 'recorrido_entregado', 'encargado'],
-        mantenimiento: ['placa', 'detalle', 'tipo', 'cantidad', 'gestion', 'ubicacion', 'registrado_por', 'validado_por', 'autorizado_por'],
-        soat: ['placa', 'detalle', 'importe_2024', 'importe_2025'],
-        seguros: ['placa', 'detalle', 'numero_2024', 'importe', 'detalle'],
-        itv: ['placa', 'detalle', 'detalle', 'importe'],
-        impuestos: ['placa', 'detalle', 'importe_2023', 'importe_2024'],
-        pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fechas_futuras']
+        control: ['placa', 'detalle', 'fecha_inicio', 'fecha_final', 'proyecto', 'ubicacion', 'estado', 'tiempo', 'operador'],
+        asignacion: ['placa', 'detalle', 'unidad', 'fecha_asignacion', 'kilometraje', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
+        liberacion: ['placa', 'detalle', 'unidad', 'fecha_liberacion', 'kilometraje_entregado', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
+        mantenimiento: ['placa', 'detalle', 'tipo_mantenimiento', 'consumo_combustible', 'consumo_lubricantes', 'mano_obra', 'costo_total', 'tecnico_responsable'],
+        soat: ['placa', 'detalle', 'gestion'],
+        seguros: ['placa', 'detalle', 'fecha_inicial', 'fecha_final', 'numero_poliza', 'compania_aseguradora', 'importe'],
+        itv: ['placa', 'detalle', 'gestion'],
+        impuestos: ['placa', 'detalle', 'gestion'],
+        pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'urgencia']
       };
       
       // Obtener los campos permitidos para esta tabla

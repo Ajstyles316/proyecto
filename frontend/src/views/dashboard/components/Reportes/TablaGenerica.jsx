@@ -17,13 +17,12 @@ import {
   useMediaQuery
 } from '@mui/material';
 import { 
-  Warning, 
-  CheckCircle, 
   Info,
   TableChart
 } from '@mui/icons-material';
 import { formatDateOnly } from './helpers';
 import { useState, useMemo } from 'react';
+import FileDownloadCell from './FileDownloadCell';
 
 const TablaGenericaAvanzada = ({
   title,
@@ -31,7 +30,7 @@ const TablaGenericaAvanzada = ({
   fields,
   emptyMessage,
   customCellRender,
-  ocultarCampos = [],
+  ocultarCampos = ['gestion'], // ⬅️ MODIFICACIÓN REALIZADA AQUÍ (solo se agregó 'gestion' al array por defecto)
   reemplazos = {}
 }) => {
   const theme = useTheme();
@@ -85,11 +84,11 @@ const TablaGenericaAvanzada = ({
 
   // Si no se pasan fields, los infiere del primer objeto, quitando los ocultos
   const keys = fields
-    ? fields.map(f => f.key).filter(k => !ocultarCampos.includes(k))
-    : Object.keys(data[0] || {}).filter(k => !k.endsWith('_id') && k !== 'maquinaria' && !ocultarCampos.includes(k));
+    ? fields.map(f => f.key).filter(k => !ocultarCampos.includes(k) && k !== 'archivo_pdf')
+    : Object.keys(data[0] || {}).filter(k => !k.endsWith('_id') && k !== 'maquinaria' && k !== 'archivo_pdf' && !ocultarCampos.includes(k));
 
   const headers = fields
-    ? fields.filter(f => !ocultarCampos.includes(f.key)).map(f => reemplazos[f.label] || f.label)
+    ? fields.filter(f => !ocultarCampos.includes(f.key) && f.key !== 'archivo_pdf').map(f => reemplazos[f.label] || f.label)
     : keys.map(k => {
         // Corrección específica para 'ubicacion' y variantes
         if (k.toLowerCase() === 'ubicacion' || k.toLowerCase() === 'ubicacióN'.toLowerCase()) {
@@ -143,26 +142,35 @@ const TablaGenericaAvanzada = ({
       );
     }
 
-    // Si es estado o activo
-    if (key.toLowerCase() === 'estado' || key.toLowerCase() === 'activo') {
-      const isActive = value === true || value === 'activo' || value === 'Activo';
-      return (
-        <Chip
-          label={isActive ? 'Activo' : 'Inactivo'}
-          size="small"
-          color={isActive ? 'success' : 'error'}
-          icon={isActive ? <CheckCircle /> : <Warning />}
-          sx={{ 
-            fontSize: '0.75rem',
-            height: '24px',
-            '& .MuiChip-label': { px: 1 }
-          }}
-        />
-      );
+    // Si es un campo de archivo
+    if (key === 'nombre_archivo' && value) {
+      console.log('🔍 TablaGenerica - Campo archivo encontrado:', { 
+        key, 
+        value, 
+        hasArchivoPdf: !!row.archivo_pdf,
+        rowKeys: Object.keys(row)
+      });
+      
+      // Solo mostrar FileDownloadCell si hay datos del archivo
+      if (row.archivo_pdf) {
+        return (
+          <FileDownloadCell 
+            fileName={value} 
+            fileData={row} 
+            showIcon={true}
+          />
+        );
+      } else {
+        return (
+          <Typography variant="body2" color="text.secondary">
+            {value}
+          </Typography>
+        );
+      }
     }
 
     // Si es importe o costo
-    if (key.toLowerCase().includes('importe') || key.toLowerCase().includes('costo') || key.toLowerCase().includes('valor')) {
+    if (key.toLowerCase().includes('importe') || key.toLowerCase().includes('costo') || key.toLowerCase().includes('mano_obra')) {
       const numValue = parseFloat(value);
       if (!isNaN(numValue)) {
         return (

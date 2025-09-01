@@ -9,15 +9,46 @@ import {
   Typography,
   Box,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useUser } from '../../../../components/UserContext';
 
-const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
+const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
+  const handleDownloadPDF = (seguro) => {
+    if (seguro.archivo_pdf) {
+      try {
+        // Convertir base64 a blob
+        const byteCharacters = atob(seguro.archivo_pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        // Crear URL y descargar
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = seguro.nombre_archivo || 'seguro.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error descargando PDF:', error);
+        alert('Error al descargar el archivo PDF');
+      }
+    }
+  };
   
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -65,22 +96,40 @@ const SeguroTable = ({ seguros, maquinariaPlaca, onEdit, onDelete, loading, isRe
     }}>
       <TableHead>
         <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Placa</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>N° 2024</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Fecha Inicial</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Fecha Final</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>N° Póliza</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Compañía</TableCell>
           <TableCell sx={{ fontWeight: 600 }}>Importe</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Detalle</TableCell>
+          <TableCell sx={{ fontWeight: 600 }}>Archivo</TableCell>
           {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
         </TableRow>
       </TableHead>
       <TableBody>
-        {seguros.map((seguro, index) => (
+        {seguros.map((seguro) => (
           <TableRow key={seguro._id} sx={{
             '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
           }}>
-            <TableCell>{maquinariaPlaca}</TableCell>
-            <TableCell>{seguro.numero_2024}</TableCell>
-            <TableCell>{seguro.importe}</TableCell>
-            <TableCell>{seguro.detalle}</TableCell>
+            <TableCell>{formatDate(seguro.fecha_inicial)}</TableCell>
+            <TableCell>{formatDate(seguro.fecha_final)}</TableCell>
+            <TableCell>{seguro.numero_poliza}</TableCell>
+            <TableCell>{seguro.compania_aseguradora}</TableCell>
+            <TableCell>{seguro.importe ? `$${seguro.importe}` : '-'}</TableCell>
+            <TableCell>
+              {seguro.archivo_pdf ? (
+                <Tooltip title="Descargar PDF">
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={() => handleDownloadPDF(seguro)}
+                  >
+                    <PictureAsPdfIcon />
+                  </IconButton>
+                </Tooltip>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Sin archivo</Typography>
+              )}
+            </TableCell>
             {showActionsColumn && (
               <TableCell align="right">
                 {(isEncargado || canEdit) && (

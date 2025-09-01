@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from .models import Maquinaria, HistorialControl, ActaAsignacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro
+from .models import Maquinaria, HistorialControl, ActaAsignacion, Liberacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro
 from .serializers import (
     MaquinariaSerializer,
     RegistroSerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     ReenviarCodigoSerializer,
     HistorialControlSerializer,
     ActaAsignacionSerializer,
+    LiberacionSerializer,
     MantenimientoSerializer,
     SeguroSerializer,
     ITVSerializer,
@@ -204,7 +205,9 @@ def serialize_doc(doc):
     # Solo mapear campos que realmente necesitan ser renombrados
     mapeo_campos = {
         'fecha_asignacion': 'fecha_asignacion',
-        'fecha_liberacion': 'fecha_liberacion'
+        'fecha_liberacion': 'fecha_liberacion',
+        'fecha_inicio': 'fecha_inicio',
+        'fecha_final': 'fecha_final'
     }
     
     # Aplicar mapeo de campos solo si existen
@@ -233,6 +236,35 @@ def convert_dates_to_str(obj):
         return obj.strftime('%Y-%m-%d')
     else:
         return obj
+
+def process_file_upload(file_obj, filename):
+    """
+    Procesa la subida de archivos y los convierte a base64 para almacenar en MongoDB
+    """
+    try:
+        if file_obj and hasattr(file_obj, 'read'):
+            # Leer el contenido del archivo
+            file_content = file_obj.read()
+            
+            # Convertir a base64
+            import base64
+            file_base64 = base64.b64encode(file_content).decode('utf-8')
+            
+            # Obtener el tipo MIME del archivo
+            import mimetypes
+            mime_type, _ = mimetypes.guess_type(filename)
+            if not mime_type:
+                mime_type = 'application/octet-stream'
+            
+            return {
+                'content': file_base64,
+                'filename': filename,
+                'mime_type': mime_type,
+                'size': len(file_content)
+            }
+    except Exception as e:
+        logger.error(f"Error procesando archivo {filename}: {str(e)}")
+        return None
 
 # --- Vistas para Maquinaria Principal ---
 
@@ -314,7 +346,7 @@ class MaquinariaListView(APIView):
                     validated_data['fecha_registro'] = datetime.combine(validated_data['fecha_registro'], datetime.min.time())
                 if 'imagen' in data:
                     validated_data['imagen'] = data['imagen']
-                # Agregar el campo registrado_por con el nombre del usuario
+                # Agregar el campo registrado por con el nombre del usuario
                 validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
                 # Por defecto, los registros son activos
                 validated_data['activo'] = True
@@ -457,7 +489,7 @@ class MaquinariaDetailView(APIView):
                 validated_data['imagen'] = request.data['imagen']
                 logger.info(f"Imagen incluida en la actualización: {len(request.data['imagen'])} caracteres")
 
-            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            # Agregar o actualizar el campo registrado por con el nombre del usuario
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             # Actualizar en MongoDB
@@ -860,6 +892,220 @@ class BaseSectionDetailAPIView(APIView):
         
         return Response({"success": True})
 
+# --- Vistas para Liberación ---
+
+class LiberacionListView(BaseSectionAPIView):
+    collection_class = Liberacion
+    serializer_class = LiberacionSerializer
+    projection = None  # Incluir todos los campos
+
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
+    def get(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('liberacion')
+        records = list(collection.find({'maquinaria': ObjectId(maquinaria_id), 'activo': {'$ne': False}}))
+        return Response(serialize_list(records))
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST: {request.data}")
+            
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"Datos convertidos: {validated_data}")
+
+            collection = get_collection('liberacion')
+            validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó liberación para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_liberacion',
+                    'Liberacion',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'liberacion_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de liberación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear liberación: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LiberacionDetailView(BaseSectionDetailAPIView):
+    collection_class = Liberacion
+    serializer_class = LiberacionSerializer
+    projection = None  # Incluir todos los campos
+
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('liberacion')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Liberación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('liberacion')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Liberación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            
+            serializer = self.serializer_class(data=data, partial=True)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            
+            validated_data = self.convert_date_to_datetime(validated_data)
+
+            collection.update_one(
+                {'_id': ObjectId(record_id)},
+                {'$set': validated_data}
+            )
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Editó liberación para maquinaria {existing_record.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'editar_liberacion',
+                    'Liberacion',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': existing_record.get('placa'),
+                        'liberacion_id': str(record_id),
+                        'datos': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de edición de liberación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response(serialize_doc(updated_record))
+        except Exception as e:
+            logger.error(f"Error al actualizar liberación: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('liberacion')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Liberación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Desactivar en lugar de eliminar
+            collection.update_one(
+                {'_id': ObjectId(record_id)},
+                {'$set': {'activo': False, 'fecha_actualizacion': datetime.now()}}
+            )
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Desactivó liberación para maquinaria {existing_record.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'mensaje',
+                    'Liberacion',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': existing_record.get('placa'),
+                        'liberacion_id': str(record_id)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de desactivación de liberación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response({"success": True})
+        except Exception as e:
+            logger.error(f"Error al desactivar liberación: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # --- Vistas Específicas para cada Sección ---
 
 class HistorialControlListView(BaseSectionAPIView):
@@ -1022,6 +1268,11 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
@@ -1128,6 +1379,11 @@ class ActaAsignacionListView(BaseSectionAPIView):
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Datos convertidos: {validated_data}")
@@ -1207,6 +1463,11 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = self.convert_date_to_datetime(validated_data)
 
@@ -1323,6 +1584,11 @@ class MantenimientoListView(BaseSectionAPIView):
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Mantenimiento POST - Datos convertidos: {validated_data}")
@@ -1391,6 +1657,11 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
@@ -1483,7 +1754,41 @@ class SeguroListView(BaseSectionAPIView):
             logger.info(f"Seguro POST - Datos recibidos: {request.data}")
             logger.info(f"Seguro POST - Headers: {request.headers}")
             
-            data = request.data.copy()
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                logger.info(f"Seguro POST - Archivos recibidos: {request.FILES}")
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF: {filename}")
+                    
+                    # Procesar el archivo
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                elif 'archivo_pdf' in data and data['archivo_pdf']:
+                    # Archivo existente (base64) - mantenerlo
+                    logger.info("Manteniendo archivo PDF existente")
+                else:
+                    # No hay archivo, limpiar campos relacionados
+                    data.pop('archivo_pdf', None)
+                    data.pop('nombre_archivo', None)
+                    data.pop('tipo_archivo', None)
+                    data.pop('tamaño_archivo', None)
+                    logger.info("No hay archivo PDF, limpiando campos relacionados")
+            else:
+                data = request.data.copy()
+            
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Seguro POST - Datos preparados: {data}")
             
@@ -1505,6 +1810,11 @@ class SeguroListView(BaseSectionAPIView):
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Seguro POST - Datos convertidos: {validated_data}")
@@ -1521,7 +1831,7 @@ class SeguroListView(BaseSectionAPIView):
                 mensaje = f"Creó seguro para maquinaria {maquinaria_id}"
                 registrar_actividad(
                     actor_email,
-                    'crear_seguro',
+                    'mensaje',
                     'Seguro',
                     mensaje,
                     {
@@ -1559,24 +1869,78 @@ class SeguroDetailView(BaseSectionDetailAPIView):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
             return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
         
-        collection = get_collection('seguro')
-        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-        if not existing_record:
-            return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            logger.info(f"Seguro PUT - Datos recibidos: {request.data}")
+            logger.info(f"Seguro PUT - Headers: {request.headers}")
+            
+            collection = get_collection('seguro')
+            existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            if not existing_record:
+                return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-        data = request.data.copy()
-        data['maquinaria'] = str(maquinaria_id)
-        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-        
-        serializer = self.serializer_class(existing_record, data=data, partial=True)
-        if serializer.is_valid():
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                logger.info(f"Seguro PUT - Archivos recibidos: {request.FILES}")
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF nuevo: {filename}")
+                    
+                    # Procesar el archivo
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                elif 'archivo_pdf' in data and data['archivo_pdf']:
+                    # Archivo existente (base64) - mantenerlo
+                    logger.info("Manteniendo archivo PDF existente")
+                else:
+                    # No hay archivo, limpiar campos relacionados
+                    data.pop('archivo_pdf', None)
+                    data.pop('nombre_archivo', None)
+                    data.pop('tipo_archivo', None)
+                    data.pop('tamaño_archivo', None)
+                    logger.info("No hay archivo PDF, limpiando campos relacionados")
+            else:
+                data = request.data.copy()
+            
+            data['maquinaria'] = str(maquinaria_id)
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            logger.info(f"Seguro PUT - Datos preparados: {data}")
+            logger.info(f"Seguro PUT - Registro existente: {existing_record}")
+            
+            serializer = self.serializer_class(existing_record, data=data, partial=True)
+            if not serializer.is_valid():
+                logger.error(f"Seguro PUT - Errores de validación: {serializer.errors}")
+                return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
             validated_data = serializer.validated_data
+            logger.info(f"Seguro PUT - Datos validados: {validated_data}")
+            
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+            logger.info(f"Seguro PUT - Datos finales para MongoDB: {validated_data}")
+            
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            
             # --- REGISTRO DE ACTIVIDAD ---
             try:
                 actor_email = request.headers.get('X-User-Email')
@@ -1597,9 +1961,12 @@ class SeguroDetailView(BaseSectionDetailAPIView):
             except Exception as e:
                 logger.error(f"Error al registrar actividad de edición de seguro: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
+            
             return Response(serialize_doc(updated_record))
-        # Responder el error exacto del serializer en el JSON
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            logger.error(f"Error al actualizar seguro: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1662,23 +2029,51 @@ class ITVListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            logger.info(f"Datos recibidos en POST: {request.data}")
+            logger.info(f"ITV POST - Datos recibidos: {request.data}")
+            logger.info(f"ITV POST - Archivos: {getattr(request, 'FILES', {})}")
             
-            data = request.data.copy()
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF para ITV: {filename}")
+                    
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente para ITV: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo para ITV: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                data = request.data.copy()
+            
             data['maquinaria'] = str(maquinaria_id)
-            logger.info(f"Datos preparados: {data}")
+            logger.info(f"ITV POST - Datos preparados: {data}")
             maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
-                logger.error(f"Errores de validación: {serializer.errors}")
+                logger.info(f"ITV POST - Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             validated_data = serializer.validated_data
-            logger.info(f"Datos validados: {validated_data}")
+            logger.info(f"ITV POST - Datos validados: {validated_data}")
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             collection = get_collection('itv')
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
@@ -1733,42 +2128,92 @@ class ITVDetailView(BaseSectionDetailAPIView):
         if not existing_record:
             return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-        data = request.data.copy()
-        data['maquinaria'] = str(maquinaria_id)
-        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-        
-        serializer = self.serializer_class(existing_record, data=data, partial=True)
-        if serializer.is_valid():
-            validated_data = serializer.validated_data
-            validated_data['maquinaria'] = ObjectId(maquinaria_id)
-            validated_data['fecha_actualizacion'] = datetime.now()
-
-            validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
-            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
-            updated_record = collection.find_one({'_id': ObjectId(record_id)})
-            # --- REGISTRO DE ACTIVIDAD ---
-            try:
+        try:
+            logger.info(f"ITV PUT - Datos recibidos: {request.data}")
+            logger.info(f"ITV PUT - Archivos: {getattr(request, 'FILES', {})}")
+            
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                logger.info(f"ITV PUT - Archivos recibidos: {request.FILES}")
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF nuevo: {filename}")
+                    
+                    # Procesar el archivo
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                elif 'archivo_pdf' in data and data['archivo_pdf']:
+                    # Archivo existente (base64) - mantenerlo
+                    logger.info("Manteniendo archivo PDF existente")
+                else:
+                    # No hay archivo, limpiar campos relacionados
+                    data.pop('archivo_pdf', None)
+                    data.pop('nombre_archivo', None)
+                    data.pop('tipo_archivo', None)
+                    data.pop('tamaño_archivo', None)
+                    logger.info("No hay archivo PDF, limpiando campos relacionados")
+            else:
+                data = request.data.copy()
+            
+            data['maquinaria'] = str(maquinaria_id)
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            logger.info(f"ITV PUT - Datos preparados: {data}")
+            logger.info(f"ITV PUT - Registro existente: {existing_record}")
+            
+            serializer = self.serializer_class(existing_record, data=data, partial=True)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+                validated_data['maquinaria'] = ObjectId(maquinaria_id)
+                validated_data['fecha_actualizacion'] = datetime.now()
+                
+                # Agregar o actualizar el campo registrado_por con el nombre del usuario
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó ITV para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
-                registrar_actividad(
-                    actor_email,
-                    'editar_itv',
-                    'ITV',
-                    mensaje,
-                    {
-                        'maquinaria_id': str(maquinaria_id),
-                        'placa': maquinaria_doc.get('placa'),
-                        'itv_id': str(record_id),
-                        'antes': serialize_doc(existing_record),
-                        'despues': serialize_doc(updated_record)
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error al registrar actividad de edición de ITV: {str(e)}")
-            # --- FIN REGISTRO DE ACTIVIDAD ---
-            return Response(serialize_doc(updated_record))
-        # Responder el error exacto del serializer en el JSON
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+                validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+
+                validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+                collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+                updated_record = collection.find_one({'_id': ObjectId(record_id)})
+                # --- REGISTRO DE ACTIVIDAD ---
+                try:
+                    actor_email = request.headers.get('X-User-Email')
+                    mensaje = f"Editó ITV para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                    registrar_actividad(
+                        actor_email,
+                        'editar_itv',
+                        'ITV',
+                        mensaje,
+                        {
+                            'maquinaria_id': str(maquinaria_id),
+                            'placa': maquinaria_doc.get('placa'),
+                            'itv_id': str(record_id),
+                            'antes': serialize_doc(existing_record),
+                            'despues': serialize_doc(updated_record)
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error al registrar actividad de edición de ITV: {str(e)}")
+                # --- FIN REGISTRO DE ACTIVIDAD ---
+                return Response(serialize_doc(updated_record))
+            # Responder el error exacto del serializer en el JSON
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            logger.error(f"Error al actualizar ITV: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -1832,9 +2277,30 @@ class SOATListView(BaseSectionAPIView):
         
         try:
             logger.info(f"SOAT POST - Datos recibidos: {request.data}")
-            logger.info(f"SOAT POST - Headers: {request.headers}")
+            logger.info(f"SOAT POST - Archivos: {getattr(request, 'FILES', {})}")
             
-            data = request.data.copy()
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF para SOAT: {filename}")
+                    
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente para SOAT: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo para SOAT: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                data = request.data.copy()
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"SOAT POST - Datos preparados: {data}")
             
@@ -1856,6 +2322,11 @@ class SOATListView(BaseSectionAPIView):
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"SOAT POST - Datos convertidos: {validated_data}")
@@ -1915,42 +2386,92 @@ class SOATDetailView(BaseSectionDetailAPIView):
         if not existing_record:
             return Response({"error": "SOAT no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-        data = request.data.copy()
-        data['maquinaria'] = str(maquinaria_id)
-        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-        
-        serializer = self.serializer_class(existing_record, data=data, partial=True)
-        if serializer.is_valid():
-            validated_data = serializer.validated_data
-            validated_data['maquinaria'] = ObjectId(maquinaria_id)
-            validated_data['fecha_actualizacion'] = datetime.now()
-
-            validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
-            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
-            updated_record = collection.find_one({'_id': ObjectId(record_id)})
-            # --- REGISTRO DE ACTIVIDAD ---
-            try:
+        try:
+            logger.info(f"SOAT PUT - Datos recibidos: {request.data}")
+            logger.info(f"SOAT PUT - Archivos: {getattr(request, 'FILES', {})}")
+            
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                logger.info(f"SOAT PUT - Archivos recibidos: {request.FILES}")
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF nuevo: {filename}")
+                    
+                    # Procesar el archivo
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                elif 'archivo_pdf' in data and data['archivo_pdf']:
+                    # Archivo existente (base64) - mantenerlo
+                    logger.info("Manteniendo archivo PDF existente")
+                else:
+                    # No hay archivo, limpiar campos relacionados
+                    data.pop('archivo_pdf', None)
+                    data.pop('nombre_archivo', None)
+                    data.pop('tipo_archivo', None)
+                    data.pop('tamaño_archivo', None)
+                    logger.info("No hay archivo PDF, limpiando campos relacionados")
+            else:
+                data = request.data.copy()
+            
+            data['maquinaria'] = str(maquinaria_id)
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            logger.info(f"SOAT PUT - Datos preparados: {data}")
+            logger.info(f"SOAT PUT - Registro existente: {existing_record}")
+            
+            serializer = self.serializer_class(existing_record, data=data, partial=True)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+                validated_data['maquinaria'] = ObjectId(maquinaria_id)
+                validated_data['fecha_actualizacion'] = datetime.now()
+                
+                # Agregar o actualizar el campo registrado_por con el nombre del usuario
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó SOAT para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
-                registrar_actividad(
-                    actor_email,
-                    'editar_soat',
-                    'SOAT',
-                    mensaje,
-                    {
-                        'maquinaria_id': str(maquinaria_id),
-                        'placa': maquinaria_doc.get('placa'),
-                        'soat_id': str(record_id),
-                        'antes': serialize_doc(existing_record),
-                        'despues': serialize_doc(updated_record)
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error al registrar actividad de edición de SOAT: {str(e)}")
-            # --- FIN REGISTRO DE ACTIVIDAD ---
-            return Response(serialize_doc(updated_record))
-        # Responder el error exacto del serializer en el JSON
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+                validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+
+                validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+                collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+                updated_record = collection.find_one({'_id': ObjectId(record_id)})
+                # --- REGISTRO DE ACTIVIDAD ---
+                try:
+                    actor_email = request.headers.get('X-User-Email')
+                    mensaje = f"Editó SOAT para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                    registrar_actividad(
+                        actor_email,
+                        'editar_soat',
+                        'SOAT',
+                        mensaje,
+                        {
+                            'maquinaria_id': str(maquinariaId),
+                            'placa': maquinaria_doc.get('placa'),
+                            'soat_id': str(record_id),
+                            'antes': serialize_doc(existing_record),
+                            'despues': serialize_doc(updated_record)
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error al registrar actividad de edición de SOAT: {str(e)}")
+                # --- FIN REGISTRO DE ACTIVIDAD ---
+                return Response(serialize_doc(updated_record))
+            # Responder el error exacto del serializer en el JSON
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            logger.error(f"Error al actualizar SOAT: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -2017,23 +2538,51 @@ class ImpuestoListView(BaseSectionAPIView):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            logger.info(f"Datos recibidos en POST: {request.data}")
+            logger.info(f"Impuesto POST - Datos recibidos: {request.data}")
+            logger.info(f"Impuesto POST - Archivos: {getattr(request, 'FILES', {})}")
             
-            data = request.data.copy()
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF para Impuesto: {filename}")
+                    
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente para Impuesto: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo para Impuesto: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                data = request.data.copy()
+            
             data['maquinaria'] = str(maquinaria_id)
-            logger.info(f"Datos preparados: {data}")
+            logger.info(f"Impuesto POST - Datos preparados: {data}")
             maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
 
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
-                logger.error(f"Errores de validación: {serializer.errors}")
+                logger.error(f"Impuesto POST - Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             validated_data = serializer.validated_data
-            logger.info(f"Datos validados: {validated_data}")
+            logger.info(f"Impuesto POST - Datos validados: {validated_data}")
 
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Agregar el campo registrado_por con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
 
             collection = get_collection('impuesto')
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
@@ -2088,42 +2637,92 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
         if not existing_record:
             return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
-        data = request.data.copy()
-        data['maquinaria'] = str(maquinaria_id)
-        maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
-        
-        serializer = self.serializer_class(existing_record, data=data, partial=True)
-        if serializer.is_valid():
-            validated_data = serializer.validated_data
-            validated_data['maquinaria'] = ObjectId(maquinaria_id)
-            validated_data['fecha_actualizacion'] = datetime.now()
-
-            validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
-            collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
-            updated_record = collection.find_one({'_id': ObjectId(record_id)})
-            # --- REGISTRO DE ACTIVIDAD ---
-            try:
+        try:
+            logger.info(f"Impuesto PUT - Datos recibidos: {request.data}")
+            logger.info(f"Impuesto PUT - Archivos: {getattr(request, 'FILES', {})}")
+            
+            # Verificar si es FormData (archivo) o datos normales
+            if hasattr(request, 'FILES') and request.FILES:
+                logger.info(f"Impuesto PUT - Archivos recibidos: {request.FILES}")
+                data = request.data.copy()
+                
+                # Procesar archivo PDF si existe
+                if 'archivo_pdf' in request.FILES:
+                    file_obj = request.FILES['archivo_pdf']
+                    filename = file_obj.name
+                    logger.info(f"Procesando archivo PDF nuevo: {filename}")
+                    
+                    # Procesar el archivo
+                    file_data = process_file_upload(file_obj, filename)
+                    if file_data:
+                        data['archivo_pdf'] = file_data['content']
+                        data['nombre_archivo'] = file_data['filename']
+                        data['tipo_archivo'] = file_data['mime_type']
+                        data['tamaño_archivo'] = file_data['size']
+                        logger.info(f"Archivo procesado exitosamente: {filename}")
+                    else:
+                        logger.error(f"Error procesando archivo: {filename}")
+                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                elif 'archivo_pdf' in data and data['archivo_pdf']:
+                    # Archivo existente (base64) - mantenerlo
+                    logger.info("Manteniendo archivo PDF existente")
+                else:
+                    # No hay archivo, limpiar campos relacionados
+                    data.pop('archivo_pdf', None)
+                    data.pop('nombre_archivo', None)
+                    data.pop('tipo_archivo', None)
+                    data.pop('tamaño_archivo', None)
+                    logger.info("No hay archivo PDF, limpiando campos relacionados")
+            else:
+                data = request.data.copy()
+            
+            data['maquinaria'] = str(maquinaria_id)
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            logger.info(f"Impuesto PUT - Datos preparados: {data}")
+            logger.info(f"Impuesto PUT - Registro existente: {existing_record}")
+            
+            serializer = self.serializer_class(existing_record, data=data, partial=True)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+                validated_data['maquinaria'] = ObjectId(maquinaria_id)
+                validated_data['fecha_actualizacion'] = datetime.now()
+                
+                # Agregar o actualizar el campo registrado_por con el nombre del usuario
                 actor_email = request.headers.get('X-User-Email')
-                mensaje = f"Editó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
-                registrar_actividad(
-                    actor_email,
-                    'editar_impuesto',
-                    'Impuesto',
-                    mensaje,
-                    {
-                        'maquinaria_id': str(maquinaria_id),
-                        'placa': maquinaria_doc.get('placa'),
-                        'impuesto_id': str(record_id),
-                        'antes': serialize_doc(existing_record),
-                        'despues': serialize_doc(updated_record)
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error al registrar actividad de edición de impuesto: {str(e)}")
-            # --- FIN REGISTRO DE ACTIVIDAD ---
-            return Response(serialize_doc(updated_record))
-        # Responder el error exacto del serializer en el JSON
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+                validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+
+                validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
+                collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
+                updated_record = collection.find_one({'_id': ObjectId(record_id)})
+                # --- REGISTRO DE ACTIVIDAD ---
+                try:
+                    actor_email = request.headers.get('X-User-Email')
+                    mensaje = f"Editó impuesto para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                    registrar_actividad(
+                        actor_email,
+                        'editar_impuesto',
+                        'Impuesto',
+                        mensaje,
+                        {
+                            'maquinaria_id': str(maquinaria_id),
+                            'placa': maquinaria_doc.get('placa'),
+                            'impuesto_id': str(record_id),
+                            'antes': serialize_doc(existing_record),
+                            'despues': serialize_doc(updated_record)
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error al registrar actividad de edición de impuesto: {str(e)}")
+                # --- FIN REGISTRO DE ACTIVIDAD ---
+                return Response(serialize_doc(updated_record))
+            # Responder el error exacto del serializer en el JSON
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            logger.error(f"Error al actualizar Impuesto: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": f"Error interno del servidor: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
@@ -2187,6 +2786,8 @@ def get_record_description(record, collection_name):
         return f"Impuesto de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'ActaAsignacion':
         return f"Asignación de {record.get('detalle', 'sin detalle')}"
+    elif collection_name == 'Liberacion':
+        return f"Liberación de {record.get('detalle', 'sin detalle')}"
     elif collection_name == 'Depreciacion':
         return f"Depreciación de {record.get('detalle', 'sin detalle')}"
     else:
@@ -3459,6 +4060,7 @@ class TodosRegistrosDesactivadosView(APIView):
             ('usuarios', 'Usuario'),
             ('historial_control', 'Control'),
             ('acta_asignacion', 'Asignación'),
+            ('liberacion', 'Liberación'),
             ('mantenimiento', 'Mantenimiento'),
             ('seguro', 'Seguro'),
             ('itv', 'ITV'),
@@ -3656,7 +4258,11 @@ class TodosRegistrosDesactivadosView(APIView):
                                 'cantidad': 'Cantidad',
                                 'ubicacion': 'Ubicación',
                                 'encargado': 'Encargado',
+                                'unidad': 'Unidad',
                                 'gerente': 'Gerente',
+                                'proyecto': 'Proyecto',
+                                'tiempo': 'Tiempo',
+                                'operador': 'Operador',
                                 'hoja_tramite': 'Hoja de Trámite',
                                 'numero_2024': 'N° 2024',
                                 'importe': 'Importe',
@@ -3666,6 +4272,8 @@ class TodosRegistrosDesactivadosView(APIView):
                                 'bien_uso': 'Bien de Uso',
                                 'vida_util': 'Vida Útil',
                                 'metodo': 'Método',
+                                'kilometraje': 'Kilometraje',
+                                'kilometraje_entregado': 'Kilometraje Entregado',
                                 'recorrido_km': 'Recorrido (Km)',
                                 'recorrido_entregado': 'Recorrido Entregado'
                             }
