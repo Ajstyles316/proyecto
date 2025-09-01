@@ -68,11 +68,16 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
     }
 
     try {
+      console.log(`Reactivando ${tipo} - recordId: ${recordId}, maquinariaId: ${maquinariaId}`);
+      
       // Determinar la URL correcta según el tipo
       let url;
       switch (tipo) {
         case 'Usuario':
           url = `http://localhost:8000/usuarios/${recordId}/reactivar/`;
+          break;
+        case 'Maquinaria':
+          url = `http://localhost:8000/api/maquinaria/${recordId}/`;
           break;
         case 'Control':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${recordId}/`;
@@ -98,22 +103,33 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
         case 'Impuesto':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${recordId}/`;
           break;
+        case 'Depreciación':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/depreciaciones/${recordId}/`;
+          break;
         default:
           throw new Error('Tipo de registro no válido');
       }
 
+      console.log(`URL de reactivación: ${url}`);
+
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
+          'Content-Type': 'application/json',
           'X-User-Email': user.Email
-        }
+        },
+        body: JSON.stringify({ activo: true })
       });
 
+      console.log(`Respuesta de reactivación: ${response.status} - ${response.statusText}`);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error en reactivación: ${errorText}`);
         if (response.status === 403) {
           throw new Error('No tienes permisos para reactivar registros');
         }
-        throw new Error('Error al reactivar el registro');
+        throw new Error(`Error al reactivar el registro: ${errorText}`);
       }
 
       setSnackbar({ 
@@ -125,6 +141,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       // Recargar los registros desactivados
       await fetchRegistrosDesactivados();
     } catch (error) {
+      console.error(`Error en handleReactivar: ${error.message}`);
       setSnackbar({ 
         open: true, 
         message: `Error: ${error.message}`, 
@@ -144,6 +161,8 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
     }
 
     try {
+      console.log(`Eliminando permanentemente ${tipo} - recordId: ${recordId}, maquinariaId: ${maquinariaId}`);
+      
       let url;
       switch (tipo) {
         case 'Usuario':
@@ -182,17 +201,26 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
         default:
           throw new Error('Tipo de registro no válido');
       }
+      
+      console.log(`URL de eliminación: ${url}`);
+      
       const response = await fetch(url, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           'X-User-Email': user.Email
         }
       });
+      
+      console.log(`Respuesta de eliminación: ${response.status} - ${response.statusText}`);
+      
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error en eliminación: ${errorText}`);
         if (response.status === 403) {
           throw new Error('No tienes permisos para eliminar permanentemente');
         }
-        throw new Error('Error al eliminar el registro');
+        throw new Error(`Error al eliminar el registro: ${errorText}`);
       }
 
       setSnackbar({ 
@@ -210,6 +238,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       // Luego refrescar desde backend
       await fetchRegistrosDesactivados();
     } catch (error) {
+      console.error(`Error en handleEliminar: ${error.message}`);
       setSnackbar({ 
         open: true, 
         message: `Error: ${error.message}`, 
@@ -259,6 +288,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
             onEliminar={handleEliminar}
             loading={loading}
             isAdmin={isAdmin}
+            maquinariaId={maquinariaId}
           />
         </Paper>
       )}

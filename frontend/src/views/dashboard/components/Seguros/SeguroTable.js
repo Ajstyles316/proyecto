@@ -114,7 +114,7 @@ const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit =
             <TableCell>{formatDate(seguro.fecha_final)}</TableCell>
             <TableCell>{seguro.numero_poliza}</TableCell>
             <TableCell>{seguro.compania_aseguradora}</TableCell>
-            <TableCell>{seguro.importe ? `$${seguro.importe}` : '-'}</TableCell>
+            <TableCell>{seguro.importe ? `Bs. ${seguro.importe}` : '-'}</TableCell>
             <TableCell>
               {seguro.archivo_pdf ? (
                 <Tooltip title="Descargar PDF">

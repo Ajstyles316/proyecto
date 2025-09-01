@@ -23,7 +23,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useState } from 'react';
 
-const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onEliminar, loading, isAdmin = false }) => {
+const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onEliminar, loading, isAdmin = false, maquinariaId }) => {
   const [expandedSections, setExpandedSections] = useState({});
   const [reactivarModal, setReactivarModal] = useState({ open: false, tipo: '', recordId: null, maquinariaId: null });
   const [eliminarModal, setEliminarModal] = useState({ open: false, tipo: '', recordId: null, maquinariaId: null });
@@ -314,7 +314,7 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
                     // Obtener el ID correcto del registro
                     const recordId = record._id || record.id || record.Email || record.Codigo;
                     // Para maquinaria, usar su propio ID como maquinariaId
-                    const maqId = tipo === 'Maquinaria' ? recordId : record.maquinaria_id || record.maquinaria;
+                    const maqId = tipo === 'Maquinaria' ? recordId : (record.maquinaria_id || record.maquinaria || maquinariaId);
                     // Obtener los datos de visualización para este registro (no reutilizar los del primero)
                     const rowDisplay = getRecordDisplayData(tipo, record);
 
@@ -422,6 +422,7 @@ RegistrosDesactivadosTable.propTypes = {
   onEliminar: PropTypes.func,
   loading: PropTypes.bool.isRequired,
   isAdmin: PropTypes.bool,
+  maquinariaId: PropTypes.string,
 };
 
 export default RegistrosDesactivadosTable;

@@ -1075,11 +1075,39 @@ class LiberacionDetailView(BaseSectionDetailAPIView):
         if not existing_record:
             return Response({"error": "Liberación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
 
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'Liberacion')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_liberacion',
+                    'Liberacion',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de liberación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         try:
             # Desactivar en lugar de eliminar
             collection.update_one(
                 {'_id': ObjectId(record_id)},
-                {'$set': {'activo': False, 'fecha_actualizacion': datetime.now()}}
+                {'$set': {'activo': False, 'fecha_desactivacion': datetime.now()}}
             )
             
             # --- REGISTRO DE ACTIVIDAD ---
@@ -1088,7 +1116,7 @@ class LiberacionDetailView(BaseSectionDetailAPIView):
                 mensaje = f"Desactivó liberación para maquinaria {existing_record.get('placa', maquinaria_id)}"
                 registrar_actividad(
                     actor_email,
-                    'mensaje',
+                    'desactivar_liberacion',
                     'Liberacion',
                     mensaje,
                     {
@@ -1105,6 +1133,49 @@ class LiberacionDetailView(BaseSectionDetailAPIView):
         except Exception as e:
             logger.error(f"Error al desactivar liberación: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, maquinaria_id, record_id):
+        """Reactivar un registro desactivado"""
+        # Verificar permisos de ADMINISTRADOR únicamente
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('liberacion')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Liberación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Reactivar el registro
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": True, "fecha_reactivacion": datetime.now()}}
+        )
+        
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'Liberacion')
+            mensaje = f"Reactivó {record_desc} para maquinaria {maquinaria_placa}"
+            registrar_actividad(
+                actor_email,
+                'reactivar_liberacion',
+                'Liberacion',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de reactivación de liberación: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        
+        return Response({"success": True})
 
 # --- Vistas Específicas para cada Sección ---
 
@@ -1308,7 +1379,35 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Control no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
+        
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                placa_maquinaria = get_maquinaria_info(maquinaria_id)
+                descripcion = get_record_description(existing_record, 'historial_control')
+                mensaje = f"Eliminó permanentemente {descripcion} para maquinaria {placa_maquinaria}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_control',
+                    'HistorialControl',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de control: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -1329,6 +1428,49 @@ class HistorialControlDetailView(BaseSectionDetailAPIView):
         except Exception as e:
             logger.error(f"Error al registrar actividad de desactivación de control: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
+
+    def patch(self, request, maquinaria_id, record_id):
+        """Reactivar un registro desactivado"""
+        # Verificar permisos de ADMINISTRADOR únicamente
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('historial_control')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Control no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Reactivar el registro
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": True, "fecha_reactivacion": datetime.now()}}
+        )
+        
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            placa_maquinaria = get_maquinaria_info(maquinaria_id)
+            descripcion = get_record_description(existing_record, 'historial_control')
+            mensaje = f"Reactivó {descripcion} para maquinaria {placa_maquinaria}"
+            registrar_actividad(
+                actor_email,
+                'reactivar_control',
+                'HistorialControl',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de reactivación de control: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        
         return Response({"success": True})
 
 class ActaAsignacionListView(BaseSectionAPIView):
@@ -1505,7 +1647,35 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
+        
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'ActaAsignacion')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_asignacion',
+                    'ActaAsignacion',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de asignación: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -1526,6 +1696,49 @@ class ActaAsignacionDetailView(BaseSectionDetailAPIView):
         except Exception as e:
             logger.error(f"Error al registrar actividad de desactivación de asignación: {str(e)}")
         # --- FIN REGISTRO DE ACTIVIDAD ---
+        return Response({"success": True})
+
+    def patch(self, request, maquinaria_id, record_id):
+        """Reactivar un registro desactivado"""
+        # Verificar permisos de ADMINISTRADOR únicamente
+        actor_email = request.headers.get('X-User-Email')
+        if not actor_email:
+            return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = get_collection(Usuario).find_one({"Email": actor_email})
+        if not user or user.get('Cargo', '').lower() != 'admin':
+            return Response({"error": "Solo los administradores pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        collection = get_collection('acta_asignacion')
+        existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not existing_record:
+            return Response({"error": "Asignación no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Reactivar el registro
+        result = collection.update_one(
+            {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+            {"$set": {"activo": True, "fecha_reactivacion": datetime.now()}}
+        )
+        
+        # --- REGISTRO DE ACTIVIDAD ---
+        try:
+            actor_email = request.headers.get('X-User-Email')
+            maquinaria_placa = get_maquinaria_info(maquinaria_id)
+            record_desc = get_record_description(existing_record, 'ActaAsignacion')
+            mensaje = f"Reactivó {record_desc} para maquinaria {maquinaria_placa}"
+            registrar_actividad(
+                actor_email,
+                'reactivar_asignacion',
+                'ActaAsignacion',
+                mensaje,
+                {'datos': serialize_doc(existing_record)}
+            )
+        except Exception as e:
+            logger.error(f"Error al registrar actividad de reactivación de asignación: {str(e)}")
+        # --- FIN REGISTRO DE ACTIVIDAD ---
+        
         return Response({"success": True})
 
 class MantenimientoListView(BaseSectionAPIView):
@@ -1697,7 +1910,35 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Mantenimiento no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
+        
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'Mantenimiento')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_mantenimiento',
+                    'Mantenimiento',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de mantenimiento: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -1975,7 +2216,35 @@ class SeguroDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Seguro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
+        
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'Seguro')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_seguro',
+                    'Seguro',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de seguro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -2222,7 +2491,35 @@ class ITVDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "ITV no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
+        
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'ITV')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_itv',
+                    'ITV',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de ITV: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -2482,7 +2779,34 @@ class SOATDetailView(BaseSectionDetailAPIView):
         if not existing_record:
             return Response({"error": "SOAT no encontrado"}, status=status.HTTP_404_NOT_FOUND)
         
-        # En lugar de eliminar, desactivar
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'SOAT')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_soat',
+                    'SOAT',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de SOAT: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -2731,7 +3055,35 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
         existing_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
         if not existing_record:
             return Response({"error": "Impuesto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-        # En lugar de eliminar, desactivar
+        
+        # ¿Eliminación permanente?
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            # Requerir ADMIN para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+
+            collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                maquinaria_placa = get_maquinaria_info(maquinaria_id)
+                record_desc = get_record_description(existing_record, 'Impuesto')
+                mensaje = f"Eliminó permanentemente {record_desc} para maquinaria {maquinaria_placa}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_permanente_impuesto',
+                    'Impuesto',
+                    mensaje,
+                    {'datos': serialize_doc(existing_record)}
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación permanente de impuesto: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            return Response({"success": True})
+
+        # Soft delete por defecto
         result = collection.update_one(
             {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
             {"$set": {"activo": False, "fecha_desactivacion": datetime.now()}}
@@ -4014,8 +4366,9 @@ class RegistrosDesactivadosView(APIView):
         
         # Obtener todos los registros desactivados de todas las colecciones
         collections = [
-            ('controles', 'Control'),
-            ('asignacion', 'Asignación'),
+            ('historial_control', 'Control'),
+            ('acta_asignacion', 'Asignación'),
+            ('liberacion', 'Liberación'),
             ('mantenimiento', 'Mantenimiento'),
             ('seguro', 'Seguro'),
             ('itv', 'ITV'),

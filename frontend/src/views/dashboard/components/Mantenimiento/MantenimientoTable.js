@@ -81,7 +81,7 @@ const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadO
             <TableCell>{mantenimiento.tipo_mantenimiento}</TableCell>
             <TableCell>{mantenimiento.consumo_combustible ? `${mantenimiento.consumo_combustible} Lts` : '-'}</TableCell>
             <TableCell>{mantenimiento.consumo_lubricantes ? `${mantenimiento.consumo_lubricantes} Lts` : '-'}</TableCell>
-            <TableCell>{mantenimiento.mano_obra ? `$${mantenimiento.mano_obra}` : '-'}</TableCell>
+            <TableCell>{mantenimiento.mano_obra ? `Bs. ${mantenimiento.mano_obra}` : '-'}</TableCell>
             <TableCell>{mantenimiento.tecnico_responsable}</TableCell>
             {showActionsColumn && (
               <TableCell align="right">
