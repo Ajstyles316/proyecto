@@ -178,7 +178,7 @@ def serialize_doc(doc):
         del doc['Password']
     
     # Quitar campos que no queremos mostrar (pero mantener _id y maquinaria_id para reactivación)
-    campos_a_quitar = ['maquinaria', 'activo']
+    campos_a_quitar = ['activo']
     for campo in campos_a_quitar:
         if campo in doc:
             del doc[campo]

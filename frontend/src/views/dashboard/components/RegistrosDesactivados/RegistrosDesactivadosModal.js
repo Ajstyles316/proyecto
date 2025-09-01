@@ -124,9 +124,9 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
       // Mapeo de tipos a endpoints
       const tipoToEndpoint = {
         'Usuario': 'usuarios',
-        'Control': 'historial_control',
+        'Control': 'control',
         'Asignación': 'asignacion',
-        'Liberación': 'asignacion',
+        'Liberación': 'liberacion',
         'Mantenimiento': 'mantenimiento',
         'Seguro': 'seguros',
         'ITV': 'itv',
@@ -172,6 +172,9 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
         if (response.status === 403) {
           throw new Error('No tienes permisos para reactivar registros');
         }
+        if (response.status === 404) {
+          throw new Error('El registro no se encontró. Es posible que ya haya sido eliminado permanentemente.');
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`Error al reactivar el registro: ${response.statusText} - ${JSON.stringify(errorData)}`);
       }
@@ -206,7 +209,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
 
       const tipoToEndpoint = {
         'Usuario': 'usuarios',
-        'Control': 'historial_control',
+        'Control': 'control',
         'Asignación': 'asignacion',
         'Liberación': 'liberacion',
         'Mantenimiento': 'mantenimiento',
@@ -245,6 +248,9 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error('No tienes permisos para eliminar permanentemente');
+        }
+        if (response.status === 404) {
+          throw new Error('El registro no se encontró. Es posible que ya haya sido eliminado.');
         }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`Error al eliminar el registro: ${response.statusText} - ${JSON.stringify(errorData)}`);

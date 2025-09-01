@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { TextField, Button, Grid } from '@mui/material';
 import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
+import ExportButtons from './ExportButtons';
 
 const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading }) => {
   const [search, setSearch] = useState('');
@@ -34,21 +35,12 @@ const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading 
         </Button>
       </Grid>
       {maquinaria && canExport && (
-        <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center">
-          <Button
-            variant="contained"
-            style={{ background: '#43a047', color: 'white', marginRight: 8 }}
-            onClick={onExportXLS}
-          >
-            Exportar Excel
-          </Button>
-          <Button
-            variant="contained"
-            style={{ background: '#e53935', color: 'white' }}
-            onClick={onExportPDF}
-          >
-            Exportar PDF
-          </Button>
+        <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
+          <ExportButtons
+            onExportExcel={onExportXLS}
+            onExportPDF={onExportPDF}
+            disabled={loading}
+          />
         </Grid>
       )}
     </Grid>

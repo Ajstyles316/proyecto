@@ -36,6 +36,7 @@ const ReportesDashboard = ({
   pronosticos, 
   control, 
   asignacion, 
+  liberacion,
   mantenimiento, 
   soat, 
   seguros, 
@@ -54,6 +55,7 @@ const ReportesDashboard = ({
         resumen: {
           control: 0,
           asignacion: 0,
+          liberacion: 0,
           mantenimiento: 0,
           soat: 0,
           seguros: 0,
@@ -70,6 +72,7 @@ const ReportesDashboard = ({
     const secciones = [
       { key: 'control', label: 'Control', data: control },
       { key: 'asignacion', label: 'Asignación', data: asignacion },
+      { key: 'liberacion', label: 'Liberación', data: liberacion },
       { key: 'mantenimiento', label: 'Mantenimiento', data: mantenimiento },
       { key: 'soat', label: 'SOAT', data: soat },
       { key: 'seguros', label: 'Seguros', data: seguros },
@@ -86,17 +89,20 @@ const ReportesDashboard = ({
     const seccionesConDatos = secciones.filter(s => Array.isArray(s.data) && s.data.length > 0).length;
     const seccionesSinDatos = secciones.length - seccionesConDatos;
 
-    // Distribución por secciones
-    const distribucionSecciones = secciones.map(seccion => ({
-      name: seccion.label,
-      value: Array.isArray(seccion.data) ? seccion.data.length : 0,
-      color: Array.isArray(seccion.data) && seccion.data.length > 0 ? '#2e7d32' : '#d32f2f'
-    }));
+    // Distribución por secciones - Solo mostrar secciones con datos
+    const distribucionSecciones = secciones
+      .filter(seccion => Array.isArray(seccion.data) && seccion.data.length > 0)
+      .map(seccion => ({
+        name: seccion.label,
+        value: seccion.data.length,
+        color: '#2e7d32'
+      }));
 
     // Resumen por sección
     const resumen = {
       control: Array.isArray(control) ? control.length : 0,
       asignacion: Array.isArray(asignacion) ? asignacion.length : 0,
+      liberacion: Array.isArray(liberacion) ? liberacion.length : 0,
       mantenimiento: Array.isArray(mantenimiento) ? mantenimiento.length : 0,
       soat: Array.isArray(soat) ? soat.length : 0,
       seguros: Array.isArray(seguros) ? seguros.length : 0,
@@ -123,7 +129,7 @@ const ReportesDashboard = ({
       resumen,
       estadoMaquinaria
     };
-  }, [maquinaria, depreciaciones, pronosticos, control, asignacion, mantenimiento, soat, seguros, itv, impuestos]);
+  }, [maquinaria, depreciaciones, pronosticos, control, asignacion, liberacion, mantenimiento, soat, seguros, itv, impuestos]);
 
   const StatCard = ({ title, value, subtitle, color = 'primary.main', icon, variant = 'default' }) => (
     <Card sx={{ 
@@ -335,6 +341,7 @@ ReportesDashboard.propTypes = {
   pronosticos: PropTypes.array,
   control: PropTypes.array,
   asignacion: PropTypes.array,
+  liberacion: PropTypes.array,
   mantenimiento: PropTypes.array,
   soat: PropTypes.array,
   seguros: PropTypes.array,

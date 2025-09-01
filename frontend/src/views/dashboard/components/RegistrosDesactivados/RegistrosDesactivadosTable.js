@@ -314,7 +314,7 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
                     // Obtener el ID correcto del registro
                     const recordId = record._id || record.id || record.Email || record.Codigo;
                     // Para maquinaria, usar su propio ID como maquinariaId
-                    const maqId = tipo === 'Maquinaria' ? recordId : (record.maquinaria_id || record.maquinaria || maquinariaId);
+                    const maqId = tipo === 'Maquinaria' ? recordId : (record.maquinaria_id || maquinariaId);
                     // Obtener los datos de visualización para este registro (no reutilizar los del primero)
                     const rowDisplay = getRecordDisplayData(tipo, record);
 

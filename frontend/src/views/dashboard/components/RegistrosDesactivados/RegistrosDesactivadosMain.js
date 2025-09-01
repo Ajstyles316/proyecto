@@ -129,6 +129,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
         if (response.status === 403) {
           throw new Error('No tienes permisos para reactivar registros');
         }
+        if (response.status === 404) {
+          throw new Error('El registro no se encontró. Es posible que ya haya sido eliminado permanentemente.');
+        }
         throw new Error(`Error al reactivar el registro: ${errorText}`);
       }
 
@@ -219,6 +222,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
         console.error(`Error en eliminación: ${errorText}`);
         if (response.status === 403) {
           throw new Error('No tienes permisos para eliminar permanentemente');
+        }
+        if (response.status === 404) {
+          throw new Error('El registro no se encontró. Es posible que ya haya sido eliminado.');
         }
         throw new Error(`Error al eliminar el registro: ${errorText}`);
       }
