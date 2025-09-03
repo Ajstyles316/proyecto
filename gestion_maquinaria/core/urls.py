@@ -11,6 +11,7 @@ from .views import (
     PronosticoExcelUploadView,
     UsuarioListView,
     UsuarioCargoUpdateView,
+    UsuarioMemorandumUpdateView,
     UsuarioPermisoUpdateView,
     UsuarioDeleteView,
     MaquinariaDetailView,
@@ -47,6 +48,8 @@ from .views import (
     SOATDetailView,
     ImpuestoListView,
     ImpuestoDetailView,
+    ControlOdometroListView,
+    ControlOdometroDetailView,
     SolicitarResetPasswordView,
     VerificarCodigoResetPasswordView,
     ReenviarCodigoResetPasswordView
@@ -70,6 +73,7 @@ urlpatterns = [
     path('sugerir_bien_uso/', sugerir_bien_uso, name='sugerir_bien_uso'),
     path('usuarios/me/', UsuarioUpdateView.as_view(), name='usuario-self-update'),
     path('usuarios/<str:id>/cargo/', UsuarioCargoUpdateView.as_view(), name='usuario-cargo-update'),
+    path('usuarios/<str:id>/memorandum/', UsuarioMemorandumUpdateView.as_view(), name='usuario-memorandum-update'),
     path('usuarios/<str:id>/permiso/', UsuarioPermisoUpdateView.as_view(), name='usuario-permiso-update'),
     path('usuarios/<str:id>/permisos/', UsuarioPermisosUpdateView.as_view(), name='usuario-permisos-update'),
     path('usuarios/<str:id>/reactivar/', UsuarioDeleteView.as_view(), name='usuario-reactivar'),
@@ -126,4 +130,9 @@ urlpatterns = [
         path('', ImpuestoListView.as_view(), name='impuesto-list'),
         path('<str:record_id>/', ImpuestoDetailView.as_view(), name='impuesto-detail'),
     ])),
+    path('api/maquinaria/<str:maquinaria_id>/control-odometro/', include([
+        path('', ControlOdometroListView.as_view(), name='control-odometro-list'),
+        path('<str:record_id>/', ControlOdometroDetailView.as_view(), name='control-odometro-detail'),
+    ])),
+
 ]

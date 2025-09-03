@@ -20,6 +20,7 @@ from core.views import (
     ITVListView, ITVDetailView,
     SOATListView, SOATDetailView,
     ImpuestoListView, ImpuestoDetailView,
+    ControlOdometroDetailView, ControlOdometroListView,
     activos_list, PronosticoAPIView, DashboardStatsView, PronosticoSummaryView,
     DepreciacionesDetailView,DepreciacionesGeneralView,DepreciacionesListView,
     TodosRegistrosDesactivadosView, test_api, PronosticoExcelUploadView
@@ -63,7 +64,9 @@ urlpatterns = [
     
     path('api/maquinaria/<str:maquinaria_id>/liberacion/', LiberacionListView.as_view(), name='liberacion-list'),
     path('api/maquinaria/<str:maquinaria_id>/liberacion/<str:record_id>/', LiberacionDetailView.as_view(), name='liberacion-detail'),
-
+    
+    path('api/maquinaria/<str:maquinaria_id>/control-odometro/', ControlOdometroListView.as_view(), name='control-list'),
+    path('api/maquinaria/<str:maquinaria_id>/control-odometro/<str:record_id>/', ControlOdometroDetailView.as_view(), name='control-detail'),
 
     path('api/maquinaria/<str:maquinaria_id>/mantenimiento/', MantenimientoListView.as_view(), name='mantenimiento-list'),
     path('api/maquinaria/<str:maquinaria_id>/mantenimiento/<str:record_id>/', MantenimientoDetailView.as_view(), name='mantenimiento-detail'),

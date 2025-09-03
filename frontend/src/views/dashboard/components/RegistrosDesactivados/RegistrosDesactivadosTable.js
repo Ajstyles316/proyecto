@@ -143,6 +143,18 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };
+      case 'Control de Odómetros':
+        return {
+          title: 'Control de Odómetros',
+          fields: [
+            { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
+            { label: 'Unidad', value: formatValue(record['Unidad'] || record['unidad']) },
+            { label: 'Odómetro Inicial', value: formatValue(record['Odómetro Inicial'] || record['odometro_inicial']) },
+            { label: 'Odómetro Final', value: formatValue(record['Odómetro Final'] || record['odometro_final']) },
+            { label: 'Odómetro del Mes', value: formatValue(record['Odómetro del Mes'] || record['odometro_mes']) },
+            { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
+          ]
+        };
       case 'Asignación':
         return {
           title: 'Asignación',

@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { Box, Paper, Button, Avatar, Typography, Grid, TextField, MenuItem } from '@mui/material';
 import { SECTIONS } from '../utils/constants';
 import ControlMain from '../../Control/ControlMain';
+import ControlOdometroMain from '../../ControlOdometro/ControlOdometroMain';
 import AsignacionMain from '../../Asignacion/AsignacionMain';
 import LiberacionMain from '../../Liberacion/LiberacionMain';
 import MantenimientoMain from '../../Mantenimiento/MantenimientoMain';
@@ -44,6 +45,7 @@ const MaquinariaDetalle = ({
   const renderSectionForm = () => {
     switch (activeSection) {
       case 'Control': return <ControlMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
+      case 'ControlOdometro': return <ControlOdometroMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Asignación': return <AsignacionMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Liberación': return <LiberacionMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;
       case 'Mantenimiento': return <MantenimientoMain maquinariaId={maquinariaId} maquinariaPlaca={maquinariaPlaca} />;

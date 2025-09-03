@@ -30,6 +30,7 @@ const MODULOS_SEGUIMIENTO = [
   'Pronóstico',
   'Asignación',
   'Control',
+  'ControlOdometro',
   'SOAT',
   'ITV',
   'Seguro',
@@ -41,6 +42,7 @@ const MODULOS_SEGUIMIENTO = [
 const MODULO_MAP = {
   'ActaAsignacion': 'Asignación',
   'HistorialControl': 'Control',
+  'ControlOdometro': 'Control de Odómetros',
   'SOAT': 'SOAT',
   'ITV': 'ITV',
   'Seguro': 'Seguro',
@@ -97,8 +99,70 @@ const getAccionChip = (accion) => {
     'crear_itv': 'success',
     'editar_itv': 'info',
     'crear_impuesto': 'success',
-    'editar_impuesto': 'info'
+    'editar_impuesto': 'info',
+    'crear_liberacion': 'success',
+    'crear_control_odometro': 'success',
+    // Reactivar actions - warning color
+    'reactivar_soat': 'warning',
+    'reactivar_seguro': 'warning',
+    'reactivar_mantenimiento': 'warning',
+    'reactivar_control': 'warning',
+    'reactivar_asignacion': 'warning',
+    'reactivar_maquinaria': 'warning',
+    'reactivar_depreciacion': 'warning',
+    'reactivar_itv': 'warning',
+    'reactivar_impuesto': 'warning',
+    'reactivar_usuario': 'warning',
+    'reactivar_pronostico': 'warning',
+    'reactivar_liberacion': 'warning',
+    'reactivar_control_odometro': 'warning',
+    // Desactivar actions - error color (ensuring all are red)
+    'desactivar_liberacion': 'error',
+    'desactivar_maquinaria': 'error',
+    'desactivar_depreciacion': 'error',
+    'desactivar_itv': 'error',
+    'desactivar_impuesto': 'error',
+    'desactivar_usuario': 'error',
+    'desactivar_pronostico': 'error',
+    'desactivar_control_odometro': 'error',
   };
+  
+  // Special handling for "eliminar permanentemente" actions to make them more intense red
+  if (accion.includes('eliminar_permanentemente') || 
+      accion.includes('eliminar permanente') || 
+      accion.includes('eliminar permanentemente') ||
+      accion.includes('eliminar_permanente') ||
+      accion.includes('eliminar_permanentemente_control') ||
+      accion.includes('eliminar_permanentemente_control_odometro') ||
+      accion.includes('eliminar_permanentemente_soat') ||
+      accion.includes('eliminar_permanentemente_seguro') ||
+      accion.includes('eliminar_permanentemente_mantenimiento') ||
+      accion.includes('eliminar_permanentemente_asignacion') ||
+      accion.includes('eliminar_permanentemente_maquinaria') ||
+      accion.includes('eliminar_permanentemente_depreciacion') ||
+      accion.includes('eliminar_permanentemente_itv') ||
+      accion.includes('eliminar_permanentemente_impuesto') ||
+      accion.includes('eliminar_permanentemente_usuario') ||
+      accion.includes('eliminar_permanentemente_pronostico') ||
+      accion.includes('eliminar_permanentemente_liberacion')) {
+    return (
+      <Chip
+        label={formatAccion(accion)}
+        color="error"
+        size="small"
+        variant="filled"
+        sx={{ 
+          fontSize: '0.7rem',
+          height: 20,
+          backgroundColor: '#d32f2f',
+          color: 'white',
+          '& .MuiChip-label': {
+            px: 1
+          }
+        }}
+      />
+    );
+  }
   
   return (
     <Chip
@@ -147,7 +211,47 @@ const formatAccion = (accion) => {
     'crear_itv': 'Crear ITV',
     'editar_itv': 'Editar ITV',
     'crear_impuesto': 'Crear impuesto',
-    'editar_impuesto': 'Editar impuesto'
+    'editar_impuesto': 'Editar impuesto',
+    'crear_liberacion': 'Crear liberación',
+    'crear_control_odometro': 'Crear control odómetro',
+    'editar_control_odometro': 'Editar control odómetro',
+    // Reactivar actions
+    'reactivar_soat': 'Reactivar SOAT',
+    'reactivar_seguro': 'Reactivar seguro',
+    'reactivar_mantenimiento': 'Reactivar mantenimiento',
+    'reactivar_control': 'Reactivar control',
+    'reactivar_asignacion': 'Reactivar asignación',
+    'reactivar_maquinaria': 'Reactivar maquinaria',
+    'reactivar_depreciacion': 'Reactivar depreciación',
+    'reactivar_itv': 'Reactivar ITV',
+    'reactivar_impuesto': 'Reactivar impuesto',
+    'reactivar_usuario': 'Reactivar usuario',
+    'reactivar_pronostico': 'Reactivar pronóstico',
+    'reactivar_liberacion': 'Reactivar liberación',
+    'reactivar_control_odometro': 'Reactivar control odómetro',
+    // Desactivar actions
+    'desactivar_liberacion': 'Desactivar liberación',
+    'desactivar_maquinaria': 'Desactivar maquinaria',
+    'desactivar_depreciacion': 'Desactivar depreciación',
+    'desactivar_itv': 'Desactivar ITV',
+    'desactivar_impuesto': 'Desactivar impuesto',
+    'desactivar_usuario': 'Desactivar usuario',
+    'desactivar_pronostico': 'Desactivar pronóstico',
+    'desactivar_control_odometro': 'Desactivar control odómetro',
+    // Eliminar permanentemente actions
+    'eliminar_permanentemente_control': 'Eliminar permanentemente control',
+    'eliminar_permanentemente_soat': 'Eliminar permanentemente SOAT',
+    'eliminar_permanentemente_seguro': 'Eliminar permanentemente seguro',
+    'eliminar_permanentemente_mantenimiento': 'Eliminar permanentemente mantenimiento',
+    'eliminar_permanentemente_asignacion': 'Eliminar permanentemente asignación',
+    'eliminar_permanentemente_maquinaria': 'Eliminar permanentemente maquinaria',
+    'eliminar_permanentemente_depreciacion': 'Eliminar permanentemente depreciación',
+    'eliminar_permanentemente_itv': 'Eliminar permanentemente ITV',
+    'eliminar_permanentemente_impuesto': 'Eliminar permanentemente impuesto',
+    'eliminar_permanentemente_usuario': 'Eliminar permanentemente usuario',
+    'eliminar_permanentemente_pronostico': 'Eliminar permanentemente pronóstico',
+    'eliminar_permanentemente_liberacion': 'Eliminar permanentemente liberación',
+    'eliminar_permanentemente_control_odometro': 'Eliminar permanentemente control odómetro',
   };
 
   return accionMap[accion] || 

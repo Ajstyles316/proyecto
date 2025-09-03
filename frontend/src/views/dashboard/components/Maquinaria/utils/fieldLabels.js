@@ -68,5 +68,12 @@ export const fieldLabels = {
     { name: 'placa', label: 'Placa' },
     { name: 'importe2024', label: 'Importe 2024', type: 'number' },
     { name: 'importe2025', label: 'Importe 2025', type: 'number' },
+  ],
+  'ControlOdometro': [
+    { name: 'unidad', label: 'Unidad', type: 'text' },
+    { name: 'odometro_inicial', label: 'Odómetro Inicial', type: 'number' },
+    { name: 'odometro_final', label: 'Odómetro Final', type: 'number' },
+    { name: 'odometro_mes', label: 'Odómetro del Mes', type: 'number' },
+    { name: 'fotos', label: 'Fotos', type: 'file' },
   ]
 };

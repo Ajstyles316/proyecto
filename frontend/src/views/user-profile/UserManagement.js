@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useUser, useIsReadOnlyForModule } from '../../components/hooks';
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Button, Select, MenuItem, Paper, Snackbar, Alert, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Switch, Chip, Tooltip, TextField } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { es } from 'date-fns/locale';
 import RegistrosDesactivadosButton from '../dashboard/components/RegistrosDesactivados/RegistrosDesactivadosButton';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
@@ -14,6 +18,7 @@ const cargos = ["Encargado", "Técnico"];
 const MODULOS = [
   'Maquinaria',
   'Control',
+  'ControlOdometro',
   'Asignación',
   'Mantenimiento',
   'SOAT',
@@ -32,6 +37,7 @@ const MODULOS_SEGUIMIENTO = [
   'Depreciaciones',
   'Pronóstico',
   'Reportes',
+  'ControlOdometro',
 ];
 // Helper para mostrar usuario bonito
 const getAccionChip = (accion) => {
@@ -242,6 +248,46 @@ Unidad: ${message.usuario_afectado_unidad || ''}`;
   // Capitalizar y limpiar
   return capitalizeWords(formatted);
 }
+// Función para convertir fecha DD/MM/YYYY a objeto Date
+const parseDateFromString = (dateString) => {
+  if (!dateString) return null;
+  
+  // Limpiar la cadena de espacios y caracteres extra
+  const cleanString = dateString.toString().trim();
+  
+  // Verificar si ya es un objeto Date
+  if (cleanString instanceof Date) return cleanString;
+  
+  // Verificar formato DD/MM/YYYY
+  const parts = cleanString.split('/');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    // Verificar que la fecha sea válida
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  }
+  
+  // Si no es DD/MM/YYYY, intentar parsear como fecha ISO
+  const isoDate = new Date(cleanString);
+  if (!isNaN(isoDate.getTime())) {
+    return isoDate;
+  }
+  
+  return null;
+};
+
+// Función para convertir objeto Date a DD/MM/YYYY
+const formatDateToString = (date) => {
+  if (!date) return '';
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const UserManagement = () => {
   const { user } = useUser();
   const isReadOnly = useIsReadOnlyForModule('Usuarios');
@@ -301,6 +347,7 @@ const UserManagement = () => {
   const [cargoLoading, setCargoLoading] = useState({});
   const [actionLoading, setActionLoading] = useState({});
   const [permisosLoading, setPermisosLoading] = useState(false);
+  const [memorandumLoading, setMemorandumLoading] = useState({});
   const handleCargoChange = (id, newCargo) => {
     setCargoLoading(prev => ({ ...prev, [id]: true }));
     fetch(`http://localhost:8000/api/usuarios/${id}/cargo/`, {
@@ -325,6 +372,33 @@ const UserManagement = () => {
       .catch((e) => setSnackbar({ open: true, message: e.message || 'Error al actualizar cargo', severity: 'error' }))
       .finally(() => {
         setCargoLoading(prev => ({ ...prev, [id]: false }));
+      });
+  };
+
+  const handleMemorandumChange = (id, newMemorandum) => {
+    setMemorandumLoading(prev => ({ ...prev, [id]: true }));
+    fetch(`http://localhost:8000/api/usuarios/${id}/memorandum/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Email': user.Email
+      },
+      body: JSON.stringify({ Memorandum: newMemorandum })
+    })
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || 'Error al actualizar memorandum');
+        }
+        return data;
+      })
+      .then(data => {
+        setUsuarios(usuarios => usuarios.map(u => (u._id?.$oid || u._id) === id ? data : u));
+        setSnackbar({ open: true, message: 'Memorandum actualizado', severity: 'success' });
+      })
+      .catch((e) => setSnackbar({ open: true, message: e.message || 'Error al actualizar memorandum', severity: 'error' }))
+      .finally(() => {
+        setMemorandumLoading(prev => ({ ...prev, [id]: false }));
       });
   };
   
@@ -466,8 +540,9 @@ const UserManagement = () => {
   const isAdmin = user.Cargo.toLowerCase() === 'admin';
   const isEncargado = user.Cargo.toLowerCase() === 'encargado';
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" mb={2} fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" mb={2} fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
       {(isAdmin || isEncargado) && (
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                           <RegistrosDesactivadosButton maquinariaId="all" isAdmin={isAdmin} />
@@ -488,6 +563,7 @@ const UserManagement = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Cargo</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>Permisos</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Unidad</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Memorándum</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
@@ -523,6 +599,44 @@ const UserManagement = () => {
                     )}
                   </TableCell>
                   <TableCell>{u.Unidad}</TableCell>
+                  <TableCell>
+                    {id === (user._id?.$oid || user._id) ? (
+                      <Typography variant="body2" sx={{ py: 1 }}>{u.Memorandum || '-'}</Typography>
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <DatePicker
+                          value={parseDateFromString(u.Memorandum)}
+                          onChange={(newDate) => {
+                            if (newDate) {
+                              const formattedDate = formatDateToString(newDate);
+                              handleMemorandumChange(id, formattedDate);
+                            } else {
+                              handleMemorandumChange(id, '');
+                            }
+                          }}
+
+                          disabled={isReadOnly || memorandumLoading[id]}
+                          slotProps={{
+                            textField: {
+                              size: "small",
+                              placeholder: "DD/MM/YYYY",
+                              sx: { 
+                                minWidth: 100,
+                                maxWidth: 150,
+                                '& .MuiInputBase-input': {
+                                  fontSize: '0.875rem',
+                                  padding: '6px 8px'
+                                }
+                              }
+                            }
+                          }}
+                          format="dd/MM/yyyy"
+                          clearable={false}
+                        />
+                        {memorandumLoading[id] && <CircularProgress size={16} />}
+                      </Box>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {id === (user._id?.$oid || user._id) ? (
                       <Typography variant="caption" color="textSecondary">(Tú)</Typography>
@@ -858,7 +972,8 @@ const UserManagement = () => {
           <Button onClick={handleCloseSeguimiento} variant="contained" color="primary" sx={{ borderRadius: 2, fontWeight: 600 }} disabled={isReadOnly}>Cerrar</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      </Box>
+    </LocalizationProvider>
   );
 };
 export default UserManagement;

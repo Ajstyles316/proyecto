@@ -43,4 +43,11 @@ export default defineConfig({
     // })],
 
     plugins: [svgr(), react()],
+    
+    server: {
+        port: 5173,
+        proxy: {
+            '/api': 'http://localhost:8000',
+        },
+    },
 });

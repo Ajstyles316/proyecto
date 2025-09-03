@@ -256,10 +256,56 @@ class MaquinariaSerializer(serializers.Serializer):
     
     def validate_imagen(self, value):
         # Valida que la imagen sea un base64 válido (opcional)
-        if value and value.startswith("data:image/"):
-            return value  # Acepta base64
+        if value and not value.startswith('data:image/'):
+            raise serializers.ValidationError("Formato de imagen inválido")
+        return value  # Acepta base64
+
+class ControlOdometroSerializer(serializers.Serializer):
+    _id = serializers.CharField(read_only=True)
+    maquinaria = serializers.CharField(write_only=True, required=True)
+    unidad = serializers.CharField(max_length=100, required=True)
+    odometro_inicial = serializers.FloatField(required=True)
+    odometro_final = serializers.FloatField(required=True)
+    odometro_mes = serializers.FloatField(required=True)
+    fotos = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True
+    )
+    fecha_creacion = serializers.DateTimeField(read_only=True)
+    fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(read_only=True)
+    validado_por = serializers.CharField(read_only=True)
+    autorizado_por = serializers.CharField(read_only=True)
+
+    def validate_maquinaria(self, value):
+        try:
+            return ObjectId(value)
+        except:
+            raise serializers.ValidationError("ID de maquinaria inválido")
+
+    def validate_odometro_inicial(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El odómetro inicial no puede ser negativo")
         return value
-    
+
+    def validate_odometro_final(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El odómetro final no puede ser negativo")
+        return value
+
+    def validate_odometro_mes(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El odómetro del mes no puede ser negativo")
+        return value
+
+    def validate_fotos(self, value):
+        # Validar que las fotos sean base64 válidos
+        for foto in value:
+            if foto and not foto.startswith('data:image/'):
+                raise serializers.ValidationError("Formato de imagen inválido")
+        return value
+
 class RegistroSerializer(serializers.Serializer):
     Nombre = serializers.CharField(required=True)
     Cargo = serializers.CharField(required=True)

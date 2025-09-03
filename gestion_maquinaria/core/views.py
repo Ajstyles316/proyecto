@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from .models import Maquinaria, HistorialControl, ActaAsignacion, Liberacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro
+from .models import Maquinaria, HistorialControl, ActaAsignacion, Liberacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro, ControlOdometro
 from .serializers import (
     MaquinariaSerializer,
     RegistroSerializer,
@@ -26,7 +26,8 @@ from .serializers import (
     ImpuestoSerializer,
     DepreciacionSerializer,
     ActivoSerializer,
-    PronosticoInputSerializer
+    PronosticoInputSerializer,
+    ControlOdometroSerializer
 )
 from django.conf import settings
 from .mongo_connection import get_collection, get_collection_from_activos_db
@@ -72,7 +73,8 @@ def create_default_admin():
                     "Usuarios": {"ver": True, "crear": True, "editar": True, "eliminar": True}
                 },
                 "activo": True,
-                "fecha_creacion": datetime.now()
+                "fecha_creacion": datetime.now(),
+                "Memorandum": datetime.now().strftime('%d/%m/%Y')
             }
             usuarios_collection.insert_one(admin_data)
             logger.info("Usuario admin por defecto creado exitosamente")
@@ -3524,6 +3526,10 @@ class VerificarCodigoRegistroView(APIView):
             if not registro:
                 return Response({"error": "Datos de registro no encontrados"}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Agregar fecha de registro como memorandum
+            registro['Memorandum'] = datetime.now().strftime('%d/%m/%Y')
+            registro['fecha_creacion'] = datetime.now()
+
             usuarios.insert_one(registro)
             verificaciones.delete_one({"Email": email})
 
@@ -4225,7 +4231,7 @@ class UsuarioListView(APIView):
                 {"activo": True},
                 {"activo": {"$exists": False}}
             ]
-        }, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1, "permisos": 1}))
+        }, {"_id": 1, "Email": 1, "Cargo": 1, "Permiso": 1, "Nombre": 1, "Unidad": 1, "permisos": 1, "Memorandum": 1}))
         return Response([serialize_doc(u) for u in usuarios], status=status.HTTP_200_OK)
 
 class UsuarioCargoUpdateView(APIView):
@@ -4253,6 +4259,60 @@ class UsuarioCargoUpdateView(APIView):
         result = collection.update_one({'_id': ObjectId(id)}, {'$set': {'Cargo': nuevo_cargo}})
         if result.matched_count == 0:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        usuario_actualizado = collection.find_one({'_id': ObjectId(id)})
+        return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
+
+class UsuarioMemorandumUpdateView(APIView):
+    """Solo el admin y encargado pueden cambiar el memorandum de otros usuarios."""
+    def put(self, request, id):
+        email = request.headers.get('X-User-Email')
+        if not email:
+            return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        collection = get_collection(Usuario)
+        user = collection.find_one({"Email": email})
+        if not check_user_permissions(user, required_role='encargado'):
+            return Response({'error': 'Solo el administrador y encargado pueden cambiar memorandum'}, status=status.HTTP_403_FORBIDDEN)
+        # No puede cambiarse a sí mismo
+        if str(user.get('_id')) == id:
+            return Response({'error': 'No puedes cambiar tu propio memorandum'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        nuevo_memorandum = request.data.get('Memorandum')
+        if nuevo_memorandum is None:
+            return Response({'error': 'Memorandum requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validar que sea una fecha válida en formato DD/MM/YYYY
+        if nuevo_memorandum:
+            import re
+            date_pattern = re.compile(r'^(\d{2})/(\d{2})/(\d{4})$')
+            match = date_pattern.match(nuevo_memorandum)
+            
+            if not match:
+                return Response({'error': 'Formato de fecha inválido. Use DD/MM/YYYY'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            day, month, year = match.groups()
+            try:
+                # Validar que la fecha sea real
+                from datetime import datetime
+                datetime(int(year), int(month), int(day))
+            except ValueError:
+                return Response({'error': 'Fecha inválida. Verifique día, mes y año'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        result = collection.update_one({'_id': ObjectId(id)}, {'$set': {'Memorandum': nuevo_memorandum}})
+        if result.matched_count == 0:
+            return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Registrar la actividad
+        try:
+            registrar_actividad(
+                email,
+                'editar_memorandum_usuario',
+                'Usuarios',
+                f"Editó memorandum del usuario {collection.find_one({'_id': ObjectId(id)}).get('Email', id)}",
+                {'memorandum': nuevo_memorandum}
+            )
+        except Exception:
+            pass
+        
         usuario_actualizado = collection.find_one({'_id': ObjectId(id)})
         return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
 
@@ -4373,7 +4433,8 @@ class RegistrosDesactivadosView(APIView):
             ('seguro', 'Seguro'),
             ('itv', 'ITV'),
             ('soat', 'SOAT'),
-            ('impuesto', 'Impuesto')
+            ('impuesto', 'Impuesto'),
+            ('control_odometro', 'Control de Odómetros')
         ]
         
         registros_desactivados = {}
@@ -4419,6 +4480,7 @@ class TodosRegistrosDesactivadosView(APIView):
             ('itv', 'ITV'),
             ('soat', 'SOAT'),
             ('impuesto', 'Impuesto'),
+            ('control_odometro', 'Control de Odómetros'),
             ('maquinaria', 'Maquinaria'),
             ('depreciaciones', 'Depreciación')
         ]
@@ -5150,3 +5212,369 @@ class VerificarPasswordActualView(APIView):
             return Response({"error": "Contraseña actual incorrecta"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "Contraseña verificada"}, status=status.HTTP_200_OK)
+
+# --- Vistas para Control de Odómetros ---
+
+class ControlOdometroListView(BaseSectionAPIView):
+    collection_class = ControlOdometro
+    serializer_class = ControlOdometroSerializer
+    projection = None
+
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
+    def clean_data(self, data):
+        """Limpia y formatea los datos antes de guardarlos"""
+        cleaned = {}
+        for key, value in data.items():
+            if value is None or value == '':
+                continue
+            if isinstance(value, dict):
+                cleaned[key] = self.clean_data(value)
+            else:
+                cleaned[key] = value
+        return cleaned
+
+    def get(self, request, maquinaria_id):
+        logger.info(f"GET ControlOdometroListView - maquinaria_id: {maquinaria_id}")
+        logger.info(f"Headers: {dict(request.headers)}")
+        
+        if not ObjectId.is_valid(maquinaria_id):
+            logger.error(f"ID de maquinaria inválido: {maquinaria_id}")
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            collection = get_collection('control_odometro')
+            # Solo mostrar registros activos
+            records = list(collection.find({
+                'maquinaria': ObjectId(maquinaria_id),
+                "$or": [
+                    {"activo": True},
+                    {"activo": {"$exists": False}}
+                ]
+            }))
+            logger.info(f"Encontrados {len(records)} registros de control de odómetro")
+            return Response(serialize_list(records))
+        except Exception as e:
+            logger.error(f"Error en GET ControlOdometroListView: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request, maquinaria_id):
+        if not ObjectId.is_valid(maquinaria_id):
+            return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en POST Control Odómetro: {request.data}")
+            
+            # Preparar datos para el serializer
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            # Validar con el serializer
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_creacion'] = datetime.now()
+            validated_data['fecha_actualizacion'] = datetime.now()
+            validated_data['activo'] = True
+            
+            # Agregar los campos de auditoría con el nombre del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            user_name = user['Nombre'] if user and 'Nombre' in user else actor_email
+            
+            validated_data['registrado_por'] = user_name
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
+
+            # Convertir fechas a datetime
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"Datos convertidos: {validated_data}")
+
+            # Insertar en MongoDB
+            collection = get_collection('control_odometro')
+            validated_data = convert_dates_to_str(validated_data)
+            result = collection.insert_one(validated_data)
+            new_record = collection.find_one({"_id": result.inserted_id})
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Creó control de odómetro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'crear_control_odometro',
+                    'ControlOdometro',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'control_odometro_id': str(result.inserted_id),
+                        'datos': serialize_doc(new_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de control de odómetro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error al crear control de odómetro: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ControlOdometroDetailView(BaseSectionDetailAPIView):
+    collection_class = ControlOdometro
+    serializer_class = ControlOdometroSerializer
+    projection = None
+
+    def convert_date_to_datetime(self, data):
+        if not isinstance(data, dict):
+           return data
+        converted = {}
+        for key, value in data.items():
+            if isinstance(value, date):
+               converted[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, dict):
+               converted[key] = self.convert_date_to_datetime(value)
+            else:
+               converted[key] = value
+        return converted
+
+    def get(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        collection = get_collection('control_odometro')
+        record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+        if not record:
+            return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            logger.info(f"Datos recibidos en PUT Control Odómetro: {request.data}")
+            
+            # Preparar datos para el serializer
+            data = request.data.copy()
+            data['maquinaria'] = str(maquinaria_id)
+            logger.info(f"Datos preparados: {data}")
+
+            # Validar con el serializer
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                logger.error(f"Errores de validación: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated_data = serializer.validated_data
+            logger.info(f"Datos validados: {validated_data}")
+
+            validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Manejar campos de auditoría según el cargo del usuario
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            user_cargo = user.get('Cargo', '').lower() if user else ''
+            
+            # Obtener el registro actual para preservar campos de auditoría
+            current_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            
+            if current_record:
+                # Preservar registrado_por del registro original
+                validated_data['registrado_por'] = current_record.get('registrado_por')
+                
+                # Solo el encargado puede validar
+                if user_cargo == 'encargado' and data.get('validado_por') is not None:
+                    validated_data['validado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+                else:
+                    validated_data['validado_por'] = current_record.get('validado_por')
+                
+                # Solo el encargado puede autorizar
+                if user_cargo == 'encargado' and data.get('autorizado_por') is not None:
+                    validated_data['autorizado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+                else:
+                    validated_data['autorizado_por'] = current_record.get('autorizado_por')
+
+            # Convertir fechas a datetime
+            validated_data = self.convert_date_to_datetime(validated_data)
+            logger.info(f"Datos convertidos: {validated_data}")
+
+            # Actualizar en MongoDB
+            collection = get_collection('control_odometro')
+            validated_data = convert_dates_to_str(validated_data)
+            result = collection.update_one(
+                {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+                {'$set': validated_data}
+            )
+            
+            if result.matched_count == 0:
+                return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+            updated_record = collection.find_one({'_id': ObjectId(record_id)})
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                actor_email = request.headers.get('X-User-Email')
+                mensaje = f"Actualizó control de odómetro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'actualizar_control_odometro',
+                    'ControlOdometro',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'control_odometro_id': str(record_id),
+                        'datos': serialize_doc(updated_record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de actualización de control de odómetro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response(serialize_doc(updated_record), status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error al actualizar control de odómetro: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, maquinaria_id, record_id):
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Verificar permisos de administrador para eliminación permanente
+            actor_email = request.headers.get('X-User-Email')
+            if not actor_email:
+                return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            is_permanent = request.GET.get('permanent', 'false').lower() == 'true'
+            
+            if is_permanent and (not user or user.get('Cargo', '').lower() != 'admin'):
+                return Response({"error": "Solo los administradores pueden eliminar permanentemente"}, status=status.HTTP_403_FORBIDDEN)
+            
+            collection = get_collection('control_odometro')
+            record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            if not record:
+                return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+            if is_permanent:
+                # Eliminación permanente
+                result = collection.delete_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+                mensaje = f"Eliminó permanentemente control de odómetro para maquinaria"
+            else:
+                # Soft delete - marcar como inactivo
+                result = collection.update_one(
+                    {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+                    {'$set': {'activo': False, 'fecha_actualizacion': datetime.now()}}
+                )
+                mensaje = f"Eliminó control de odómetro para maquinaria"
+            
+            if (is_permanent and result.deleted_count == 0) or (not is_permanent and result.matched_count == 0):
+                return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                mensaje = f"{mensaje} {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'eliminar_control_odometro',
+                    'ControlOdometro',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'control_odometro_id': str(record_id),
+                        'datos': serialize_doc(record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de eliminación de control de odómetro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response({"message": "Control de odómetro eliminado exitosamente"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error al eliminar control de odómetro: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, maquinaria_id, record_id):
+        """Método PATCH para reactivar registros desactivados"""
+        if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):
+            return Response({"error": "IDs inválidos"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Verificar permisos de administrador
+            actor_email = request.headers.get('X-User-Email')
+            if not actor_email:
+                return Response({"error": "No autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            user = get_collection(Usuario).find_one({"Email": actor_email})
+            if not user or user.get('Cargo', '').lower() != 'admin':
+                return Response({"error": "Solo los administradores pueden reactivar registros"}, status=status.HTTP_403_FORBIDDEN)
+            
+            collection = get_collection('control_odometro')
+            record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            if not record:
+                return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # Reactivar el registro
+            result = collection.update_one(
+                {'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)},
+                {'$set': {'activo': True, 'fecha_actualizacion': datetime.now()}}
+            )
+            
+            if result.matched_count == 0:
+                return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+            maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
+            
+            # --- REGISTRO DE ACTIVIDAD ---
+            try:
+                mensaje = f"Reactivó control de odómetro para maquinaria {maquinaria_doc.get('placa', maquinaria_id)}"
+                registrar_actividad(
+                    actor_email,
+                    'reactivar_control_odometro',
+                    'ControlOdometro',
+                    mensaje,
+                    {
+                        'maquinaria_id': str(maquinaria_id),
+                        'placa': maquinaria_doc.get('placa'),
+                        'control_odometro_id': str(record_id),
+                        'datos': serialize_doc(record)
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de reactivación de control de odómetro: {str(e)}")
+            # --- FIN REGISTRO DE ACTIVIDAD ---
+            
+            return Response({"message": "Control de odómetro reactivado exitosamente"}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error al reactivar control de odómetro: {str(e)}\n{traceback.format_exc()}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

@@ -65,3 +65,6 @@ class Pronostico:
 
 class Seguimiento:
     collection_name = "seguimiento"
+
+class ControlOdometro:
+    collection_name = "control_odometro"

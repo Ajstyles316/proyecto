@@ -103,6 +103,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
         case 'Impuesto':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${recordId}/`;
           break;
+        case 'Control de Odómetros':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control-odometro/${recordId}/`;
+          break;
         case 'Depreciación':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/depreciaciones/${recordId}/`;
           break;
@@ -197,6 +200,9 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
           break;
         case 'Impuesto':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${recordId}/?permanent=true`;
+          break;
+        case 'Control de Odómetros':
+          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control-odometro/${recordId}/?permanent=true`;
           break;
         case 'Depreciación':
           url = `http://localhost:8000/api/maquinaria/${maquinariaId}/depreciaciones/${recordId}/?permanent=true`;

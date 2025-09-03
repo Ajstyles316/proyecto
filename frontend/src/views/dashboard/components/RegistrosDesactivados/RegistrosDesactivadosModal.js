@@ -132,6 +132,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
         'ITV': 'itv',
         'SOAT': 'soat',
         'Impuesto': 'impuestos',
+        'Control de Odómetros': 'control-odometro',
         'Maquinaria': 'maquinaria',
         'Depreciación': 'depreciaciones'
       };
@@ -217,6 +218,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
         'ITV': 'itv',
         'SOAT': 'soat',
         'Impuesto': 'impuestos',
+        'Control de Odómetros': 'control-odometro',
         'Maquinaria': 'maquinaria',
         'Depreciación': 'depreciaciones'
       };
