@@ -127,8 +127,8 @@ def check_user_permissions(user, required_role=None, required_permission=None, m
                 logger.info(f"check_user_permissions - técnico NO puede {required_permission} maquinaria, returning False")
                 return False
         
-        # Para control, asignación, mantenimiento, seguros, ITV, impuestos, SOAT, el técnico solo puede crear
-        if module in ['HistorialControl', 'ActaAsignacion', 'Mantenimiento', 'Seguro', 'ITV', 'Impuesto', 'SOAT']:
+        # Para control, asignación, mantenimiento, seguros, ITV, impuestos, SOAT, liberación, el técnico solo puede crear
+        if module in ['HistorialControl', 'ActaAsignacion', 'Mantenimiento', 'Seguro', 'ITV', 'Impuesto', 'SOAT', 'Liberacion']:
             if required_permission == 'crear':
                 logger.info(f"check_user_permissions - técnico puede crear {module}, returning True")
                 return True

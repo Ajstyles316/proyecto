@@ -9,10 +9,27 @@ import {
 import ActivosTabla from './ActivosTabla';
 import ActivosDashboard from './ActivosDashboard';
 import { fetchActivos } from './utils/api';
-import { useCanView } from 'src/components/hooks';
+import { useCanView, useIsPermissionDenied } from 'src/components/hooks';
+import BlockIcon from '@mui/icons-material/Block';
 
 const ActivosMain = () => {
   const canView = useCanView('Activos');
+  const isPermissionDenied = useIsPermissionDenied('Activos');
+  
+  // Si el permiso está denegado, mostrar mensaje de acceso denegado
+  if (isPermissionDenied) {
+    return (
+      <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
+        <BlockIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+        <Typography variant="h5" color="error" gutterBottom>
+          Acceso Denegado
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          No tienes permisos para acceder al módulo de Activos.
+        </Typography>
+      </Paper>
+    );
+  }
   
   // Si no tiene permisos para ver, no mostrar nada
   if (!canView) {

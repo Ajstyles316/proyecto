@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 // Helper functions para procesamiento de datos
 const MODULO_MAP = {
   'ActaAsignacion': 'Asignación',
-  'HistorialControl': 'Control',
+  'HistorialControl': 'Control y Seguimiento',
   'ControlOdometro': 'Control de Odómetros',
   'SOAT': 'SOAT',
   'ITV': 'ITV',
@@ -72,7 +72,6 @@ const formatAccion = (accion) => {
     'reactivar_pronostico': 'Reactivar pronóstico',
     'reactivar_liberacion': 'Reactivar liberación',
     'reactivar_control_odometro': 'Reactivar control odómetro',
-    'desactivar_liberacion': 'Desactivar liberación',
     'desactivar_maquinaria': 'Desactivar maquinaria',
     'desactivar_depreciacion': 'Desactivar depreciación',
     'desactivar_itv': 'Desactivar ITV',
@@ -147,7 +146,7 @@ const calcularTiempoConexion = (seguimientoData, row) => {
   return '';
 };
 
-const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios }) => {
+const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios, maquinarias }) => {
   const handleExport = async () => {
   try {
     // Importaciones dinámicas correctas (ESM)
@@ -184,8 +183,75 @@ const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios 
     doc.line(margin, 44, pageWidth - margin, 44);
 
     // Columnas y filas
-    const tableColumn = ["Fecha/Hora", "Usuario", "Acción", "Módulo", "Mensaje"];
+    const tableColumn = ["Fecha - Hora", "Usuario", "Acción", "Módulo", "Mensaje"];
     const tableRows = [];
+
+    // Función para procesar mensaje y reemplazar IDs de maquinaria con placas
+    const procesarMensaje = (mensaje) => {
+      if (!mensaje || typeof mensaje !== 'string') return mensaje;
+      
+      let mensajeProcesado = mensaje;
+      
+      // Reemplazar "historial_control" con "Control y Seguimiento"
+      mensajeProcesado = mensajeProcesado.replace(/historial_control/g, 'Control y Seguimiento');
+      
+      // Buscar IDs de maquinaria en el mensaje (patrón: 24 caracteres hexadecimales)
+      const idPattern = /[a-f0-9]{24}/g;
+      
+      const idsEncontrados = mensajeProcesado.match(idPattern);
+      if (idsEncontrados) {
+        idsEncontrados.forEach(id => {
+          // Buscar la maquinaria correspondiente
+          const maquinaria = maquinarias.find(m => 
+            m._id === id || m._id?.$oid === id || m.id === id
+          );
+          
+          if (maquinaria && maquinaria.placa) {
+            // Reemplazar el ID con la placa
+            mensajeProcesado = mensajeProcesado.replace(id, maquinaria.placa);
+          }
+        });
+      }
+      
+      return mensajeProcesado;
+    };
+
+    // Función para procesar objeto de mensaje y reemplazar IDs con placas
+    const procesarMensajeObjeto = (mensajeObj) => {
+      if (!mensajeObj || typeof mensajeObj !== 'object') return mensajeObj;
+      
+      const mensajeProcesado = {};
+      
+      Object.entries(mensajeObj).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          // Reemplazar "historial_control" con "Control y Seguimiento"
+          let valorProcesado = value.replace(/historial_control/g, 'Control y Seguimiento');
+          
+          // Buscar IDs de maquinaria en el valor string
+          const idPattern = /[a-f0-9]{24}/g;
+          
+          const idsEncontrados = valorProcesado.match(idPattern);
+          if (idsEncontrados) {
+            idsEncontrados.forEach(id => {
+              // Buscar la maquinaria correspondiente
+              const maquinaria = maquinarias.find(m => 
+                m._id === id || m._id?.$oid === id || m.id === id
+              );
+              
+              if (maquinaria && maquinaria.placa) {
+                // Reemplazar el ID con la placa
+                valorProcesado = valorProcesado.replace(id, maquinaria.placa);
+              }
+            });
+          }
+          mensajeProcesado[key] = valorProcesado;
+        } else {
+          mensajeProcesado[key] = value;
+        }
+      });
+      
+      return mensajeProcesado;
+    };
 
     filteredData.forEach(row => {
       const user = seguimientoUsuarios.find(u => u.email === row.usuario_email);
@@ -193,7 +259,9 @@ const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios 
 
       let message = '';
       if (typeof row.mensaje === 'object' && row.mensaje !== null) {
-        message = Object.entries(row.mensaje)
+        // Procesar el objeto de mensaje para reemplazar IDs con placas
+        const mensajeProcesado = procesarMensajeObjeto(row.mensaje);
+        message = Object.entries(mensajeProcesado)
           .map(([k, v]) => `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`)
           .join(' | ');
       } else {
@@ -204,6 +272,9 @@ const ExportToPDFButton = ({ seguimientoData, filteredData, seguimientoUsuarios 
         const tiempoConexion = calcularTiempoConexion(seguimientoData, row);
         if (tiempoConexion) message += ` | Tiempo de conexión: ${tiempoConexion}`;
       }
+
+      // Procesar mensaje final para reemplazar IDs con placas
+      message = procesarMensaje(message);
 
       tableRows.push([
         row.fecha_hora ? new Date(row.fecha_hora).toLocaleString('es-ES') : '-',
@@ -315,6 +386,11 @@ ExportToPDFButton.propTypes = {
   seguimientoUsuarios: PropTypes.arrayOf(PropTypes.shape({
     email: PropTypes.string.isRequired,
     nombre: PropTypes.string.isRequired
+  })).isRequired,
+  
+  maquinarias: PropTypes.arrayOf(PropTypes.shape({
+    _id: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+    placa: PropTypes.string
   })).isRequired
 };
 

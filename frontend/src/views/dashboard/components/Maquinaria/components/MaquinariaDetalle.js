@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { Box, Paper, Button, Avatar, Typography, Grid, TextField, MenuItem } from '@mui/material';
-import { SECTIONS } from '../utils/constants';
+import { SECTIONS, getFilteredSections } from '../utils/constants';
 import ControlMain from '../../Control/ControlMain';
 import ControlOdometroMain from '../../ControlOdometro/ControlOdometroMain';
 import AsignacionMain from '../../Asignacion/AsignacionMain';
@@ -40,7 +40,9 @@ const MaquinariaDetalle = ({
   const canDeleteMaquinaria = useCanDeleteMaquinaria();
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   const isAdmin = user?.Cargo?.toLowerCase() === 'admin';
+  const isTecnico = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const canEditAuthFields = isEncargado || isAdmin;
+  const shouldBlockUnidadAndImage = isTecnico || isAdmin;
 
   const renderSectionForm = () => {
     switch (activeSection) {
@@ -68,7 +70,7 @@ const MaquinariaDetalle = ({
                       accept="image/*" 
                       onChange={handleFileChange} 
                       style={{ marginTop: '8px' }}
-                      disabled={isReadOnly}
+                      disabled={isReadOnly || shouldBlockUnidadAndImage}
                     />
                     {sectionForm.Maquinaria?.imagen && (
                       <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
@@ -105,7 +107,7 @@ const MaquinariaDetalle = ({
                     size="small"
                     error={!!newMaquinariaErrors[field.name]}
                     helperText={newMaquinariaErrors[field.name] || ''}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || shouldBlockUnidadAndImage}
                   >
                     <MenuItem value="">Seleccione una unidad</MenuItem>
                     {unidadesUnicas.map((unidad) => (
@@ -207,7 +209,7 @@ const MaquinariaDetalle = ({
           sx={{ width: 200, height: 200, mb: 2, boxShadow: 1, borderRadius: 1 }}
         />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
-          {SECTIONS.map(sec => (
+          {getFilteredSections(user).map(sec => (
             <Button
               key={sec.key}
               variant={activeSection === sec.key ? 'contained' : 'outlined'}

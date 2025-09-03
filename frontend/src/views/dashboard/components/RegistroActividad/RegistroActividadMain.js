@@ -29,7 +29,7 @@ const MODULOS_SEGUIMIENTO = [
   'Depreciación',
   'Pronóstico',
   'Asignación',
-  'Control',
+  'Control y Seguimiento',
   'ControlOdometro',
   'SOAT',
   'ITV',
@@ -41,7 +41,7 @@ const MODULOS_SEGUIMIENTO = [
 // Mapeo específico para módulos que vienen del backend
 const MODULO_MAP = {
   'ActaAsignacion': 'Asignación',
-  'HistorialControl': 'Control',
+  'HistorialControl': 'Control y Seguimiento',
   'ControlOdometro': 'Control de Odómetros',
   'SOAT': 'SOAT',
   'ITV': 'ITV',
@@ -53,7 +53,8 @@ const MODULO_MAP = {
   'Autenticacion': 'Autenticación',
   'Usuarios': 'Usuarios',
   'Pronostico': 'Pronóstico',
-  'Reportes': 'Reportes'
+  'Reportes': 'Reportes',
+  'Liberacion': 'Liberación'
 };
 
 // Función para normalizar strings (quitar acentos y convertir a minúsculas)
@@ -405,11 +406,15 @@ const RegistroActividadMain = () => {
   const procesarMensaje = (mensaje) => {
     if (!mensaje || typeof mensaje !== 'string') return mensaje;
     
-    // Buscar IDs de maquinaria en el mensaje (patrón: 24 caracteres hexadecimales)
-    const idPattern = /[a-f0-9]{24}/g;
     let mensajeProcesado = mensaje;
     
-    const idsEncontrados = mensaje.match(idPattern);
+    // Reemplazar "historial_control" con "Control y Seguimiento"
+    mensajeProcesado = mensajeProcesado.replace(/historial_control/g, 'Control y Seguimiento');
+    
+    // Buscar IDs de maquinaria en el mensaje (patrón: 24 caracteres hexadecimales)
+    const idPattern = /[a-f0-9]{24}/g;
+    
+    const idsEncontrados = mensajeProcesado.match(idPattern);
     if (idsEncontrados) {
       idsEncontrados.forEach(id => {
         // Buscar la maquinaria correspondiente
@@ -423,6 +428,43 @@ const RegistroActividadMain = () => {
         }
       });
     }
+    
+    return mensajeProcesado;
+  };
+
+  // Función para procesar objeto de mensaje y reemplazar IDs con placas
+  const procesarMensajeObjeto = (mensajeObj) => {
+    if (!mensajeObj || typeof mensajeObj !== 'object') return mensajeObj;
+    
+    const mensajeProcesado = {};
+    
+    Object.entries(mensajeObj).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        // Reemplazar "historial_control" con "Control y Seguimiento"
+        let valorProcesado = value.replace(/historial_control/g, 'Control y Seguimiento');
+        
+        // Buscar IDs de maquinaria en el valor string
+        const idPattern = /[a-f0-9]{24}/g;
+        
+        const idsEncontrados = valorProcesado.match(idPattern);
+        if (idsEncontrados) {
+          idsEncontrados.forEach(id => {
+            // Buscar la maquinaria correspondiente
+            const maquinaria = maquinarias.find(m => 
+              m._id === id || m._id?.$oid === id || m.id === id
+            );
+            
+            if (maquinaria && maquinaria.placa) {
+              // Reemplazar el ID con la placa
+              valorProcesado = valorProcesado.replace(id, maquinaria.placa);
+            }
+          });
+        }
+        mensajeProcesado[key] = valorProcesado;
+      } else {
+        mensajeProcesado[key] = value;
+      }
+    });
     
     return mensajeProcesado;
   };
@@ -458,6 +500,7 @@ const RegistroActividadMain = () => {
       borderRadius: 3, 
       boxShadow: 3, 
       height: '100%', 
+      minHeight: '600px',
       display: 'flex', 
       flexDirection: 'column',
       transition: 'all 0.3s ease',
@@ -475,6 +518,7 @@ const RegistroActividadMain = () => {
           seguimientoData={seguimientoData}
           filteredData={filteredData}
           seguimientoUsuarios={seguimientoUsuarios}
+          maquinarias={maquinarias}
         />
       </Box>
 
@@ -581,7 +625,7 @@ const RegistroActividadMain = () => {
       </Box>
 
       {/* Tabla de auditoría */}
-      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {loading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={150}>
             <CircularProgress color="primary" thickness={4} size={36} />
@@ -592,7 +636,7 @@ const RegistroActividadMain = () => {
           <Alert severity="info" sx={{ fontSize: '0.875rem' }}>No hay registros de actividad para los filtros seleccionados.</Alert>
         ) : (
           <>
-            <Box sx={{ overflow: 'auto', flex: 1 }}>
+            <Box sx={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
               <Table size="small" sx={{ 
                 minWidth: 600,
                 '& .MuiTableCell-root': {
@@ -611,7 +655,7 @@ const RegistroActividadMain = () => {
               }}>
                 <TableHead sx={{ background: theme => theme.palette.grey[100] }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Fecha/Hora</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Fecha - Hora</TableCell>
                     <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Usuario</TableCell>
                     <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Acción</TableCell>
                     <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Módulo</TableCell>
@@ -652,11 +696,14 @@ const RegistroActividadMain = () => {
                           {(() => {
                             let mensaje = '';
                             if (typeof row.mensaje === 'object' && row.mensaje !== null) {
-                              if (row.accion === 'cambio_permisos' && row.mensaje.usuario_afectado_email) {
-                                mensaje = `Usuario: ${row.mensaje.usuario_afectado_nombre || ''} (${row.mensaje.usuario_afectado_email || ''})\nCargo: ${row.mensaje.usuario_afectado_cargo || ''}\nUnidad: ${row.mensaje.usuario_afectado_unidad || ''}`;
+                              // Procesar el objeto de mensaje para reemplazar IDs con placas
+                              const mensajeProcesado = procesarMensajeObjeto(row.mensaje);
+                              
+                              if (row.accion === 'cambio_permisos' && mensajeProcesado.usuario_afectado_email) {
+                                mensaje = `Usuario: ${mensajeProcesado.usuario_afectado_nombre || ''} (${mensajeProcesado.usuario_afectado_email || ''})\nCargo: ${mensajeProcesado.usuario_afectado_cargo || ''}\nUnidad: ${mensajeProcesado.usuario_afectado_unidad || ''}`;
                               } else {
-                                mensaje = Object.entries(row.mensaje).map(([k, v]) => 
-                                  `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`).join('\n');
+                                mensaje = Object.entries(mensajeProcesado).map(([k, v]) => 
+                                  `${capitalizeWords(k)}: ${capitalizeWords(String(v))}`).join(' | ');
                               }
                             } else {
                               mensaje = capitalizeWords(row.mensaje) || '-';
@@ -665,7 +712,7 @@ const RegistroActividadMain = () => {
                             if (row.accion === 'login' || row.accion === 'logout') {
                               const tiempoConexion = calcularTiempoConexion(row);
                               if (tiempoConexion) {
-                                mensaje += `\nTiempo de conexión: ${tiempoConexion}`;
+                                mensaje += ` | Tiempo de conexión: ${tiempoConexion}`;
                               }
                             }
                             
