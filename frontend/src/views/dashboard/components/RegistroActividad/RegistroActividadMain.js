@@ -100,6 +100,7 @@ const getAccionChip = (accion) => {
     'editar_itv': 'info',
     'crear_impuesto': 'success',
     'editar_impuesto': 'info',
+    'editar_liberacion': 'info',
     'crear_liberacion': 'success',
     'crear_control_odometro': 'success',
     // Reactivar actions - warning color
@@ -127,7 +128,7 @@ const getAccionChip = (accion) => {
     'desactivar_control_odometro': 'error',
   };
   
-  // Special handling for "eliminar permanentemente" actions to make them more intense red
+  // Special handling for "eliminar permanentemente" actions to make them solid red
   if (accion.includes('eliminar_permanentemente') || 
       accion.includes('eliminar permanente') || 
       accion.includes('eliminar permanentemente') ||
@@ -156,6 +157,28 @@ const getAccionChip = (accion) => {
           height: 20,
           backgroundColor: '#d32f2f',
           color: 'white',
+          '& .MuiChip-label': {
+            px: 1
+          }
+        }}
+      />
+    );
+  }
+  
+  // Special handling for regular "eliminar" actions to make them error color but disabled style
+  if (accion.includes('eliminar_') && !accion.includes('eliminar_permanentemente')) {
+    return (
+      <Chip
+        label={formatAccion(accion)}
+        color="error"
+        size="small"
+        variant="outlined"
+        sx={{ 
+          fontSize: '0.7rem',
+          height: 20,
+          borderColor: '#d32f2f',
+          color: '#d32f2f',
+          opacity: 0.7,
           '& .MuiChip-label': {
             px: 1
           }
@@ -210,6 +233,7 @@ const formatAccion = (accion) => {
     'editar_perfil': 'Editar perfil',
     'crear_itv': 'Crear ITV',
     'editar_itv': 'Editar ITV',
+    'editar_liberacion': 'Editar liberación',
     'crear_impuesto': 'Crear impuesto',
     'editar_impuesto': 'Editar impuesto',
     'crear_liberacion': 'Crear liberación',

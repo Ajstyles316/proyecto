@@ -23,6 +23,9 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
     importe: '',
     archivo_pdf: null,
     nombre_archivo: '',
+    registrado_por: '',
+    validado_por: '',
+    autorizado_por: '',
   });
   const [errors, setErrors] = useState({});
   const isReadOnly = useIsReadOnly();
@@ -41,6 +44,9 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
         importe: initialData.importe || '',
         archivo_pdf: initialData.archivo_pdf || null,
         nombre_archivo: initialData.nombre_archivo || '',
+        registrado_por: initialData.registrado_por || '',
+        validado_por: initialData.validado_por || '',
+        autorizado_por: initialData.autorizado_por || '',
       });
     }
   }, [initialData]);

@@ -491,8 +491,26 @@ class MaquinariaDetailView(APIView):
                 validated_data['imagen'] = request.data['imagen']
                 logger.info(f"Imagen incluida en la actualización: {len(request.data['imagen'])} caracteres")
 
-            # Agregar o actualizar el campo registrado por con el nombre del usuario
-            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            # Preservar registrado_por del registro original
+            validated_data['registrado_por'] = existing_maquinaria.get('registrado_por')
+            
+            # Manejar campos de validación y autorización
+            if cargo == 'encargado':
+                # Solo el encargado puede validar
+                if data.get('validado_por') is not None:
+                    validated_data['validado_por'] = data.get('validado_por')
+                else:
+                    validated_data['validado_por'] = existing_maquinaria.get('validado_por')
+                
+                # Solo el encargado puede autorizar
+                if data.get('autorizado_por') is not None:
+                    validated_data['autorizado_por'] = data.get('autorizado_por')
+                else:
+                    validated_data['autorizado_por'] = existing_maquinaria.get('autorizado_por')
+            else:
+                # Mantener valores existentes para otros roles
+                validated_data['validado_por'] = existing_maquinaria.get('validado_por')
+                validated_data['autorizado_por'] = existing_maquinaria.get('autorizado_por')
 
             # Actualizar en MongoDB
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
@@ -729,6 +747,12 @@ class BaseSectionAPIView(APIView):
             validated_data['fecha_actualizacion'] = datetime.now()
             # Por defecto, los registros son activos
             validated_data['activo'] = True
+            
+            # Agregar campos de auditoría
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
+            
             collection = get_collection(self.collection_class)
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
@@ -770,6 +794,28 @@ class BaseSectionDetailAPIView(APIView):
             validated_data = serializer.validated_data
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
+            
+            # Preservar registrado_por del registro original
+            validated_data['registrado_por'] = existing_record.get('registrado_por')
+            
+            # Manejar campos de validación y autorización
+            if cargo == 'encargado':
+                # Solo el encargado puede validar
+                if data.get('validado_por') is not None:
+                    validated_data['validado_por'] = data.get('validado_por')
+                else:
+                    validated_data['validado_por'] = existing_record.get('validado_por')
+                
+                # Solo el encargado puede autorizar
+                if data.get('autorizado_por') is not None:
+                    validated_data['autorizado_por'] = data.get('autorizado_por')
+                else:
+                    validated_data['autorizado_por'] = existing_record.get('autorizado_por')
+            else:
+                # Mantener valores existentes para otros roles
+                validated_data['validado_por'] = existing_record.get('validado_por')
+                validated_data['autorizado_por'] = existing_record.get('autorizado_por')
+            
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             collection.update_one({'_id': ObjectId(record_id)}, {'$set': validated_data})
             updated_record = collection.find_one({'_id': ObjectId(record_id)}, self.projection or None)
@@ -945,10 +991,12 @@ class LiberacionListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Datos convertidos: {validated_data}")
@@ -1256,6 +1304,13 @@ class HistorialControlListView(BaseSectionAPIView):
             validated_data['fecha_actualizacion'] = datetime.now()
             # Por defecto, los registros son activos
             validated_data['activo'] = True
+            
+            # Agregar campos de auditoría
+            actor_email = request.headers.get('X-User-Email')
+            user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
+            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             # Convertir fechas a datetime
             validated_data = self.convert_date_to_datetime(validated_data)
@@ -1524,10 +1579,12 @@ class ActaAsignacionListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Datos convertidos: {validated_data}")
@@ -1800,10 +1857,12 @@ class MantenimientoListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Mantenimiento POST - Datos convertidos: {validated_data}")
@@ -2054,10 +2113,12 @@ class SeguroListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Seguro POST - Datos convertidos: {validated_data}")
@@ -2173,10 +2234,30 @@ class SeguroDetailView(BaseSectionDetailAPIView):
             validated_data['maquinaria'] = ObjectId(maquinaria_id)
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar o actualizar el campo registrado_por con el nombre del usuario
+            # Preservar registrado_por del registro original
+            validated_data['registrado_por'] = existing_record.get('registrado_por')
+            
+            # Manejar campos de validación y autorización
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
-            validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            cargo = user.get('Cargo', '').lower() if user else ''
+            
+            if cargo == 'encargado':
+                # Solo el encargado puede validar
+                if data.get('validado_por') is not None:
+                    validated_data['validado_por'] = data.get('validado_por')
+                else:
+                    validated_data['validado_por'] = existing_record.get('validado_por')
+                
+                # Solo el encargado puede autorizar
+                if data.get('autorizado_por') is not None:
+                    validated_data['autorizado_por'] = data.get('autorizado_por')
+                else:
+                    validated_data['autorizado_por'] = existing_record.get('autorizado_por')
+            else:
+                # Mantener valores existentes para otros roles
+                validated_data['validado_por'] = existing_record.get('validado_por')
+                validated_data['autorizado_por'] = existing_record.get('autorizado_por')
 
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             logger.info(f"Seguro PUT - Datos finales para MongoDB: {validated_data}")
@@ -2341,10 +2422,12 @@ class ITVListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             collection = get_collection('itv')
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
@@ -2622,10 +2705,12 @@ class SOATListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"SOAT POST - Datos convertidos: {validated_data}")
@@ -2905,10 +2990,12 @@ class ImpuestoListView(BaseSectionAPIView):
             validated_data['fecha_creacion'] = datetime.now()
             validated_data['fecha_actualizacion'] = datetime.now()
             
-            # Agregar el campo registrado_por con el nombre del usuario
+            # Agregar campos de auditoría
             actor_email = request.headers.get('X-User-Email')
             user = get_collection(Usuario).find_one({"Email": actor_email}) if actor_email else None
             validated_data['registrado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+            validated_data['validado_por'] = None  # Se asignará cuando se valide
+            validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
 
             collection = get_collection('impuesto')
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
@@ -5380,8 +5467,14 @@ class ControlOdometroDetailView(BaseSectionDetailAPIView):
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Datos preparados: {data}")
 
+            # Obtener el registro actual para preservar campos de auditoría
+            collection = get_collection('control_odometro')
+            current_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
+            if not current_record:
+                return Response({"error": "Control de odómetro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
             # Validar con el serializer
-            serializer = self.serializer_class(data=data)
+            serializer = self.serializer_class(current_record, data=data, partial=True)
             if not serializer.is_valid():
                 logger.error(f"Errores de validación: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -5396,22 +5489,19 @@ class ControlOdometroDetailView(BaseSectionDetailAPIView):
             user = get_collection(Usuario).find_one({"Email": actor_email})
             user_cargo = user.get('Cargo', '').lower() if user else ''
             
-            # Obtener el registro actual para preservar campos de auditoría
-            current_record = collection.find_one({'_id': ObjectId(record_id), 'maquinaria': ObjectId(maquinaria_id)})
-            
             if current_record:
                 # Preservar registrado_por del registro original
                 validated_data['registrado_por'] = current_record.get('registrado_por')
                 
                 # Solo el encargado puede validar
                 if user_cargo == 'encargado' and data.get('validado_por') is not None:
-                    validated_data['validado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+                    validated_data['validado_por'] = data.get('validado_por')
                 else:
                     validated_data['validado_por'] = current_record.get('validado_por')
                 
                 # Solo el encargado puede autorizar
                 if user_cargo == 'encargado' and data.get('autorizado_por') is not None:
-                    validated_data['autorizado_por'] = user['Nombre'] if user and 'Nombre' in user else actor_email
+                    validated_data['autorizado_por'] = data.get('autorizado_por')
                 else:
                     validated_data['autorizado_por'] = current_record.get('autorizado_por')
 

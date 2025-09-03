@@ -14,6 +14,9 @@ class HistorialControlSerializer(serializers.Serializer):
     operador = serializers.CharField(max_length=100, required=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -47,6 +50,9 @@ class ActaAsignacionSerializer(serializers.Serializer):
     encargado = serializers.CharField(max_length=100, required=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -64,6 +70,9 @@ class LiberacionSerializer(serializers.Serializer):
     encargado = serializers.CharField(max_length=100, required=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -82,6 +91,9 @@ class MantenimientoSerializer(serializers.Serializer):
     tecnico_responsable = serializers.CharField(max_length=200, required=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -103,6 +115,9 @@ class SeguroSerializer(serializers.Serializer):
     tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -148,6 +163,9 @@ class ITVSerializer(serializers.Serializer):
     tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -177,6 +195,9 @@ class SOATSerializer(serializers.Serializer):
     tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -206,6 +227,9 @@ class ImpuestoSerializer(serializers.Serializer):
     tamaño_archivo = serializers.IntegerField(required=False, allow_null=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
@@ -245,6 +269,9 @@ class MaquinariaSerializer(serializers.Serializer):
     nro_chasis = serializers.CharField(max_length=50, allow_blank=True, required=False)
     fecha_registro = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
     imagen = serializers.CharField(allow_blank=True, required=False)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     
     def validate_fecha_registro(self, value):
         if isinstance(value, str):
@@ -274,9 +301,9 @@ class ControlOdometroSerializer(serializers.Serializer):
     )
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
-    registrado_por = serializers.CharField(read_only=True)
-    validado_por = serializers.CharField(read_only=True)
-    autorizado_por = serializers.CharField(read_only=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    validado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate_maquinaria(self, value):
         try:
