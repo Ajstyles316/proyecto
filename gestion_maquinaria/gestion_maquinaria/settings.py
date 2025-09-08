@@ -66,10 +66,9 @@ ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
-RECAPTCHA_SECRET_KEY = "6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9" 
 MONGO_CLIENT = pymongo.MongoClient(os.environ.get('MONGO_URI'))
 MONGO_DB = MONGO_CLIENT[os.environ.get('MONGO_DB_NAME', 'activos')]
-MAQUINARIA_COLLECTION = MONGO_DB["maquinaria"]# Reemplaza con tu clave de Google reCAPTCHA
+MAQUINARIA_COLLECTION = MONGO_DB["maquinaria"]
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

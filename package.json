@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "@mui/x-data-grid": "^8.5.3",
-    "axios": "^1.9.0",
-    "react-google-recaptcha": "^3.1.0"
+    "axios": "^1.9.0"
   }
 }

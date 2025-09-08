@@ -14,11 +14,7 @@ import {
 import { styled } from "@mui/material/styles";
 import { Visibility, VisibilityOff, HelpOutline } from "@mui/icons-material";
 import { Link } from "react-router-dom";
-import ReCAPTCHA from "react-google-recaptcha";
-
 import logo from "../../../src/assets/images/logos/logo_login.png";
-
-const SITE_KEY = "6LeCz1orAAAAAGxMyOuZp9h4JXox2JwBCM4fgunu";
 
 const EMAIL_REGEX = /^[\w.-]+@(gmail\.com|enc\.cof\.gob\.bo|tec\.cof\.gob\.bo)$/i;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
@@ -57,12 +53,10 @@ const Register = () => {
     Email: "",
     Password: "",
     confirmPassword: "",
-    captcha: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(null);
   const [opciones, setOpciones] = useState({ cargos: [], unidades: [] });
   const [loadingOpciones, setLoadingOpciones] = useState(true);
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -98,10 +92,6 @@ const Register = () => {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const onCaptchaChange = (token) => {
-    setCaptchaToken(token);
-    setErrors((prev) => ({ ...prev, captcha: "" }));
-  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -118,7 +108,6 @@ const Register = () => {
         "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!";
     if (formData.Password !== formData.confirmPassword)
       newErrors.confirmPassword = "Las contraseñas no coinciden";
-    if (!captchaToken) newErrors.captcha = "Por favor, completa el CAPTCHA";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -137,7 +126,6 @@ const Register = () => {
         Email: formData.Email,
         Password: formData.Password,
         confirmPassword: formData.confirmPassword,
-        captchaToken,
       };
       const response = await fetch("http://localhost:8000/registro/", {
         method: "POST",
@@ -152,6 +140,7 @@ const Register = () => {
         return;
       }
       // Paso 2: mostrar formulario para código
+      console.log('Cambiando a paso de código. Email:', formData.Email);
       setStep('codigo');
     } catch (error) {
       alert("Ocurrió un error al iniciar el registro");
@@ -168,14 +157,20 @@ const Register = () => {
       setVerificationError('Ingresa el código de 6 dígitos enviado a tu correo');
       return;
     }
+    if (!formData.Email) {
+      setVerificationError('Email no encontrado. Por favor, vuelve al formulario anterior.');
+      return;
+    }
     setVerifyLoading(true);
     try {
+      console.log('Verificando código para:', formData.Email, 'Código:', codigo);
       const response = await fetch("http://localhost:8000/registro/verificar/", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Email: formData.Email, codigo }),
       });
       const data = await response.json().catch(() => ({}));
+      console.log('Respuesta del servidor:', response.status, data);
       if (!response.ok) {
         setVerificationError(data?.error || 'Código inválido');
         return;
@@ -183,11 +178,11 @@ const Register = () => {
       alert('Registro verificado correctamente');
       // limpiar y redirigir a login
       setFormData({ Nombre: '', Cargo: '', Unidad: '', Email: '', Password: '', confirmPassword: '' });
-      setCaptchaToken(null);
       setCodigo('');
       setStep('form');
       window.location.href = '/login/';
     } catch (err) {
+      console.error('Error en verificación:', err);
       setVerificationError('Error al verificar el código');
     } finally {
       setVerifyLoading(false);
@@ -374,6 +369,9 @@ const Register = () => {
                 error={!!errors.Email}
                 helperText={errors.Email}
                 disabled={step === 'codigo'}
+                InputProps={{
+                  style: step === 'codigo' ? { backgroundColor: '#f5f5f5' } : {}
+                }}
               />
               <CustomTooltip title={helperTexts.Email} placement="right">
                 <IconButton size="small" sx={{ ml: 1 }}>
@@ -444,19 +442,6 @@ const Register = () => {
 
             {step === 'form' && (
               <>
-                <ReCAPTCHA
-                  sitekey={SITE_KEY}
-                  onChange={onCaptchaChange}
-                  hl="es"
-                  theme="light"
-                  size="normal"
-                  position="center" 
-                />
-                {errors.captcha && (
-                  <Typography color="error" variant="body2" mt={1}>
-                    {errors.captcha}
-                  </Typography>
-                )}
               </>
             )}
 

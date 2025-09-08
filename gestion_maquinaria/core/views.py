@@ -3487,7 +3487,6 @@ class DepreciacionesDetailView(APIView):
 
 # --- Views de Autenticación y Dashboard (ya son APIView) ---
 
-RECAPTCHA_SECRET_KEY = '6LeCz1orAAAAAANrHmd4oJFnaoSyPglm2I6bb4Z9'
 class RegistroView(APIView):
     serializer_class = RegistroSerializer
 
@@ -3496,27 +3495,12 @@ class RegistroView(APIView):
             data = request.data
             print("Datos recibidos:", data) 
 
-            captcha_token = data.get('captchaToken')
-            if not captcha_token:
-                return Response({'error': 'El CAPTCHA es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
-
-            verify_url = 'https://www.google.com/recaptcha/api/siteverify' 
-            response = requests.post(verify_url, data={
-                'secret': RECAPTCHA_SECRET_KEY,
-                'response': captcha_token
-            })
-            result = response.json()
-
-            if not result.get('success'):
-                return Response({'error': 'Fallo en la verificación del CAPTCHA'}, status=status.HTTP_400_BAD_REQUEST)
-
             serializer = self.serializer_class(data=data)
             if not serializer.is_valid():
                 print("Errores del serializador:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             data.pop("confirmPassword", None)
-            data.pop("captchaToken", None)
 
             data["Password"] = bcrypt.hashpw(
                 data["Password"].encode("utf-8"),
@@ -3588,22 +3572,30 @@ class VerificarCodigoRegistroView(APIView):
 
     def post(self, request):
         try:
+            print("Datos recibidos en verificación:", request.data)
             serializer = VerificarCodigoSerializer(data=request.data)
             if not serializer.is_valid():
+                print("Errores del serializer:", serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             email = serializer.validated_data['Email']
             codigo = serializer.validated_data['codigo']
+            print(f"Verificando código {codigo} para email {email}")
 
             verificaciones = get_collection(VerificacionRegistro)
             solicitud = verificaciones.find_one({"Email": email})
+            print(f"Solicitud encontrada: {solicitud is not None}")
             if not solicitud:
+                print(f"No se encontró solicitud para email: {email}")
                 return Response({"error": "No hay una solicitud de registro para este correo"}, status=status.HTTP_404_NOT_FOUND)
 
+            print(f"Código en BD: {solicitud.get('codigo')}, Código recibido: {codigo}")
             if solicitud.get('expira_en') and datetime.now() > solicitud['expira_en']:
+                print("Código expirado")
                 return Response({"error": "El código ha expirado"}, status=status.HTTP_400_BAD_REQUEST)
 
             if solicitud.get('codigo') != codigo:
+                print("Código incorrecto")
                 verificaciones.update_one({"Email": email}, {"$inc": {"intentos": 1}})
                 return Response({"error": "Código incorrecto"}, status=status.HTTP_400_BAD_REQUEST)
 

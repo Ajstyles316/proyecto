@@ -40,22 +40,8 @@ const Maquinaria = mongoose.model('Maquinaria', new mongoose.Schema({
 
 // Registro
 app.post('/api/register', async (req, res) => {
-  const { captchaValue, ...data } = req.body;
-
-  // Validar captcha (simulado)
-  const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
-    params: {
-      secret: '6Lcs9ysrAAAAAMmuLFBZVQxquWieQ6lkcU35Cko5',
-      response: captchaValue,
-    },
-  });
-
-  if (!response.data.success) {
-    return res.status(400).json({ error: 'Captcha inválido' });
-  }
-
   try {
-    const newUser = new Usuario(data);
+    const newUser = new Usuario(req.body);
     await newUser.save();
     res.status(201).json({ message: 'Usuario registrado' });
   } catch (error) {
