@@ -13,10 +13,17 @@ const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
     
     if (!fileData || !fileData.archivo_pdf) {
       console.warn('No hay datos de archivo para descargar', { fileData });
+      alert('No hay datos de archivo disponibles para descargar');
       return;
     }
 
     try {
+      // Verificar que los datos no estén vacíos
+      if (fileData.archivo_pdf.trim() === '') {
+        alert('El archivo está vacío');
+        return;
+      }
+
       const byteCharacters = atob(fileData.archivo_pdf);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -28,16 +35,19 @@ const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
       
       const link = document.createElement('a');
       link.href = url;
-      link.download = fileName;
+      link.download = fileName || 'archivo.pdf';
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       // Limpiar la URL después de un tiempo
       setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      
+      console.log('✅ Archivo descargado exitosamente:', fileName);
     } catch (error) {
       console.error('Error descargando archivo:', error);
-      alert('Error al descargar el archivo');
+      alert(`Error al descargar el archivo: ${error.message}`);
     }
   };
 

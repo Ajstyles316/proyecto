@@ -67,11 +67,21 @@ function getFormattedDateTime() {
 }
 
 function addSectionTitle(doc, title, y, pageWidth) {
+  // Fondo para el título de sección
+  const titleWidth = doc.getTextWidth(title) + 20;
+  const titleX = (pageWidth - titleWidth) / 2;
+  
+  // Fondo azul para el título
+  doc.setFillColor(30, 77, 183);
+  doc.roundedRect(titleX, y - 3, titleWidth, 10, 2, 2, 'F');
+  
+  // Texto del título
   doc.setFontSize(12);
-  doc.setTextColor(30, 77, 183);
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, pageWidth / 2, y, { align: 'center' });
-  return y + 7;
+  doc.text(title, pageWidth / 2, y + 2, { align: 'center' });
+  
+  return y + 12;
 }
 
 function addMainHeader(doc, pageWidth) {
@@ -144,25 +154,39 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     .filter(f => f.key !== 'gestion') 
     .map(f => [f.label, maquinaria[f.key] || 'No se encontraron datos']);
     
-  autoTable(doc, {
-    startY: y,
-    head: [['Campo', 'Valor']],
-    body: maqRows,
-    styles: { fontSize: 9, cellPadding: 1.5 },
-    headStyles: { 
-      fillColor: [30, 77, 183], 
-      textColor: 255,
-      fontSize: 10
-    },
-    bodyStyles: { 
-      textColor: 33,
-      fontSize: 9
-    },
-    margin: { left: 30, right: 30 },
-    tableLineColor: [30, 77, 183],
-    tableLineWidth: 0.2,
-    pageBreak: 'avoid',
-  });
+    autoTable(doc, {
+      startY: y,
+      head: [['Campo', 'Valor']],
+      body: maqRows,
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 2,
+        halign: 'left',
+        valign: 'middle'
+      },
+      headStyles: { 
+        fillColor: [30, 77, 183], 
+        textColor: 255,
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      bodyStyles: { 
+        textColor: 33,
+        fontSize: 9,
+        halign: 'left',
+        valign: 'middle'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
+      },
+      margin: { left: 30, right: 30 },
+      tableLineColor: [30, 77, 183],
+      tableLineWidth: 0.3,
+      pageBreak: 'avoid',
+      theme: 'grid'
+    });
   y = doc.lastAutoTable.finalY + 8;
 
   function addSection(title, data, introText, columnsToRemove = []) {
@@ -221,7 +245,8 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
         !k.toLowerCase().includes('creacion') &&
         !k.toLowerCase().includes('actualizacion') &&
         !columnsToRemove.includes(k) &&
-        !['fecha_desactivacion', 'fecha_reactivacion'].includes(k.toLowerCase())
+        !['fecha_desactivacion', 'fecha_reactivacion'].includes(k.toLowerCase()) &&
+        k !== 'archivo_pdf' // Excluir solo columna de archivo PDF del PDF exportado
       );
     }
 
@@ -233,22 +258,33 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       body: rows.map(r => filteredKeys.map(k => fmt(r[k]) || '-')),
       styles: { 
         fontSize: 9, 
-        cellPadding: 1.5,
-        minCellHeight: 8
+        cellPadding: 2,
+        minCellHeight: 8,
+        halign: 'center',
+        valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9
+        fontSize: 9,
+        halign: 'center',
+        valign: 'middle'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
       },
       margin: { left: 30, right: 30 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2,
+      tableLineWidth: 0.3,
       pageBreak: 'auto',
+      theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 8;
   }
@@ -338,21 +374,32 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       ]),
       styles: { 
         fontSize: 9, 
-        cellPadding: 1.5,
-        minCellHeight: 8
+        cellPadding: 2,
+        minCellHeight: 8,
+        halign: 'center',
+        valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9
+        fontSize: 9,
+        halign: 'center',
+        valign: 'middle'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
       },
       margin: { left: 30, right: 30 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2
+      tableLineWidth: 0.3,
+      theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 8;
   } else {
@@ -424,28 +471,57 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       styles: { 
         fontSize: 9, 
         cellPadding: 2,
-        minCellHeight: 8
+        minCellHeight: 8,
+        halign: 'left',
+        valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9
+        fontSize: 9,
+        halign: 'left',
+        valign: 'middle'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 250]
       },
       margin: { left: 20, right: 20 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.2,
+      tableLineWidth: 0.3,
+      theme: 'grid',
       didParseCell(data) {
         if (data.section === 'body' && data.column.dataKey === 1 && typeof data.cell.raw === 'string' && data.cell.raw.includes('\n')) {
-          data.cell.styles.cellPadding = 1.5;
+          data.cell.styles.cellPadding = 2;
           data.cell.text = data.cell.raw.split('\n');
         }
       }
     });
   }
+
+  // Agregar espacio para firma al final de la última página
+  y += 30; // Espacio adicional después del contenido
+  
+  // Posicionar la firma cerca del final de la página
+  y = pageHeight - 30;
+  
+  // Línea para firma (línea azul simple)
+  doc.setDrawColor(30, 77, 183); // Azul corporativo
+  doc.setLineWidth(0.5);
+  doc.line(pageWidth / 2 - 30, y, pageWidth / 2 + 30, y);
+  
+  // Texto "FIRMA" debajo de la línea
+  y += 5;
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0); // Negro
+  doc.setFont('helvetica', 'normal');
+  doc.text('FIRMA', pageWidth / 2, y, { align: 'center' });
 
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
@@ -491,29 +567,36 @@ function exportPDFMasivo(data, filename = 'reporte') {
       currentY = 20;
     }
 
-    // Título de la sección con contador de registros
-    doc.setFontSize(14);
-    doc.setTextColor(30, 77, 183);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, 20, currentY);
+    // Título de la sección con contador de registros mejorado
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const titleWidth = doc.getTextWidth(title) + 20;
+    const titleX = 20;
     
-    // Agregar contador de registros (estilo botón)
+    // Fondo azul para el título
+    doc.setFillColor(30, 77, 183);
+    doc.roundedRect(titleX, currentY - 3, titleWidth, 10, 2, 2, 'F');
+    
+    // Texto del título
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, titleX + 10, currentY + 2);
+    
+    // Agregar contador de registros (estilo botón mejorado)
     const registrosText = `${rows.length} registros`;
     const registrosWidth = doc.getTextWidth(registrosText);
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const registrosX = pageWidth - 20 - registrosWidth;
+    const registrosX = pageWidth - 20 - registrosWidth - 10;
     
-    // Fondo azul para el contador
-    doc.setFillColor(30, 77, 183);
-    doc.rect(registrosX - 5, currentY - 3, registrosWidth + 10, 8, 'F');
+    // Fondo verde para el contador
+    doc.setFillColor(40, 167, 69);
+    doc.roundedRect(registrosX - 5, currentY - 3, registrosWidth + 10, 10, 2, 2, 'F');
     
     // Texto del contador
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
     doc.text(registrosText, registrosX, currentY + 2);
     
-    // Restaurar color del texto
-    doc.setTextColor(30, 77, 183);
     currentY += 15;
 
     // Definir campos para cada tabla usando el archivo fields.js
@@ -556,7 +639,8 @@ function exportPDFMasivo(data, filename = 'reporte') {
       console.log(`🔍 CAMPOS SELECCIONADOS PARA ${title}:`, tableFields);
     }
     const existingFields = tableFields.filter(field => 
-      field.key !== 'archivo_pdf' && rows.some(row => row[field.key] !== undefined && row[field.key] !== null)
+      field.key !== 'archivo_pdf' && // Excluir solo columna de archivo PDF del PDF exportado
+      rows.some(row => row[field.key] !== undefined && row[field.key] !== null)
     );
 
     console.log(`🔍 CAMPOS EXISTENTES PARA ${title}:`, existingFields);
@@ -608,25 +692,32 @@ function exportPDFMasivo(data, filename = 'reporte') {
         fontSize: 9, 
         cellPadding: 3,
         textColor: 33,
-        halign: 'center'
+        halign: 'center',
+        valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255, 
         fontStyle: 'bold',
         fontSize: 10,
-        halign: 'center'
+        halign: 'center',
+        valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9
+        fontSize: 9,
+        halign: 'center',
+        valign: 'middle'
       },
       margin: { left: 20, right: 20 },
       tableLineColor: [30, 77, 183],
       tableLineWidth: 0.3,
       pageBreak: 'auto',
       theme: 'grid',
-      alternateRowStyles: { fillColor: [248, 249, 250] },
+      alternateRowStyles: { 
+        fillColor: [248, 249, 250],
+        textColor: 33
+      },
       didParseCell: function(data) {
         // Formatear fechas para que se vean como botones
         if (data.section === 'body' && typeof data.cell.raw === 'string') {

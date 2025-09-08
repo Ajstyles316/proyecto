@@ -94,6 +94,10 @@ const TablaGenericaAvanzada = ({
         if (k.toLowerCase() === 'ubicacion' || k.toLowerCase() === 'ubicacióN'.toLowerCase()) {
           return 'Ubicación';
         }
+        // Formatear nombre_archivo como "Archivo"
+        if (k === 'nombre_archivo') {
+          return 'Archivo';
+        }
         return reemplazos[k] || k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
       });
 
@@ -142,31 +146,62 @@ const TablaGenericaAvanzada = ({
       );
     }
 
-    // Si es un campo de archivo
-    if (key === 'nombre_archivo' && value) {
+    // Si es un campo de archivo (nombre_archivo o cualquier campo que termine en .pdf)
+    if ((key === 'nombre_archivo' || (typeof value === 'string' && value.toLowerCase().includes('.pdf'))) && value) {
       console.log('🔍 TablaGenerica - Campo archivo encontrado:', { 
         key, 
         value, 
         hasArchivoPdf: !!row.archivo_pdf,
-        rowKeys: Object.keys(row)
+        rowKeys: Object.keys(row),
+        fullRow: row
       });
       
-      // Solo mostrar FileDownloadCell si hay datos del archivo
-      if (row.archivo_pdf) {
+      // Buscar los datos del archivo en diferentes campos posibles
+      const possibleFileFields = ['archivo_pdf', 'archivo', 'file_data', 'pdf_data', 'documento'];
+      let fileData = null;
+      
+      for (const field of possibleFileFields) {
+        if (row[field] && typeof row[field] === 'string' && row[field].length > 0) {
+          fileData = { archivo_pdf: row[field] };
+          console.log(`🔍 TablaGenerica - Datos encontrados en campo '${field}':`, {
+            fileName: value,
+            field: field,
+            dataLength: row[field].length,
+            dataPreview: row[field].substring(0, 50) + '...'
+          });
+          break;
+        }
+      }
+      
+      // Si no encontramos datos de archivo, mostrar solo el nombre sin funcionalidad de descarga
+      if (!fileData) {
+        console.log('🔍 TablaGenerica - No se encontraron datos de archivo en ningún campo:', {
+          fileName: value,
+          availableFields: Object.keys(row),
+          rowData: row
+        });
         return (
-          <FileDownloadCell 
-            fileName={value} 
-            fileData={row} 
-            showIcon={true}
-          />
-        );
-      } else {
-        return (
-          <Typography variant="body2" color="text.secondary">
-            {value}
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ 
+              fontStyle: 'italic',
+              opacity: 0.7
+            }}
+          >
+            {value} (sin datos de archivo)
           </Typography>
         );
       }
+      
+      // Mostrar FileDownloadCell para campos de archivo con datos disponibles
+      return (
+        <FileDownloadCell 
+          fileName={value} 
+          fileData={fileData} 
+          showIcon={true}
+        />
+      );
     }
 
     // Si es importe o costo

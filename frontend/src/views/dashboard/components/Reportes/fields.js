@@ -60,22 +60,26 @@ export const seguroFields = [
   { key: 'numero_poliza', label: 'Nº Póliza' },
   { key: 'compania_aseguradora', label: 'Compañía Aseguradora' },
   { key: 'importe', label: 'Importe' },
-  { key: 'nombre_archivo', label: 'Nombre del Archivo'}
+  { key: 'nombre_archivo', label: 'Archivo PDF'},
+  { key: 'archivo_pdf', label: 'Datos del Archivo'}
 ];
 
 export const itvFields = [
   { key: 'gestion', label: 'Gestión' },
-  { key: 'nombre_archivo', label: 'Nombre del Archivo'}
+  { key: 'nombre_archivo', label: 'Archivo PDF'},
+  { key: 'archivo_pdf', label: 'Datos del Archivo'}
 ];
 
 export const impuestoFields = [
   { key: 'gestion', label: 'Gestión' },
-  { key: 'nombre_archivo', label: 'Nombre del Archivo'}
+  { key: 'nombre_archivo', label: 'Archivo PDF'},
+  { key: 'archivo_pdf', label: 'Datos del Archivo'}
 ];
 
 export const soatFields = [
   { key: 'gestion', label: 'Gestión' },
-  { key: 'nombre_archivo', label: 'Nombre del Archivo'}
+  { key: 'nombre_archivo', label: 'Archivo PDF'},
+  { key: 'archivo_pdf', label: 'Datos del Archivo'}
 ];
 
 export const pronosticoFields = [

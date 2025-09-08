@@ -2,108 +2,177 @@ import * as XLSX from 'xlsx';
 import { maquinariaFields } from './fields';
 import { formatDateOnly, cleanRow, formatHeader, formatCurrency, calcularDepreciacionAnual } from './exportHelpers';
 
+// Función para manejar descarga de archivos PDF
+const handleFileDownload = (fileName, fileData) => {
+  if (!fileName || !fileData || !fileData.archivo_pdf) {
+    console.warn('No hay datos de archivo para descargar', { fileName, fileData });
+    return;
+  }
+
+  try {
+    const byteCharacters = atob(fileData.archivo_pdf);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Limpiar la URL después de un tiempo
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+  } catch (error) {
+    console.error('Error descargando archivo:', error);
+    alert('Error al descargar el archivo');
+  }
+};
+
+// Configuración de estilos para Excel
+const EXCEL_STYLES = {
+  header: {
+    font: { bold: true, color: { rgb: "FFFFFF" } },
+    fill: { fgColor: { rgb: "1E4DB7" } },
+    alignment: { horizontal: "center", vertical: "center" },
+    border: {
+      top: { style: "thin", color: { rgb: "1E4DB7" } },
+      bottom: { style: "thin", color: { rgb: "1E4DB7" } },
+      left: { style: "thin", color: { rgb: "1E4DB7" } },
+      right: { style: "thin", color: { rgb: "1E4DB7" } }
+    }
+  },
+  data: {
+    font: { color: { rgb: "212121" } },
+    alignment: { horizontal: "center", vertical: "center" },
+    border: {
+      top: { style: "thin", color: { rgb: "E0E0E0" } },
+      bottom: { style: "thin", color: { rgb: "E0E0E0" } },
+      left: { style: "thin", color: { rgb: "E0E0E0" } },
+      right: { style: "thin", color: { rgb: "E0E0E0" } }
+    }
+  },
+  alternateRow: {
+    fill: { fgColor: { rgb: "F8F9FA" } }
+  },
+  title: {
+    font: { bold: true, size: 14, color: { rgb: "1E4DB7" } },
+    alignment: { horizontal: "center" }
+  }
+};
+
 function exportXLS(data, filename = 'reporte') {
+  // Exponer la función de descarga globalmente para Excel
+  window.handleFileDownload = handleFileDownload;
+  
   const wb = XLSX.utils.book_new();
 
-  // Helper para crear hoja horizontal con formato de dos columnas
-  function horizontalSheet(title, rows, fields = null, tablaKey = '') {
-    if (!rows || rows.length === 0) return null;
-    let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
+  // Helper para aplicar estilos básicos a una hoja
+  function applyBasicStyles(ws) {
+    const range = XLSX.utils.decode_range(ws['!ref']);
     
-    // Para pronósticos usar formato vertical, para el resto horizontal
-    let header, body;
-    if (tablaKey && tablaKey === 'pronosticos') {
-      // Formato vertical solo para pronósticos
-      header = ['Campo', 'Valor'];
-      body = rows.map(r => {
-        const campos = [];
-        keys.forEach(k => {
-          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-            // Formatear fechas correctamente
-            let valor = r[k];
-            if (k.toLowerCase().includes('fecha') && valor) {
-              valor = formatDateOnly(valor);
-            }
-            // Para recomendaciones, mostrar solo las primeras 3
-            if (k === 'recomendaciones' && valor) {
-              if (Array.isArray(valor)) {
-                valor = valor.slice(0, 3).map(rec => `- ${rec}`).join('\n');
-              } else if (typeof valor === 'string') {
-                valor = valor.split(';').slice(0, 3).map(rec => `- ${rec.trim()}`).join('\n');
-              }
-            }
-            campos.push([formatHeader(k), valor]);
-          }
-        });
-        return campos;
-      }).flat();
-    } else {
-      // Formato horizontal para el resto de tablas
-      header = keys.map(formatHeader);
-      body = rows.map(r => {
-        return keys.map(k => {
-          if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-            // Formatear fechas correctamente
-            let valor = r[k];
-            if (k.toLowerCase().includes('fecha') && valor) {
-              valor = formatDateOnly(valor);
-            }
-            return valor;
-          }
-          return '';
-        });
-      });
+    // Ajustar ancho de columnas
+    const colWidths = [];
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      let maxLength = 0;
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (ws[cellAddress] && ws[cellAddress].v) {
+          const cellLength = String(ws[cellAddress].v).length;
+          maxLength = Math.max(maxLength, cellLength);
+        }
+      }
+      colWidths.push({ wch: Math.min(Math.max(maxLength + 2, 12), 50) });
     }
+    ws['!cols'] = colWidths;
     
-    return XLSX.utils.aoa_to_sheet([
+    return ws;
+  }
+
+  // Helper para crear hoja simple
+  function createSimpleSheet(title, rows, fields = null) {
+    if (!rows || rows.length === 0) return null;
+    
+    let keys = fields ? fields.map(f => f.key) : Object.keys(rows[0] || {});
+    let header = keys.map(formatHeader);
+    let body = rows.map(r => {
+      return keys.map(k => {
+        if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
+          // Formatear fechas correctamente
+          let valor = r[k];
+          if (k.toLowerCase().includes('fecha') && valor) {
+            valor = formatDateOnly(valor);
+          }
+          
+          // Si es un campo de archivo, crear enlace de descarga
+          if (k === 'nombre_archivo' && valor && r.archivo_pdf) {
+            // Crear hipervínculo para descarga
+            return {
+              v: valor,
+              l: {
+                Target: `javascript:handleFileDownload('${valor}', ${JSON.stringify(r).replace(/"/g, '&quot;')})`,
+                Tooltip: 'Hacer clic para descargar'
+              }
+            };
+          }
+          
+          return valor;
+        }
+        return '';
+      });
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet([
       header,
       ...body
     ]);
+    
+    return applyBasicStyles(ws);
   }
 
-  // Maquinaria
+  // Maquinaria - Filtrar campos importantes y excluir gestión
   if (data.maquinaria && Array.isArray(data.maquinaria) && data.maquinaria.length > 0) {
+    // Filtrar campos importantes excluyendo gestión
+    const camposImportantes = maquinariaFields.filter(f => f.key !== 'gestion');
+    
     if (data.maquinaria.length === 1) {
       // Hoja vertical tipo ficha para una sola maquinaria
       const maq = data.maquinaria[0];
-      const ficha = maquinariaFields.map(f => [f.label, maq[f.key] ?? '']);
+      const ficha = camposImportantes.map(f => [f.label, maq[f.key] ?? '']);
       const fichaSheet = XLSX.utils.aoa_to_sheet([
         ['Campo', 'Valor'],
         ...ficha
       ]);
-      XLSX.utils.book_append_sheet(wb, fichaSheet, 'Datos de la Maquinaria');
+      
+      const styledSheet = applyBasicStyles(fichaSheet);
+      XLSX.utils.book_append_sheet(wb, styledSheet, 'Datos de la Maquinaria');
     } else {
-      // Capitalizar método y otros campos string para varias maquinarias
+      // Hoja horizontal para varias maquinarias
       const maquis = data.maquinaria.map(row => {
-        const obj = { ...row };
-        Object.keys(obj).forEach(k => {
-          if ((k === 'metodo' || k === 'método') && typeof obj[k] === 'string') {
-            obj[k] = (obj[k].toLowerCase() === 'linea_recta') ? 'Línea Recta' : obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          } else if (typeof obj[k] === 'string') {
-            // Si el string ya tiene espacios y parece estar bien formateado, devolverlo tal como está
-            if (obj[k].includes(' ') && /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+$/.test(obj[k])) {
-              // No hacer nada, mantener el string tal como está
-            } else if (obj[k].includes('_')) {
-              obj[k] = obj[k].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            } else {
-              obj[k] = obj[k].charAt(0).toUpperCase() + obj[k].slice(1).toLowerCase();
-            }
-          }
+        const obj = {};
+        camposImportantes.forEach(field => {
+          obj[field.key] = row[field.key];
         });
         return obj;
       });
-      const maqSheet = horizontalSheet('Maquinaria', maquis, maquinariaFields, 'maquinaria');
+      
+      const maqSheet = createSimpleSheet('Maquinaria', maquis, camposImportantes);
       if (maqSheet) XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
     }
-  } else if (!data.maquinaria || (Array.isArray(data.maquinaria) && data.maquinaria.length === 0)) {
-    // Solo si realmente no hay datos, agrega la hoja vacía
+  } else {
+    // Hoja vacía si no hay datos
     const maqSheet = XLSX.utils.aoa_to_sheet([
       ['No hay datos de maquinaria para exportar']
     ]);
     XLSX.utils.book_append_sheet(wb, maqSheet, 'Maquinaria');
   }
 
-  // Otras tablas
+  // Otras tablas - Mostrar todos los campos disponibles
   const tablas = [
     { key: 'control', label: 'Control' },
     { key: 'asignacion', label: 'Asignación' },
@@ -115,76 +184,27 @@ function exportXLS(data, filename = 'reporte') {
     { key: 'impuestos', label: 'Impuestos' },
     { key: 'pronosticos', label: 'Pronóstico' },
   ];
+  
   for (const t of tablas) {
     if (data[t.key] && data[t.key].length > 0) {
-      // Solo incluir placa y detalle, más los campos específicos de cada tabla
-      const camposPermitidos = {
-        control: ['placa', 'detalle', 'fecha_inicio', 'fecha_final', 'proyecto', 'ubicacion', 'estado', 'tiempo', 'operador'],
-        asignacion: ['placa', 'detalle', 'unidad', 'fecha_asignacion', 'kilometraje', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
-        liberacion: ['placa', 'detalle', 'unidad', 'fecha_liberacion', 'kilometraje_entregado', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
-        mantenimiento: ['placa', 'detalle', 'tipo_mantenimiento', 'consumo_combustible', 'consumo_lubricantes', 'mano_obra', 'costo_total', 'tecnico_responsable'],
-        soat: ['placa', 'detalle', 'gestion'],
-        seguros: ['placa', 'detalle', 'fecha_inicial', 'fecha_final', 'numero_poliza', 'compania_aseguradora', 'importe'],
-        itv: ['placa', 'detalle', 'gestion'],
-        impuestos: ['placa', 'detalle', 'gestion'],
-        pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'urgencia']
-      };
+      // Obtener todos los campos disponibles en los datos
+      const allKeys = Object.keys(data[t.key][0] || {});
       
-      // Obtener los campos permitidos para esta tabla
-      const camposTabla = camposPermitidos[t.key] || ['placa', 'detalle'];
-      
-      // Filtrar solo los campos que existen en los datos y excluir fechas
-      const allKeys = camposTabla.filter(campo => 
-        data[t.key].some(row => row[campo] !== undefined) &&
-        campo !== 'fecha_creacion' &&
-        campo !== 'fecha_actualizacion'
+      // Filtrar campos que no queremos mostrar
+      const camposFiltrados = allKeys.filter(campo => 
+        !campo.toLowerCase().includes('creacion') &&
+        !campo.toLowerCase().includes('actualizacion') &&
+        !campo.toLowerCase().includes('_id') &&
+        campo !== 'id'
       );
       
-      
-      // Para pronósticos usar formato horizontal, para el resto horizontal
-      let header, body;
-      if (t.key === 'pronosticos') {
-        // Formato horizontal para pronósticos - igual que en CSVButtons
-        // Los datos ya vienen con placa y detalle agregados desde ExportarReportes.jsx
-        header = ['Placa', 'Detalle', 'Fecha Asignación', 'Horas Operación', 'Recorrido', 'Resultado', 'Riesgo', 'Probabilidad', 'Fecha Mantenimiento', 'Urgencia', 'Recomendaciones'];
-        body = data[t.key].map(r => [
-          r.placa || '',
-          r.detalle || '',
-          r.fecha_asig || '',
-          r.horas_op || '',
-          r.recorrido || '',
-          r.resultado || '',
-          r.riesgo || '',
-          r.probabilidad || '',
-          r.fecha_mantenimiento || '',
-          r.urgencia || '',
-          Array.isArray(r.recomendaciones) ? r.recomendaciones.join('; ') : (r.recomendaciones || '')
-        ]);
-      } else {
-        // Formato horizontal para el resto de tablas
-        header = allKeys.map(formatHeader);
-        body = data[t.key].map(r => {
-          return allKeys.map(k => {
-            if (r[k] !== undefined && r[k] !== null && r[k] !== '') {
-              // Formatear fechas correctamente
-              let valor = r[k];
-              if (k.toLowerCase().includes('fecha') && valor) {
-                valor = formatDateOnly(valor);
-              }
-              return valor;
-            }
-            return '';
-          });
-        });
+      if (camposFiltrados.length > 0) {
+        const sheet = createSimpleSheet(t.label, data[t.key], camposFiltrados.map(k => ({ key: k, label: formatHeader(k) })));
+        if (sheet) XLSX.utils.book_append_sheet(wb, sheet, t.label);
       }
-      
-      const sheet = XLSX.utils.aoa_to_sheet([
-        header,
-        ...body
-      ]);
-      XLSX.utils.book_append_sheet(wb, sheet, t.label);
     }
   }
+  // Depreciaciones
   if (data.depreciaciones && data.depreciaciones.length > 0 && data.depreciaciones[0].depreciacion_por_anio && Array.isArray(data.depreciaciones[0].depreciacion_por_anio) && data.depreciaciones[0].depreciacion_por_anio.length > 0) {
     const depAnual = data.depreciaciones[0].depreciacion_por_anio;
     const depSheet = XLSX.utils.aoa_to_sheet([
@@ -196,7 +216,9 @@ function exportXLS(data, filename = 'reporte') {
         formatCurrency(row.valor_en_libros)
       ])
     ]);
-    XLSX.utils.book_append_sheet(wb, depSheet, 'Depreciación Anual');
+    
+    const styledDepSheet = applyBasicStyles(depSheet);
+    XLSX.utils.book_append_sheet(wb, styledDepSheet, 'Depreciación Anual');
   }
 
   XLSX.writeFile(wb, `${filename}.xlsx`);
