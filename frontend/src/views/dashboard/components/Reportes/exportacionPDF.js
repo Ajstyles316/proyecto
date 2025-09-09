@@ -240,6 +240,9 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     } else if (title === 'Liberación') {
       // Usar los campos definidos en fields.js para liberación
       filteredKeys = liberacionFields.map(f => f.key).filter(k => keys.includes(k));
+    } else if (title === 'Mantenimiento') {
+      // Usar los campos definidos en fields.js para mantenimiento
+      filteredKeys = mantenimientoFields.map(f => f.key).filter(k => keys.includes(k));
     } else {
       filteredKeys = keys.filter(k =>
         !k.toLowerCase().includes('creacion') &&

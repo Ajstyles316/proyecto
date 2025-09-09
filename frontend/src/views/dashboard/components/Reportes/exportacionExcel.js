@@ -53,11 +53,8 @@ const EXCEL_STYLES = {
   }
 };
 
-function exportXLS(data, filename = 'reporte') {
-  
-  const wb = XLSX.utils.book_new();
-
-  function applyAdvancedStyles(ws, hasTitle = false) {
+// Función global para aplicar estilos avanzados
+function applyAdvancedStyles(ws, hasTitle = false) {
     const range = XLSX.utils.decode_range(ws['!ref']);
     const startRow = hasTitle ? 1 : 0;
     
@@ -158,6 +155,9 @@ function exportXLS(data, filename = 'reporte') {
     
     return ws;
   }
+
+function exportXLS(data, filename = 'reporte') {
+  const wb = XLSX.utils.book_new();
 
   function createStyledSheet(title, rows, fields = null) {
     if (!rows || rows.length === 0) return null;
@@ -318,5 +318,389 @@ function exportXLS(data, filename = 'reporte') {
 
   XLSX.writeFile(wb, `${filename}.xlsx`);
 }
+
+// Función específica para exportar Hoja de Vida
+export const exportHojaVidaExcel = (data, filename = 'hoja_vida') => {
+  const wb = XLSX.utils.book_new();
+
+  // Hoja 1: Datos de Maquinaria
+  if (data.maquinaria) {
+    const maquinariaData = [
+      ['HOJA DE VIDA HISTORIAL DE MANTENIMIENTO'],
+      [''],
+      ['DATOS DE MAQUINARIA'],
+      [''],
+      ['Campo', 'Valor'],
+      ['Equipo', data.maquinaria.detalle || ''],
+      ['Placa', data.maquinaria.placa || ''],
+      ['Marca', data.maquinaria.marca || ''],
+      ['Modelo', data.maquinaria.modelo || ''],
+      ['Chasis', data.maquinaria.nro_chasis || ''],
+      ['Tipo', data.maquinaria.tipo || ''],
+      ['Color', data.maquinaria.color || ''],
+      ['Tracción', data.maquinaria.tipo_vehiculo || ''],
+      ['No. del Motor', data.maquinaria.nro_motor || ''],
+      ['Estado', 'OPERABLE']
+    ];
+
+    const ws1 = XLSX.utils.aoa_to_sheet(maquinariaData);
+    applyAdvancedStyles(ws1, true);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Datos Maquinaria');
+  }
+
+  // Hoja 2: Depreciaciones - Tabla de Depreciación Anual
+  if (data.depreciaciones && data.depreciaciones.length > 0) {
+    const depData = [];
+    
+    data.depreciaciones.forEach(item => {
+      const costoActivo = parseFloat(item.costo_activo) || 0;
+      const vidaUtil = parseInt(item.vida_util) || 1;
+      const depreciacionAnual = costoActivo / vidaUtil;
+      
+      // Valor inicial al principio
+      depData.push(['VALOR INICIAL:', costoActivo.toLocaleString('es-BO', { minimumFractionDigits: 2 }), '', '']);
+      
+      // Encabezados
+      depData.push([
+        'AÑO',
+        'DEPRECIACIÓN ANUAL',
+        'DEPRECIACIÓN ACUMULADA',
+        'VALOR RESIDUAL'
+      ]);
+      
+      for (let año = 1; año <= vidaUtil; año++) {
+        const depreciacionAcumulada = depreciacionAnual * año;
+        const valorResidual = costoActivo - depreciacionAcumulada;
+        
+        depData.push([
+          año,
+          depreciacionAnual.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
+          depreciacionAcumulada.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
+          valorResidual.toLocaleString('es-BO', { minimumFractionDigits: 2 })
+        ]);
+      }
+      
+      // Separador entre depreciaciones
+      depData.push(['', '', '', '']);
+    });
+
+    const ws2 = XLSX.utils.aoa_to_sheet(depData);
+    applyAdvancedStyles(ws2, true);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Depreciaciones');
+  }
+
+  // Hoja 3: Pronósticos - Campos reales de la BD
+  if (data.pronosticos && data.pronosticos.length > 0) {
+    const pronosticoHeaders = [
+      'PLACA',
+      'FECHA ASIGNACIÓN',
+      'HORAS OPERACIÓN',
+      'RECORRIDO',
+      'RESULTADO',
+      'RIESGO',
+      'PROBABILIDAD',
+      'FECHA SUGERIDA',
+      'FECHA MANTENIMIENTO',
+      'FECHA RECORDATORIO',
+      'DÍAS HASTA MANTENIMIENTO',
+      'URGENCIA'
+    ];
+    
+    const pronosticoData = data.pronosticos.map(item => [
+      item.placa || '',
+      formatDateOnly(item.fecha_asig),
+      item.horas_op ? item.horas_op.toLocaleString('es-BO') : '',
+      item.recorrido ? item.recorrido.toLocaleString('es-BO') : '',
+      item.resultado || '',
+      item.riesgo || '',
+      item.probabilidad || '',
+      formatDateOnly(item.fecha_sugerida),
+      formatDateOnly(item.fecha_mantenimiento),
+      formatDateOnly(item.fecha_recordatorio),
+      item.dias_hasta_mantenimiento || '',
+      item.urgencia || ''
+    ]);
+
+    const ws3 = XLSX.utils.aoa_to_sheet([pronosticoHeaders, ...pronosticoData]);
+    applyAdvancedStyles(ws3, true);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Pronósticos');
+  }
+
+  // Hoja 4: Mantenimientos - EXACTAMENTE como en la imagen
+  if (data.mantenimientos && data.mantenimientos.length > 0) {
+    const mantenimientoData = [];
+    
+    data.mantenimientos.forEach(item => {
+      // Primera fila de encabezados principales (solo hasta columna K)
+      mantenimientoData.push([
+        'FECHA',
+        'N° SALIDA MATERIALES',
+        'DESCRIPCIÓN DAÑOS/EVENTOS',
+        'REPARACIÓN REALIZADA',
+        'COSTO TOTAL (Bs.)',
+        'HOR/KM',
+        'OPERADOR',
+        'ATENDIDO POR',
+        'ENCARGADO ACTIVOS FIJOS',
+        'UNIDAD/EMPRESA',
+        'UBICACIÓN FÍSICO/PROYECTO'
+      ]);
+
+      // Segunda fila con datos principales (solo hasta columna K)
+      mantenimientoData.push([
+        formatDateOnly(item.fecha_mantenimiento),
+        item.numero_salida_materiales || '',
+        item.descripcion_danos_eventos || '',
+        item.reparacion_realizada || '',
+        item.costo_total ? item.costo_total.toLocaleString('es-BO', { minimumFractionDigits: 2 }) : '',
+        item.horas_kilometros ? item.horas_kilometros.toLocaleString('es-BO') : '',
+        item.operador || '',
+        item.atendido_por || '',
+        item.encargado_activos_fijos || '',
+        item.unidad_empresa || '',
+        item.ubicacion_fisico_proyecto || ''
+      ]);
+
+      // Filas vacías antes de comenzar las subsecciones (solo hasta columna K)
+      mantenimientoData.push(['', '', '', '', '', '', '', '', '', '', '']);
+      mantenimientoData.push(['', '', '', '', '', '', '', '', '', '', '']);
+
+      // Encabezados de subsecciones - TIPO en columna A (fila 4)
+      mantenimientoData.push([
+        'TIPO',
+        'CANTIDAD',
+        'NÚMERO/TIPO',
+        'CAMBIO (HR/KM)',
+        'NÚMERO FILTRO/DESCRI'
+      ]);
+
+      // NUMERO DE LLANTA (como en la imagen)
+      if (item.tipo_desplazamiento_cantidad || item.tipo_desplazamiento_numero_llanta || item.tipo_desplazamiento_numero_llanta_delantera || item.tipo_desplazamiento_vida_util) {
+        mantenimientoData.push([
+          'NUMERO DE LLAN',
+          item.tipo_desplazamiento_cantidad || '',
+          '',
+          item.tipo_desplazamiento_vida_util || '',
+          item.tipo_desplazamiento_numero_llanta_delantera || ''
+        ]);
+      }
+
+      // SISTEMA ELECTRICO (como en la imagen)
+      if (item.cantidad_sistema_electrico || item.voltaje_sistema_electrico || item.amperaje_sistema_electrico || item.vida_util_sistema_electrico) {
+        mantenimientoData.push([
+          'SISTEMA ELECTRIC',
+          item.cantidad_sistema_electrico || '',
+          '',
+          item.vida_util_sistema_electrico || '',
+          item.voltaje_sistema_electrico || ''
+        ]);
+      }
+
+      // ACEITE DE MOTOR (como en la imagen)
+      if (item.aceite_motor_cantidad || item.aceite_motor_numero || item.aceite_motor_cambio_km_hr || item.aceite_motor_numero_filtro) {
+        mantenimientoData.push([
+          'ACEITE DE MOTOR',
+          item.aceite_motor_cantidad || '',
+          '',
+          item.aceite_motor_cambio_km_hr || '',
+          item.aceite_motor_numero_filtro || ''
+        ]);
+      }
+
+      // ACEITE DE HIDRAULICO (como en la imagen)
+      if (item.aceite_hidraulico_cantidad || item.aceite_hidraulico_numero || item.aceite_hidraulico_cambio_km_hr || item.aceite_hidraulico_numero_filtro) {
+        mantenimientoData.push([
+          'ACEITE DE HIDRAU',
+          item.aceite_hidraulico_cantidad || '',
+          '',
+          item.aceite_hidraulico_cambio_km_hr || '',
+          item.aceite_hidraulico_numero_filtro || ''
+        ]);
+      }
+
+      // ACEITE DE TRANSMISION (como en la imagen)
+      if (item.aceite_transmision_cantidad || item.aceite_transmision_numero || item.aceite_transmision_cambio_km_hr || item.aceite_transmision_numero_filtro) {
+        mantenimientoData.push([
+          'ACEITE DE TRANSN',
+          item.aceite_transmision_cantidad || '',
+          '',
+          item.aceite_transmision_cambio_km_hr || '',
+          item.aceite_transmision_numero_filtro || ''
+        ]);
+      }
+
+      // LIQUIDO DE FRENO (como en la imagen)
+      if (item.liquido_freno_cantidad || item.liquido_freno_numero) {
+        mantenimientoData.push([
+          'LIQUIDO DE FRENC',
+          item.liquido_freno_cantidad || '',
+          '',
+          '',
+          ''
+        ]);
+      }
+
+      // LIQUIDO REFRIGERANTE (como en la imagen)
+      if (item.liquido_refrigerante_tipo || item.liquido_refrigerante_cantidad_lt || item.liquido_refrigerante_frecuencia_cambio) {
+        mantenimientoData.push([
+          'LIQUIDO REFRIGER',
+          item.liquido_refrigerante_cantidad_lt || '',
+          '',
+          item.liquido_refrigerante_frecuencia_cambio || '',
+          ''
+        ]);
+      }
+
+      // OTROS ACEITES (como en la imagen)
+      if (item.otros_aceites_tipo || item.otros_aceites_cantidad_lt || item.otros_aceites_frecuencia_cambio) {
+        mantenimientoData.push([
+          'OTROS ACEITES',
+          item.otros_aceites_cantidad_lt || '',
+          '',
+          item.otros_aceites_frecuencia_cambio || '',
+          ''
+        ]);
+      }
+
+      // SISTEMA DE COMBUSTIBLE (como en la imagen)
+      if (item.gasolina || item.gasolina_cantidad_lt || item.cantidad_filtros || item.codigo_filtro_combustible) {
+        mantenimientoData.push([
+          'SISTEMA DE COMB',
+          item.gasolina_cantidad_lt || '',
+          item.gasolina || '',
+          '',
+          item.codigo_filtro_combustible || ''
+        ]);
+      }
+
+      // OTROS FILTROS (como en la imagen)
+      if (item.otros_filtros_cantidad || item.otros_filtros_numero || item.otros_filtros_cambio || item.otros_filtros_descripcion) {
+        mantenimientoData.push([
+          'OTROS FILTROS',
+          item.otros_filtros_cantidad || '',
+          '',
+          item.otros_filtros_cambio || '',
+          item.otros_filtros_descripcion || ''
+        ]);
+      }
+
+      // Fila separadora
+      mantenimientoData.push(['---', '', '', '', '']);
+    });
+
+    const ws4 = XLSX.utils.aoa_to_sheet(mantenimientoData);
+    applyAdvancedStyles(ws4, true);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Mantenimientos');
+  }
+
+  // Hoja 5: Control
+  if (data.control && data.control.length > 0) {
+    const controlHeaders = ['FECHA INICIO', 'FECHA FINAL', 'PROYECTO', 'UBICACIÓN', 'ESTADO', 'TIEMPO', 'OPERADOR'];
+    const controlData = data.control.map(item => [
+      formatDateOnly(item.fecha_inicio),
+      formatDateOnly(item.fecha_final),
+      item.proyecto || '',
+      item.ubicacion || '',
+      item.estado || '',
+      item.tiempo || '',
+      item.operador || ''
+    ]);
+
+    const ws5 = XLSX.utils.aoa_to_sheet([controlHeaders, ...controlData]);
+    applyAdvancedStyles(ws5, true);
+    XLSX.utils.book_append_sheet(wb, ws5, 'Control');
+  }
+
+  // Hoja 6: Asignación
+  if (data.asignacion && data.asignacion.length > 0) {
+    const asignacionHeaders = ['UNIDAD', 'FECHA ASIGNACIÓN', 'KILOMETRAJE', 'GERENTE', 'ENCARGADO'];
+    const asignacionData = data.asignacion.map(item => [
+      item.unidad || '',
+      formatDateOnly(item.fecha_asignacion),
+      item.kilometraje || '',
+      item.gerente || '',
+      item.encargado || ''
+    ]);
+
+    const ws6 = XLSX.utils.aoa_to_sheet([asignacionHeaders, ...asignacionData]);
+    applyAdvancedStyles(ws6, true);
+    XLSX.utils.book_append_sheet(wb, ws6, 'Asignación');
+  }
+
+  // Hoja 7: Liberación
+  if (data.liberacion && data.liberacion.length > 0) {
+    const liberacionHeaders = ['UNIDAD', 'FECHA LIBERACIÓN', 'KILOMETRAJE ENTREGADO', 'GERENTE', 'ENCARGADO'];
+    const liberacionData = data.liberacion.map(item => [
+      item.unidad || '',
+      formatDateOnly(item.fecha_liberacion),
+      item.kilometraje_entregado || '',
+      item.gerente || '',
+      item.encargado || ''
+    ]);
+
+    const ws7 = XLSX.utils.aoa_to_sheet([liberacionHeaders, ...liberacionData]);
+    applyAdvancedStyles(ws7, true);
+    XLSX.utils.book_append_sheet(wb, ws7, 'Liberación');
+  }
+
+  // Hoja 8: Seguros
+  if (data.seguros && data.seguros.length > 0) {
+    const segurosHeaders = ['FECHA INICIAL', 'FECHA FINAL', 'Nº PÓLIZA', 'COMPAÑÍA ASEGURADORA', 'IMPORTE', 'ARCHIVO'];
+    const segurosData = data.seguros.map(item => [
+      formatDateOnly(item.fecha_inicial),
+      formatDateOnly(item.fecha_final),
+      item.numero_poliza || '',
+      item.compania_aseguradora || '',
+      item.importe ? item.importe.toLocaleString('es-BO', { minimumFractionDigits: 2 }) : '',
+      item.nombre_archivo || ''
+    ]);
+
+    const ws8 = XLSX.utils.aoa_to_sheet([segurosHeaders, ...segurosData]);
+    applyAdvancedStyles(ws8, true);
+    XLSX.utils.book_append_sheet(wb, ws8, 'Seguros');
+  }
+
+  // Hoja 9: ITV
+  if (data.itv && data.itv.length > 0) {
+    const itvHeaders = ['GESTIÓN', 'ARCHIVO'];
+    const itvData = data.itv.map(item => [
+      item.gestion || '',
+      item.nombre_archivo || ''
+    ]);
+
+    const ws9 = XLSX.utils.aoa_to_sheet([itvHeaders, ...itvData]);
+    applyAdvancedStyles(ws9, true);
+    XLSX.utils.book_append_sheet(wb, ws9, 'ITV');
+  }
+
+  // Hoja 10: SOAT
+  if (data.soat && data.soat.length > 0) {
+    const soatHeaders = ['GESTIÓN', 'ARCHIVO'];
+    const soatData = data.soat.map(item => [
+      item.gestion || '',
+      item.nombre_archivo || ''
+    ]);
+
+    const ws10 = XLSX.utils.aoa_to_sheet([soatHeaders, ...soatData]);
+    applyAdvancedStyles(ws10, true);
+    XLSX.utils.book_append_sheet(wb, ws10, 'SOAT');
+  }
+
+  // Hoja 11: Impuestos
+  if (data.impuestos && data.impuestos.length > 0) {
+    const impuestosHeaders = ['GESTIÓN', 'ARCHIVO'];
+    const impuestosData = data.impuestos.map(item => [
+      item.gestion || '',
+      item.nombre_archivo || ''
+    ]);
+
+    const ws11 = XLSX.utils.aoa_to_sheet([impuestosHeaders, ...impuestosData]);
+    applyAdvancedStyles(ws11, true);
+    XLSX.utils.book_append_sheet(wb, ws11, 'Impuestos');
+  }
+
+  // Generar y descargar el archivo
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+};
 
 export default exportXLS; 

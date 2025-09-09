@@ -83,12 +83,83 @@ class LiberacionSerializer(serializers.Serializer):
 class MantenimientoSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
+    
+    # Campos básicos del mantenimiento
     tipo_mantenimiento = serializers.CharField(max_length=100, required=True)
-    consumo_combustible = serializers.FloatField(allow_null=True, required=False)
-    consumo_lubricantes = serializers.FloatField(allow_null=True, required=False)
-    mano_obra = serializers.FloatField(allow_null=True, required=False)
-    costo_total = serializers.FloatField(required=False)
-    tecnico_responsable = serializers.CharField(max_length=200, required=True)
+    fecha_mantenimiento = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
+    numero_salida_materiales = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    descripcion_danos_eventos = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    reparacion_realizada = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    costo_total = serializers.FloatField(required=False, allow_null=True)
+    horas_kilometros = serializers.FloatField(required=False, allow_null=True)
+    operador = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    atendido_por = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    encargado_activos_fijos = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    unidad_empresa = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    ubicacion_fisico_proyecto = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    
+    # Tipo de desplazamiento
+    tipo_desplazamiento_cantidad = serializers.IntegerField(required=False, allow_null=True)
+    tipo_desplazamiento_numero_llanta = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    tipo_desplazamiento_numero_llanta_delantera = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    tipo_desplazamiento_vida_util = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Sistema eléctrico
+    cantidad_sistema_electrico = serializers.IntegerField(required=False, allow_null=True)
+    voltaje_sistema_electrico = serializers.FloatField(required=False, allow_null=True)
+    amperaje_sistema_electrico = serializers.FloatField(required=False, allow_null=True)
+    vida_util_sistema_electrico = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Aceite de motor
+    aceite_motor_cantidad = serializers.FloatField(required=False, allow_null=True)
+    aceite_motor_numero = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    aceite_motor_cambio_km_hr = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    aceite_motor_numero_filtro = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Aceite hidráulico
+    aceite_hidraulico_cantidad = serializers.FloatField(required=False, allow_null=True)
+    aceite_hidraulico_numero = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    aceite_hidraulico_cambio_km_hr = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    aceite_hidraulico_numero_filtro = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Aceite de transmisión
+    aceite_transmision_cantidad = serializers.FloatField(required=False, allow_null=True)
+    aceite_transmision_numero = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    aceite_transmision_cambio_km_hr = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    aceite_transmision_numero_filtro = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Líquido de freno
+    liquido_freno_cantidad = serializers.FloatField(required=False, allow_null=True)
+    liquido_freno_numero = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    liquido_freno_cambio_km_hr = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    liquido_freno_numero_filtro_combustible = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Líquido refrigerante
+    liquido_refrigerante_tipo = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    liquido_refrigerante_cantidad_lt = serializers.FloatField(required=False, allow_null=True)
+    liquido_refrigerante_frecuencia_cambio = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    
+    # Otros aceites
+    otros_aceites_tipo = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    otros_aceites_cantidad_lt = serializers.FloatField(required=False, allow_null=True)
+    otros_aceites_frecuencia_cambio = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    
+    # Sistema de combustible
+    gasolina = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    gasolina_cantidad_lt = serializers.FloatField(required=False, allow_null=True)
+    cantidad_filtros = serializers.IntegerField(required=False, allow_null=True)
+    codigo_filtro_combustible = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    
+    # Otros filtros
+    otros_filtros_cantidad = serializers.IntegerField(required=False, allow_null=True)
+    otros_filtros_numero = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    otros_filtros_cambio = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    otros_filtros_descripcion = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    
+    # Trabajos a realizar
+    trabajos_destinados_realizar = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    
+    # Campos de control
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
     registrado_por = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -100,6 +171,14 @@ class MantenimientoSerializer(serializers.Serializer):
             return ObjectId(value)
         except:
             raise serializers.ValidationError("ID de maquinaria inválido")
+    
+    def validate_fecha_mantenimiento(self, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        return value
 
 class SeguroSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)

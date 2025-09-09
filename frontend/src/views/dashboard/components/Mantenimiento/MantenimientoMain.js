@@ -7,12 +7,18 @@ import {
   Snackbar,
   Alert,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import MantenimientoForm from './MantenimientoForm';
 import MantenimientoTable from './MantenimientoTable';
+import HojaVidaMantenimiento from '../Reportes/HojaVidaMantenimiento';
 import { useIsReadOnly, useUser } from 'src/components/UserContext.jsx';
 import { useCanCreate, useCanEdit, useCanDelete, useCanView, useIsPermissionDenied } from 'src/components/hooks';
 import BlockIcon from '@mui/icons-material/Block';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -22,6 +28,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const [editingMantenimiento, setEditingMantenimiento] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState({});
+  const [showHojaVida, setShowHojaVida] = useState(false);
+  const [maquinariaData, setMaquinariaData] = useState(null);
   const { user } = useUser();
   const canView = useCanView('Mantenimiento');
   const canCreate = useCanCreate('Mantenimiento');
@@ -71,9 +79,26 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     }
   }, [maquinariaId, user.Email]);
 
+  const fetchMaquinariaData = useCallback(async () => {
+    if (!maquinariaId) return;
+    try {
+      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/`, {
+        headers: {
+          'X-User-Email': user.Email
+        }
+      });
+      if (!response.ok) throw new Error('Error al cargar datos de maquinaria');
+      const data = await response.json();
+      setMaquinariaData(data);
+    } catch (error) {
+      console.error('Error al cargar datos de maquinaria:', error);
+    }
+  }, [maquinariaId, user.Email]);
+
   useEffect(() => {
     fetchMantenimientos();
-  }, [fetchMantenimientos]);
+    fetchMaquinariaData();
+  }, [fetchMantenimientos, fetchMaquinariaData]);
 
   const handleResetForm = () => {
     setShowForm(false);
@@ -96,7 +121,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     const payload = {
       ...formData,
       maquinaria: maquinariaId,
-      cantidad: Number(formData.cantidad) || 0,
+      // Convertir fecha si viene como string
+      fecha_mantenimiento: formData.fecha_mantenimiento || new Date().toISOString().split('T')[0],
       ...(editingMantenimiento ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
     };
 
@@ -171,23 +197,35 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         justifyContent: 'space-between', 
         alignItems: 'center', 
         mb: 2,
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
+        gap: 2
       }}>
         <Typography variant="h6">Mantenimientos</Typography>
-        <Button
-          variant="contained"
-          color={showForm ? "error" : "success"}
-          onClick={() => {
-            if (showForm) {
-              handleResetForm();
-            } else {
-              setShowForm(true);
-            }
-          }}
-          disabled={!canCreate}
-        >
-          {showForm ? 'Cancelar' : 'Nuevo Mantenimiento'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            color="info"
+            startIcon={<DescriptionIcon />}
+            onClick={() => setShowHojaVida(true)}
+            disabled={mantenimientos.length === 0}
+          >
+            Hoja de Vida
+          </Button>
+          <Button
+            variant="contained"
+            color={showForm ? "error" : "success"}
+            onClick={() => {
+              if (showForm) {
+                handleResetForm();
+              } else {
+                setShowForm(true);
+              }
+            }}
+            disabled={!canCreate}
+          >
+            {showForm ? 'Cancelar' : 'Nuevo Mantenimiento'}
+          </Button>
+        </Box>
       </Box>
 
       {showForm && (
@@ -212,6 +250,37 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
         canDelete={canDelete || isEncargado}
         deleteLoading={deleteLoading}
       />
+
+      {/* Diálogo para mostrar la hoja de vida */}
+      <Dialog
+        open={showHojaVida}
+        onClose={() => setShowHojaVida(false)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: { minHeight: '80vh' }
+        }}
+      >
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', textAlign: 'center' }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Hoja de Vida Historial de Mantenimiento
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <HojaVidaMantenimiento 
+            maquinaria={maquinariaData} 
+            mantenimientos={mantenimientos} 
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: 'grey.50' }}>
+          <Button 
+            onClick={() => setShowHojaVida(false)}
+            variant="outlined"
+          >
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -3,12 +3,14 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   IconButton,
   Typography,
   Box,
   CircularProgress,
+  Paper,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
@@ -51,69 +53,67 @@ const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadO
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <Table sx={{
-      '& .MuiTableCell-root': {
-        borderBottom: '1px solid rgba(224, 224, 224, 1)',
-      },
-      '& .MuiTableRow-root:hover': {
-        backgroundColor: 'rgba(25, 118, 210, 0.04)',
-      },
-      '& .MuiTableHead-root .MuiTableCell-root': {
-        borderBottom: '2px solid rgba(224, 224, 224, 1)',
-        fontWeight: 600,
-      }
-    }}>
-      <TableHead>
-        <TableRow sx={{ bgcolor: 'grey.50' }}>
-          <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Combustible</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Lubricantes</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Mano de Obra</TableCell>
-          <TableCell sx={{ fontWeight: 600 }}>Técnico</TableCell>
-          {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600 }}>Acciones</TableCell>}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {mantenimientos.map((mantenimiento) => (
-          <TableRow key={mantenimiento._id} sx={{
-            '&:nth-of-type(even)': { backgroundColor: 'rgba(0, 0, 0, 0.02)' }
-          }}>
-            <TableCell>{mantenimiento.tipo_mantenimiento}</TableCell>
-            <TableCell>{mantenimiento.consumo_combustible ? `${mantenimiento.consumo_combustible} Lts` : '-'}</TableCell>
-            <TableCell>{mantenimiento.consumo_lubricantes ? `${mantenimiento.consumo_lubricantes} Lts` : '-'}</TableCell>
-            <TableCell>{mantenimiento.mano_obra ? `Bs. ${mantenimiento.mano_obra}` : '-'}</TableCell>
-            <TableCell>{mantenimiento.tecnico_responsable}</TableCell>
-            {showActionsColumn && (
-              <TableCell align="right">
-                {(isEncargado || canEdit) && (
-                  <IconButton 
-                    size="small" 
-                    color="primary"
-                    onClick={() => onEdit(mantenimiento)}
-                  >
-                    <EditIcon sx={{ color: '#03a9f4' }} />
-                  </IconButton>
-                )}
-                {(isEncargado || canDelete) && (
-                  <IconButton 
-                    size="small" 
-                    color="error"
-                    onClick={() => onDelete(mantenimiento._id)}
-                    disabled={deleteLoading[mantenimiento._id]}
-                  >
-                    {deleteLoading[mantenimiento._id] ? (
-                      <CircularProgress size={16} color="error" />
-                    ) : (
-                      <BlockIcon sx={{ color: '#f44336' }} />
-                    )}
-                  </IconButton>
-                )}
-              </TableCell>
-            )}
+    <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+      <Table sx={{ minWidth: 800 }}>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>FECHA</TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>DESCRIPCIÓN</TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>COSTO</TableCell>
+            <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>OPERADOR</TableCell>
+            {showActionsColumn && <TableCell align="right" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Acciones</TableCell>}
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHead>
+        <TableBody>
+          {mantenimientos.map((mantenimiento) => (
+            <TableRow key={mantenimiento._id} hover>
+              <TableCell sx={{ fontSize: '0.875rem' }}>{formatDate(mantenimiento.fecha_mantenimiento)}</TableCell>
+              <TableCell sx={{ fontSize: '0.875rem', maxWidth: 300 }}>
+                <Box sx={{ 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  title: mantenimiento.descripcion_danos_eventos || mantenimiento.reparacion_realizada || '-'
+                }}>
+                  {mantenimiento.descripcion_danos_eventos || mantenimiento.reparacion_realizada || '-'}
+                </Box>
+              </TableCell>
+              <TableCell sx={{ fontSize: '0.875rem' }}>
+                {mantenimiento.costo_total ? `Bs. ${mantenimiento.costo_total.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}
+              </TableCell>
+              <TableCell sx={{ fontSize: '0.875rem' }}>{mantenimiento.operador || '-'}</TableCell>
+              {showActionsColumn && (
+                <TableCell align="right">
+                  {(isEncargado || canEdit) && (
+                    <IconButton 
+                      size="small" 
+                      color="primary"
+                      onClick={() => onEdit(mantenimiento)}
+                    >
+                      <EditIcon sx={{ color: '#03a9f4' }} />
+                    </IconButton>
+                  )}
+                  {(isEncargado || canDelete) && (
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={() => onDelete(mantenimiento._id)}
+                      disabled={deleteLoading[mantenimiento._id]}
+                    >
+                      {deleteLoading[mantenimiento._id] ? (
+                        <CircularProgress size={16} color="error" />
+                      ) : (
+                        <BlockIcon sx={{ color: '#f44336' }} />
+                      )}
+                    </IconButton>
+                  )}
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 };
 

@@ -34,15 +34,7 @@ const BusquedaForm = ({ onBuscar, onExportPDF, onExportXLS, maquinaria, loading 
           Buscar
         </Button>
       </Grid>
-      {maquinaria && canExport && (
-        <Grid item xs={12} md={6} display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
-          <ExportButtons
-            onExportExcel={onExportXLS}
-            onExportPDF={onExportPDF}
-            disabled={loading}
-          />
-        </Grid>
-      )}
+      
     </Grid>
   );
 };

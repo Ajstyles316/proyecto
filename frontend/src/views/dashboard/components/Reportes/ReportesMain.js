@@ -3,6 +3,7 @@ import PageContainer from 'src/components/container/PageContainer';
 import DashboardCard from 'src/components/shared/DashboardCard';
 import BusquedaForm from './BusquedaForm';
 import TablaGenericaAvanzada, { TablaGenerica } from './TablaGenerica.jsx';
+import HojaVidaReporte from './HojaVidaReporte';
 import ExportarReportes from './ExportarReportes';
 import ReportesDashboard from './ReportesDashboard';
 import {
@@ -440,101 +441,31 @@ const ReportesMain = () => {
               {seguros.length > 0 && console.log('🔍 DATOS COMPLETOS SEGUROS:', seguros[0])}
               {itv.length > 0 && console.log('🔍 DATOS COMPLETOS ITV:', itv[0])}
               {impuestos.length > 0 && console.log('🔍 DATOS COMPLETOS IMPUESTOS:', impuestos[0])}
-              <TablaGenericaAvanzada
-                title="Datos de la Maquinaria"
-                data={[maquinaria]}
-                fields={maquinariaFields}
-                emptyMessage="No hay datos de maquinaria"
-              />
-              <TablaGenerica 
-                title="Control" 
-                data={control} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'fecha_inicio': 'Fecha de Inicio', 
-                  'fecha_final': 'Fecha Final', 
-                  'proyecto': 'Proyecto', 
-                  'ubicacion': 'Ubicación', 
-                  'estado': 'Estado', 
-                  'tiempo': 'Tiempo', 
-                  'operador': 'Operador' 
-                }} 
-              />
-              <TablaGenerica 
-                title="Asignación" 
-                data={asignacion} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'unidad': 'Unidad', 
-                  'fecha_asignacion': 'Fecha de Asignación', 
-                  'kilometraje': 'Kilometraje', 
-                  'gerente': 'Gerente', 
-                  'encargado': 'Encargado' 
-                }} 
-              />
-              <TablaGenerica 
-                title="Liberación" 
-                data={liberacion} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'unidad': 'Unidad', 
-                  'fecha_liberacion': 'Fecha de Liberación', 
-                  'kilometraje_entregado': 'Kilometraje Entregado', 
-                  'gerente': 'Gerente', 
-                  'encargado': 'Encargado' 
-                }} 
-              />
-              <TablaGenerica 
-                title="Mantenimiento" 
-                data={mantenimiento} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'tipo_mantenimiento': 'Tipo de Mantenimiento', 
-                  'consumo_combustible': 'Consumo de Combustible', 
-                  'consumo_lubricantes': 'Consumo de Lubricantes', 
-                  'mano_obra': 'Mano de Obra', 
-                  'tecnico_responsable': 'Técnico Responsable' 
-                }} 
-              />
-              <TablaGenerica 
-                title="SOAT" 
-                data={soat} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'gestion': 'Gestión', 
-                  'nombre_archivo': 'Archivo' 
-                }} 
-              />
-              <TablaGenerica 
-                title="Seguros" 
-                data={seguros} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'fecha_inicial': 'Fecha Inicial', 
-                  'fecha_final': 'Fecha Final', 
-                  'numero_poliza': 'Nº Póliza', 
-                  'compania_aseguradora': 'Compañía Aseguradora', 
-                  'importe': 'Importe', 
-                  'nombre_archivo': 'Archivo' 
-                }} 
-              />
-              <TablaGenerica 
-                title="ITV" 
-                data={itv} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'gestion': 'Gestión', 
-                  'nombre_archivo': 'Archivo' 
-                }} 
-              />
-              <TablaGenerica 
-                title="Impuestos" 
-                data={impuestos} 
-                ocultarCampos={['maquinaria']} 
-                reemplazos={{ 
-                  'gestion': 'Gestión', 
-                  'nombre_archivo': 'Archivo' 
-                }} 
+              
+              {/* Datos de la Maquinaria */}
+              {maquinaria && (
+                <TablaGenericaAvanzada
+                  title="Datos de la Maquinaria"
+                  data={[maquinaria]}
+                  fields={maquinariaFields}
+                  emptyMessage="No hay datos de maquinaria disponibles"
+                  ocultarCampos={['gestion', 'bien_de_uso', 'vida_util', 'costo_activo', 'fecha_creacion', 'fecha_actualizacion', 'created_at', 'updated_at']}
+                />
+              )}
+              
+              {/* Hoja de Vida */}
+              <HojaVidaReporte 
+                maquinaria={maquinaria} 
+                mantenimientos={mantenimiento}
+                control={control}
+                asignacion={asignacion}
+                liberacion={liberacion}
+                seguros={seguros}
+                itv={itv}
+                soat={soat}
+                impuestos={impuestos}
+                depreciaciones={depreciaciones}
+                pronosticos={pronosticos}
               />
               <TablaGenericaAvanzada
                 title="Depreciaciones"
