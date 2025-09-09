@@ -1,58 +1,9 @@
-import React, { useRef } from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, Divider, Avatar, CardMedia, Button } from '@mui/material';
+import React from 'react';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, Divider, Avatar, CardMedia } from '@mui/material';
 import { formatDateOnly } from './helpers';
 import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
-  const reportRef = useRef(null);
-
-  const handleExportPDF = async () => {
-    try {
-      const { jsPDF } = await import('jspdf');
-      const html2canvas = (await import('html2canvas')).default;
-
-      // Capturar el contenido del reporte
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      // Agregar la primera página
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Agregar páginas adicionales si es necesario
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Generar nombre del archivo
-      const fecha = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
-      const placa = maquinaria?.placa || 'maquinaria';
-      const filename = `Hoja_Vida_${placa}_${fecha}.pdf`;
-
-      pdf.save(filename);
-    } catch (error) {
-      console.error('Error al exportar PDF:', error);
-      alert('Error al exportar el PDF. Por favor, inténtelo de nuevo.');
-    }
-  };
 
   if (!mantenimientos || mantenimientos.length === 0) {
     return (
@@ -66,25 +17,8 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
 
   return (
     <Box sx={{ p: 2, maxWidth: '100%', overflow: 'hidden' }}>
-      {/* Botón de Exportar PDF */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button
-          variant="contained"
-          color="error"
-          startIcon={<PictureAsPdfIcon />}
-          onClick={handleExportPDF}
-          sx={{ 
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 'bold'
-          }}
-        >
-          Exportar PDF
-        </Button>
-      </Box>
-
       {/* Contenido del Reporte */}
-      <Box ref={reportRef} sx={{ backgroundColor: 'white' }}>
+      <Box sx={{ backgroundColor: 'white' }}>
         {/* Header con Logo y Título */}
         <Box sx={{ textAlign: 'center', mb: 3, borderBottom: '2px solid #1e4db7', pb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
@@ -520,61 +454,6 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
         </TableContainer>
       </Box>
 
-      {/* Sección de Firmas */}
-      <Box sx={{ mt: 4, mb: 2 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 2 }}>
-                RESPONSABLE DE MANTENIMIENTO
-              </Typography>
-              <Box sx={{ 
-                height: 40, 
-                borderBottom: '1px solid #000', 
-                mb: 1,
-                mx: 1
-              }}></Box>
-              <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                Nombre y Apellido
-              </Typography>
-            </Box>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 2 }}>
-                ENCARGADO DE ACTIVOS FIJOS
-              </Typography>
-              <Box sx={{ 
-                height: 40, 
-                borderBottom: '1px solid #000', 
-                mb: 1,
-                mx: 1
-              }}></Box>
-              <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                Nombre y Apellido
-              </Typography>
-            </Box>
-          </Grid>
-          
-          <Grid item xs={12} md={4}>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 2 }}>
-                DIRECTOR GENERAL
-              </Typography>
-              <Box sx={{ 
-                height: 40, 
-                borderBottom: '1px solid #000', 
-                mb: 1,
-                mx: 1
-              }}></Box>
-              <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                Nombre y Apellido
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
       </Box> {/* Cierre del contenido del reporte */}
     </Box>
   );
