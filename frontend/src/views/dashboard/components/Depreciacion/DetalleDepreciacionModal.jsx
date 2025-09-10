@@ -78,7 +78,7 @@ function normalizaFecha(fecha) {
 }
 
 const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave }) => {
-  const canEditDepreciacion = useCanEdit('Depreciación');
+  const canEditDepreciacion = useCanEdit('Depreciaciones');
   const [editableData, setEditableData] = useState({
     costo_activo: '',
     fecha_compra: '',

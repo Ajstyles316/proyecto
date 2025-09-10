@@ -349,7 +349,7 @@ export const useCanEdit = (module) => {
     if (modulePermisos.editar === 'lector') {
       return false;
     }
-    if (module === 'Depreciación') {
+    if (module === 'Depreciaciones') {
       return true;
     }
     return false;
@@ -411,7 +411,7 @@ export const useCanDelete = (module) => {
     if (modulePermisos.editar === 'lector') {
       return false;
     }
-    if (module === 'Depreciación') {
+    if (module === 'Depreciaciones') {
       return true;
     }
     return false;

@@ -20,8 +20,8 @@ const getMaquinariaId = (maquinaria) =>
   maquinaria._id?.$oid || maquinaria._id || maquinaria.maquinaria_id || maquinaria.id;
 
 const DepreciacionesMain = () => {
-  const canView = useCanView('Depreciación');
-  const isPermissionDenied = useIsPermissionDenied('Depreciación');
+  const canView = useCanView('Depreciaciones');
+  const isPermissionDenied = useIsPermissionDenied('Depreciaciones');
   
   // Si el permiso está denegado, mostrar mensaje de acceso denegado
   if (isPermissionDenied) {

@@ -4,7 +4,7 @@ from rest_framework import status, serializers
 from rest_framework.views import APIView
 from django.core.exceptions import ObjectDoesNotExist
 from bson import ObjectId, json_util
-import json, requests, logging, os, traceback
+import json, requests, logging, os, traceback, re
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta
 from rest_framework import viewsets
@@ -4945,6 +4945,148 @@ class UsuarioPermisosUpdateView(APIView):
         except Exception as e:
             logger.error(f"Error al registrar actividad de cambio de permisos: {str(e)}")
         return Response(serialize_doc(usuario_actualizado), status=status.HTTP_200_OK)
+
+class CrearUsuarioView(APIView):
+    """Solo el admin puede crear nuevos usuarios."""
+    serializer_class = RegistroSerializer
+
+    def post(self, request):
+        try:
+            email = request.headers.get('X-User-Email')
+            if not email:
+                return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+            collection = get_collection(Usuario)
+            admin_user = collection.find_one({"Email": email})
+            if not check_user_permissions(admin_user, required_role='admin'):
+                return Response({'error': 'Solo el administrador puede crear usuarios'}, status=status.HTTP_403_FORBIDDEN)
+
+            data = request.data
+            print("Datos recibidos para crear usuario:", data)
+
+            serializer = self.serializer_class(data=data)
+            if not serializer.is_valid():
+                print("Errores del serializador:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            data.pop("confirmPassword", None)
+
+            # Verificar si el usuario ya existe
+            existing_user = collection.find_one({"Email": data.get("Email")})
+            if existing_user:
+                return Response({"error": "El usuario ya existe"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generar contraseña automática si no se proporciona una válida
+            password = data.get("Password", "")
+            if not password or not re.match(r'^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};\':"\\|,.<>/?]).{8,}$', password):
+                # Generar contraseña automática
+                import random
+                import string
+                uppercase = string.ascii_uppercase
+                lowercase = string.ascii_lowercase
+                numbers = string.digits
+                special = '!@#$%^&*()_+-=[]{}|;:,.<>?'
+                
+                password = ''
+                password += random.choice(uppercase)
+                password += random.choice(lowercase)
+                password += random.choice(numbers)
+                password += random.choice(special)
+                
+                # Completar hasta 8 caracteres mínimo
+                all_chars = uppercase + lowercase + numbers + special
+                for _ in range(4):
+                    password += random.choice(all_chars)
+                
+                # Mezclar la contraseña
+                password_list = list(password)
+                random.shuffle(password_list)
+                password = ''.join(password_list)
+
+            # Hashear la contraseña
+            data["Password"] = bcrypt.hashpw(
+                password.encode("utf-8"),
+                bcrypt.gensalt()
+            ).decode("utf-8")
+
+            # Crear el usuario
+            usuario_data = {
+                "Nombre": data.get("Nombre"),
+                "Cargo": data.get("Cargo"),
+                "Unidad": data.get("Unidad"),
+                "Email": data.get("Email"),
+                "Password": data["Password"],
+                "Permiso": data.get("Cargo", "Editor"),
+                "activo": True,
+                "permisos": {
+                    "Dashboard": {"ver": True, "crear": False, "editar": False, "eliminar": False},
+                    "Maquinaria": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Control": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "ControlOdometro": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Asignación": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Liberación": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Mantenimiento": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "SOAT": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Impuestos": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Seguros": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Inspección Técnica Vehicular": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Depreciaciones": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Activos": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Pronóstico": {"ver": True, "crear": True, "editar": True, "eliminar": False},
+                    "Reportes": {"ver": True, "crear": True, "editar": True, "eliminar": False}
+                }
+            }
+
+            result = collection.insert_one(usuario_data)
+            usuario_creado = collection.find_one({"_id": result.inserted_id})
+
+            # Enviar correo con la contraseña usando la misma configuración que pronósticos
+            try:
+                asunto = "Credenciales de acceso - Sistema de Gestión de Maquinaria"
+                mensaje = f"""
+Hola {data.get("Nombre")},
+
+Se ha creado tu cuenta en el Sistema de Gestión de Maquinaria.
+
+Tus credenciales de acceso son:
+- Email: {data.get("Email")}
+- Contraseña: {password}
+- Cargo: {data.get("Cargo")}
+- Unidad: {data.get("Unidad")}
+
+Por favor, cambia tu contraseña después del primer inicio de sesión por seguridad.
+
+Saludos,
+Equipo de Administración
+                """
+                send_mail(asunto, mensaje, settings.DEFAULT_FROM_EMAIL, [data.get("Email")])
+                print(f"✅ Correo enviado exitosamente a {data.get('Email')}")
+            except Exception as e:
+                logger.error(f"Error enviando correo de credenciales: {str(e)}")
+                print(f"❌ Error al enviar correo: {str(e)}")
+                print(f"🔑 Contraseña generada: {password}")
+                print(f"📬 Envía manualmente esta contraseña a: {data.get('Email')}")
+
+            # Registrar auditoría de creación de usuario
+            try:
+                detalle = {
+                    'usuario_creado_email': data.get("Email"),
+                    'usuario_creado_nombre': data.get("Nombre"),
+                    'usuario_creado_cargo': data.get("Cargo"),
+                    'usuario_creado_unidad': data.get("Unidad"),
+                }
+                registrar_actividad(email, "registro_usuario", "Usuarios", f"Usuario creado: {data.get('Nombre')} ({data.get('Email')})", detalle)
+            except Exception as e:
+                logger.error(f"Error al registrar actividad de creación de usuario: {str(e)}")
+
+            return Response(serialize_doc(usuario_creado), status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error interno en CrearUsuarioView: {str(e)}")
+            return Response(
+                {"error": f"Error al crear usuario: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class SeguimientoListView(APIView):
     """Solo admin o encargado puede ver el registro de actividad."""

@@ -49,12 +49,11 @@ const HojaVidaReporte = ({
                 <img src="${logoCofa}" alt="Logo COFADENA" style="width: 100%; height: 100%; object-fit: contain;" />
               </div>
             <div style="line-height: 1.15;">
-              <div style="font-weight: bold; color: #1e4db7; font-size: 16px;">MINISTERIO DE DEFENSA</div>
-              <div style="font-weight: bold; color: #1e4db7; font-size: 14px;">CORPORACIÓN DE LAS FF.AA. PARA EL DESARROLLO NACIONAL</div>
-              <div style="font-weight: bold; color: #1e4db7; font-size: 12px;">EMPRESA PÚBLICA NACIONAL ESTRATÉGICA</div>
+              <div style="font-weight: bold; color: #1e4db7; font-size: 14px;">CORPORACIÓN DE LAS FUERZAS ARMADAS PARA EL DESARROLLO NACIONAL</div>
               </div>
             </div>
           </div>
+          <div style="width: 100%; height: 3px; background-color: #1e4db7; margin-top: 10px;"></div>
         `;
         document.body.appendChild(headerDiv);
         
@@ -126,17 +125,17 @@ const HojaVidaReporte = ({
           <div style="text-align: center; width: 33%;">
             <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">RESPONSABLE DE MANTENIMIENTO</div>
             <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
-            <div style="font-size: 11px; margin-top: 6px;">Nombre y Apellido</div>
+            <div style="font-size: 11px; margin-top: 6px;">........................................................................................................</div>
           </div>
           <div style="text-align: center; width: 33%;">
             <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">ENCARGADO DE ACTIVOS FIJOS</div>
             <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
-            <div style="font-size: 11px; margin-top: 6px;">Nombre y Apellido</div>
+            <div style="font-size: 11px; margin-top: 6px;">........................................................................................................</div>
           </div>
           <div style="text-align: center; width: 33%;">
             <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">DIRECTOR GENERAL</div>
             <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
-            <div style="font-size: 11px; margin-top: 6px;">Nombre y Apellido</div>
+            <div style="font-size: 11px; margin-top: 6px;">........................................................................................................</div>
           </div>
         </div>
       </div>

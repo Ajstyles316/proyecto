@@ -14,7 +14,41 @@ import CircularProgress from '@mui/material/CircularProgress';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-const cargos = ["Encargado", "Técnico"];
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+
+const cargos = ["Encargado", "Técnico"]; // Admin no se incluye porque solo el admin puede crear usuarios
+
+// Regex para validación de email y contraseña
+const EMAIL_REGEX = /^[\w.-]+@(gmail\.com|enc\.cof\.gob\.bo|tec\.cof\.gob\.bo)$/i;
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
+// Función para generar contraseña automática
+const generatePassword = () => {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  
+  let password = '';
+  
+  // Asegurar al menos un carácter de cada tipo
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+  
+  // Completar hasta 8 caracteres mínimo
+  const allChars = uppercase + lowercase + numbers + special;
+  for (let i = 4; i < 8; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+  
+  // Mezclar la contraseña
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+};
 const MODULOS = [
   'Maquinaria',
   'Control',
@@ -312,6 +346,21 @@ const UserManagement = () => {
   const [desactivarUsuarioModal, setDesactivarUsuarioModal] = useState({ open: false, usuarioId: null });
   const [justificacionDesactivacion, setJustificacionDesactivacion] = useState('');
   
+  // Estado para el modal de crear usuario
+  const [crearUsuarioModal, setCrearUsuarioModal] = useState({ open: false });
+  const [crearUsuarioForm, setCrearUsuarioForm] = useState({
+    Nombre: "",
+    Cargo: "",
+    Unidad: "",
+    Email: "",
+    Password: "",
+  });
+  const [crearUsuarioErrors, setCrearUsuarioErrors] = useState({});
+  const [crearUsuarioLoading, setCrearUsuarioLoading] = useState(false);
+  const [showGeneratedPassword, setShowGeneratedPassword] = useState(false);
+  const [opcionesCrearUsuario, setOpcionesCrearUsuario] = useState({ cargos: [], unidades: [] });
+  const [loadingOpcionesCrearUsuario, setLoadingOpcionesCrearUsuario] = useState(false);
+  
   // Filtros únicos para selects
   const seguimientoUsuarios = usuariosRegistrados.map(u => ({ nombre: u.Nombre, email: u.Email, cargo: u.Cargo, unidad: u.Unidad }));
   // Filtrado de auditoría
@@ -539,6 +588,128 @@ const UserManagement = () => {
     setSeguimientoError('');
     setSeguimientoFilters({ usuario: '', modulo: '', desde: '', hasta: '' });
   };
+
+  // Funciones para el modal de crear usuario
+  const handleCrearUsuarioChange = (e) => {
+    const { name, value } = e.target;
+    setCrearUsuarioForm(prev => ({ ...prev, [name]: value }));
+    setCrearUsuarioErrors(prev => ({ ...prev, [name]: "" }));
+  };
+
+  const validateCrearUsuarioForm = () => {
+    const newErrors = {};
+    if (!crearUsuarioForm.Nombre.trim()) newErrors.Nombre = "El nombre es obligatorio";
+    if (!crearUsuarioForm.Cargo.trim()) newErrors.Cargo = "El cargo es obligatorio";
+    if (!crearUsuarioForm.Unidad.trim()) newErrors.Unidad = "La unidad es obligatoria";
+    if (!crearUsuarioForm.Email.trim()) newErrors.Email = "El correo es obligatorio";
+    else if (!EMAIL_REGEX.test(crearUsuarioForm.Email))
+      newErrors.Email = "Solo se permiten correos @gmail.com, @enc.cof.gob.bo o @tec.cof.gob.bo. Ej: usuario@gmail.com";
+    if (!crearUsuarioForm.Password.trim()) newErrors.Password = "La contraseña es obligatoria";
+    else if (!PASSWORD_REGEX.test(crearUsuarioForm.Password))
+      newErrors.Password = "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial. Ej: Ejemplo1!";
+
+    setCrearUsuarioErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleGenerarPassword = () => {
+    const newPassword = generatePassword();
+    setCrearUsuarioForm(prev => ({ ...prev, Password: newPassword }));
+    setCrearUsuarioErrors(prev => ({ ...prev, Password: "" }));
+  };
+
+  const handleCrearUsuario = async () => {
+    if (!validateCrearUsuarioForm()) return;
+    
+    setCrearUsuarioLoading(true);
+    try {
+      const payload = {
+        Nombre: crearUsuarioForm.Nombre,
+        Cargo: crearUsuarioForm.Cargo,
+        Unidad: crearUsuarioForm.Unidad,
+        Email: crearUsuarioForm.Email,
+        Password: crearUsuarioForm.Password,
+        confirmPassword: crearUsuarioForm.Password, // Para el backend
+      };
+
+      const response = await fetch("http://localhost:8000/api/usuarios/crear/", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          'X-User-Email': user.Email
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      
+      if (!response.ok) {
+        throw new Error(data?.error || 'Error al crear usuario');
+      }
+
+      setSnackbar({ 
+        open: true, 
+        message: 'Usuario creado exitosamente. La contraseña ha sido enviada por correo.', 
+        severity: 'success' 
+      });
+      
+      // Limpiar formulario y cerrar modal
+      setCrearUsuarioForm({
+        Nombre: "",
+        Cargo: "",
+        Unidad: "",
+        Email: "",
+        Password: "",
+      });
+      setCrearUsuarioModal({ open: false });
+      setShowGeneratedPassword(false);
+      
+      // Recargar lista de usuarios
+      fetchUsuarios();
+      
+    } catch (error) {
+      setSnackbar({ 
+        open: true, 
+        message: error.message || 'Error al crear usuario', 
+        severity: 'error' 
+      });
+    } finally {
+      setCrearUsuarioLoading(false);
+    }
+  };
+
+  const handleOpenCrearUsuario = async () => {
+    setCrearUsuarioModal({ open: true });
+    setLoadingOpcionesCrearUsuario(true);
+    
+    // Cargar opciones de cargos y unidades
+    try {
+      const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
+      if (!res.ok) throw new Error("No se pudieron cargar las opciones");
+      const data = await res.json();
+      setOpcionesCrearUsuario({
+        cargos: data.cargos || [],
+        unidades: data.unidades || [],
+      });
+    } catch (e) {
+      setOpcionesCrearUsuario({ cargos: [], unidades: [] });
+    } finally {
+      setLoadingOpcionesCrearUsuario(false);
+    }
+  };
+
+  const handleCloseCrearUsuario = () => {
+    setCrearUsuarioModal({ open: false });
+    setCrearUsuarioForm({
+      Nombre: "",
+      Cargo: "",
+      Unidad: "",
+      Email: "",
+      Password: "",
+    });
+    setCrearUsuarioErrors({});
+    setShowGeneratedPassword(false);
+  };
   if (!user || (user.Cargo.toLowerCase() !== 'admin' && user.Cargo.toLowerCase() !== 'encargado')) {
     return <Typography variant="h6" color="error">Acceso denegado</Typography>;
   }
@@ -547,7 +718,20 @@ const UserManagement = () => {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" mb={2} fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" fontWeight={700} color="primary.main">Gestión de Usuarios</Typography>
+          {isAdmin && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={handleOpenCrearUsuario}
+              sx={{ borderRadius: 2, fontWeight: 600 }}
+            >
+              Crear Usuario
+            </Button>
+          )}
+        </Box>
       {(isAdmin || isEncargado) && (
         <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                           <RegistrosDesactivadosButton maquinariaId="all" isAdmin={isAdmin} />
@@ -975,6 +1159,135 @@ const UserManagement = () => {
             </Box>
           )}
           <Button onClick={handleCloseSeguimiento} variant="contained" color="primary" sx={{ borderRadius: 2, fontWeight: 600 }} disabled={isReadOnly}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal para crear usuario */}
+      <Dialog open={crearUsuarioModal.open} onClose={handleCloseCrearUsuario} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight={700} component="span">Crear Nuevo Usuario</Typography>
+          <IconButton onClick={handleCloseCrearUsuario} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {loadingOpcionesCrearUsuario ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+              <CircularProgress color="primary" />
+              <Typography variant="body1" sx={{ ml: 2 }}>Cargando opciones...</Typography>
+            </Box>
+          ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              name="Nombre"
+              label="Nombre Completo"
+              value={crearUsuarioForm.Nombre}
+              onChange={handleCrearUsuarioChange}
+              error={!!crearUsuarioErrors.Nombre}
+              helperText={crearUsuarioErrors.Nombre}
+              fullWidth
+              required
+            />
+            
+            <TextField
+              name="Email"
+              label="Correo Electrónico"
+              type="email"
+              value={crearUsuarioForm.Email}
+              onChange={handleCrearUsuarioChange}
+              error={!!crearUsuarioErrors.Email}
+              helperText={crearUsuarioErrors.Email}
+              fullWidth
+              required
+              placeholder="usuario@gmail.com"
+            />
+            
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                name="Cargo"
+                label="Cargo"
+                value={crearUsuarioForm.Cargo}
+                onChange={handleCrearUsuarioChange}
+                error={!!crearUsuarioErrors.Cargo}
+                helperText={crearUsuarioErrors.Cargo}
+                select
+                fullWidth
+                required
+                disabled={loadingOpcionesCrearUsuario}
+              >
+                {opcionesCrearUsuario.cargos
+                  .filter(cargo => cargo.toLowerCase() !== 'admin')
+                  .map(cargo => (
+                    <MenuItem key={cargo} value={cargo}>{cargo}</MenuItem>
+                  ))}
+              </TextField>
+              
+              <TextField
+                name="Unidad"
+                label="Unidad"
+                value={crearUsuarioForm.Unidad}
+                onChange={handleCrearUsuarioChange}
+                error={!!crearUsuarioErrors.Unidad}
+                helperText={crearUsuarioErrors.Unidad}
+                select
+                fullWidth
+                required
+                disabled={loadingOpcionesCrearUsuario}
+              >
+                {opcionesCrearUsuario.unidades.map(unidad => (
+                  <MenuItem key={unidad} value={unidad}>{unidad}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                name="Password"
+                label="Contraseña"
+                type={showGeneratedPassword ? "text" : "password"}
+                value={crearUsuarioForm.Password}
+                onChange={handleCrearUsuarioChange}
+                error={!!crearUsuarioErrors.Password}
+                helperText={crearUsuarioErrors.Password || "Mínimo 8 caracteres, una mayúscula, un número y un carácter especial"}
+                fullWidth
+                required
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      onClick={() => setShowGeneratedPassword(!showGeneratedPassword)}
+                      edge="end"
+                    >
+                      {showGeneratedPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  ),
+                }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleGenerarPassword}
+                sx={{ minWidth: 'auto', px: 2 }}
+                title="Generar contraseña automática"
+              >
+                Generar
+              </Button>
+            </Box>
+            
+          </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseCrearUsuario} color="inherit">
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleCrearUsuario} 
+            variant="contained" 
+            color="primary"
+            disabled={crearUsuarioLoading || loadingOpcionesCrearUsuario}
+            startIcon={crearUsuarioLoading ? <CircularProgress size={16} color="inherit" /> : <PersonAddIcon />}
+          >
+            {crearUsuarioLoading ? 'Creando...' : 'Crear Usuario'}
+          </Button>
         </DialogActions>
       </Dialog>
       </Box>
