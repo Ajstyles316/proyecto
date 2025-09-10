@@ -11,6 +11,7 @@ import {
   Box,
   CircularProgress,
   Paper,
+  useTheme,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
@@ -18,6 +19,7 @@ import { useUser } from '../../../../components/UserContext';
 
 const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
+  const theme = useTheme();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
   
@@ -53,8 +55,17 @@ const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadO
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
-    <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-      <Table sx={{ minWidth: 800 }}>
+    <TableContainer 
+      component={Paper} 
+      sx={{ 
+        overflowX: 'auto', 
+        WebkitOverflowScrolling: 'touch',
+        borderRadius: 2,
+        border: `1px solid ${theme.palette.divider}`,
+        maxHeight: { xs: '400px', sm: '500px', md: '600px' }
+      }}
+    >
+      <Table sx={{ minWidth: 600 }}>
         <TableHead>
           <TableRow>
             <TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>FECHA</TableCell>
@@ -66,7 +77,17 @@ const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadO
         </TableHead>
         <TableBody>
           {mantenimientos.map((mantenimiento) => (
-            <TableRow key={mantenimiento._id} hover>
+            <TableRow 
+              key={mantenimiento._id} 
+              hover
+              sx={{ 
+                opacity: mantenimiento.activo === false ? 0.5 : 1,
+                backgroundColor: mantenimiento.activo === false ? '#fafafa' : 'inherit',
+                '&:hover': {
+                  backgroundColor: mantenimiento.activo === false ? '#f0f0f0' : 'rgba(0, 0, 0, 0.04)'
+                }
+              }}
+            >
               <TableCell sx={{ fontSize: '0.875rem' }}>{formatDate(mantenimiento.fecha_mantenimiento)}</TableCell>
               <TableCell sx={{ fontSize: '0.875rem', maxWidth: 300 }}>
                 <Box sx={{ 
@@ -81,7 +102,7 @@ const MantenimientoTable = ({ mantenimientos, onEdit, onDelete, loading, isReadO
               <TableCell sx={{ fontSize: '0.875rem' }}>
                 {mantenimiento.costo_total ? `Bs. ${mantenimiento.costo_total.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}
               </TableCell>
-              <TableCell sx={{ fontSize: '0.875rem' }}>{mantenimiento.operador || '-'}</TableCell>
+                <TableCell sx={{ fontSize: '0.875rem' }}>{mantenimiento.operador || '-'}</TableCell>
               {showActionsColumn && (
                 <TableCell align="right">
                   {(isEncargado || canEdit) && (

@@ -186,10 +186,10 @@ const RegistrosDesactivadosTable = ({ registrosDesactivados, onReactivar, onElim
           title: 'Mantenimiento',
           fields: [
             { label: 'Placa', value: formatValue(record['Maquinaria'] || record['maquinaria']) },
-            { label: 'Tipo', value: formatValue(record['Tipo'] || record['tipo_mantenimiento']) },
-            { label: 'Consumo Combustible', value: record['Consumo Combustible'] || record['consumo_combustible'] || '—' },
-            { label: 'Consumo Lubricante', value: record['Consumo Lubricante'] || record['consumo_lubricantes'] || '—' },
-            { label: 'Mano de Obra', value: formatValue(record['Mano de Obra'] || record['mano_obra']) },
+            { label: 'Fecha', value: formatValue(record['Fecha de Mantenimiento'] || record['fecha_mantenimiento']) },
+            { label: 'Descripción', value: formatValue(record['Descripción'] || record['descripcion_danos_eventos'] || record['reparacion_realizada']) },
+            { label: 'Costo', value: record['Costo Total'] || record['costo_total'] || '—' },
+            { label: 'Operador', value: formatValue(record['Operador'] || record['operador']) },
             { label: 'Fecha de Desactivación', value: formatValue(record['Fecha de Desactivación']) }
           ]
         };

@@ -467,53 +467,6 @@ const ReportesMain = () => {
                 depreciaciones={depreciaciones}
                 pronosticos={pronosticos}
               />
-              <TablaGenericaAvanzada
-                title="Depreciaciones"
-                data={depreciaciones}
-                fields={depFields}
-                emptyMessage="No hay depreciaciones para esta maquinaria"
-                ocultarCampos={['maquinaria']}
-                customCellRender={(key, value) => {
-                  if (key.toLowerCase().includes('fecha')) {
-                    if (value && typeof value === 'string') {
-                      // Manejar tanto formato ISO (T) como formato con espacios (00:00:00)
-                      if (value.includes('T')) {
-                        return value.split('T')[0];
-                      } else if (value.includes(' ')) {
-                        return value.split(' ')[0];
-                      }
-                      return value;
-                    }
-                    return value ?? '-';
-                  }
-                  return value ?? '-';
-                }}
-              />
-              <TablaGenericaAvanzada
-                title="Pronósticos"
-                data={pronosticos}
-                fields={pronosticoFields}
-                emptyMessage="No hay pronósticos para esta maquinaria"
-                ocultarCampos={['maquinaria', 'placa']}
-                customCellRender={(key, value, row) => {
-                  if (key === 'recomendaciones') {
-                    return renderRecomendaciones(value);
-                  }
-                  if (key.toLowerCase().includes('fecha')) {
-                    if (value && typeof value === 'string') {
-                      // Manejar tanto formato ISO (T) como formato con espacios (00:00:00)
-                      if (value.includes('T')) {
-                        return value.split('T')[0];
-                      } else if (value.includes(' ')) {
-                        return value.split(' ')[0];
-                      }
-                      return value;
-                    }
-                    return value ?? '-';
-                  }
-                  return value ?? '-';
-                }}
-              />
             </Box>
           </>
         )}

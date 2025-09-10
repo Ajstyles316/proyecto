@@ -73,7 +73,12 @@ const ExportarReportes = () => {
         // Exportar todos los campos relevantes de cada maquinaria filtrada (horizontal)
         exportData.maquinaria = maqsFiltradas.map(m => {
           const obj = {};
-          maquinariaFields.forEach(f => { obj[f.key] = m[f.key] ?? ''; });
+          maquinariaFields.forEach(f => { 
+            // Excluir la columna de gestión
+            if (f.key !== 'gestion') {
+              obj[f.key] = m[f.key] ?? ''; 
+            }
+          });
           return obj;
         });
       }
@@ -98,7 +103,7 @@ const ExportarReportes = () => {
               control: ['fecha_inicio', 'fecha_final', 'proyecto', 'ubicacion', 'estado', 'tiempo', 'operador'],
               asignacion: ['unidad', 'fecha_asignacion', 'kilometraje', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
               liberacion: ['unidad', 'fecha_liberacion', 'kilometraje_entregado', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
-              mantenimiento: ['tipo_mantenimiento', 'consumo_combustible', 'consumo_lubricantes', 'mano_obra', 'costo_total', 'tecnico_responsable'],
+              mantenimiento: ['fecha_mantenimiento', 'descripcion_danos_eventos', 'reparacion_realizada', 'costo_total', 'operador', 'horas_kilometros', 'atendido_por'],
               soat: ['gestion'],
               seguros: ['fecha_inicial', 'fecha_final', 'numero_poliza', 'compania_aseguradora', 'importe'],
               itv: ['gestion'],

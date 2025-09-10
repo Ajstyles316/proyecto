@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
+import PropTypes from 'prop-types';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, CardMedia, Button } from '@mui/material';
 import { formatDateOnly } from './helpers';
 import FileDownloadCell from './FileDownloadCell';
@@ -14,80 +15,272 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
       const { jsPDF } = await import('jspdf');
       const html2canvas = (await import('html2canvas')).default;
 
-      // Crear un elemento temporal con el contenido del reporte + sección de firmas
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '0';
-      tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '20px';
-      
-      // Clonar el contenido del reporte
-      const reportClone = reportRef.current.cloneNode(true);
-      
-      // Crear la sección de firmas
-      const firmasDiv = document.createElement('div');
-      firmasDiv.innerHTML = `
-        <div style="margin-top: 40px; margin-bottom: 20px;">
-          <div style="display: flex; justify-content: space-between;">
-            <div style="text-align: center; width: 30%;">
-              <div style="font-weight: bold; margin-bottom: 20px; font-size: 14px;">RESPONSABLE DE MANTENIMIENTO</div>
-              <div style="height: 40px; border-bottom: 1px solid #000; margin-bottom: 10px; margin: 0 10px;"></div>
-              <div style="font-size: 12px;">Nombre y Apellido</div>
-            </div>
-            <div style="text-align: center; width: 30%;">
-              <div style="font-weight: bold; margin-bottom: 20px; font-size: 14px;">ENCARGADO DE ACTIVOS FIJOS</div>
-              <div style="height: 40px; border-bottom: 1px solid #000; margin-bottom: 10px; margin: 0 10px;"></div>
-              <div style="font-size: 12px;">Nombre y Apellido</div>
-            </div>
-            <div style="text-align: center; width: 30%;">
-              <div style="font-weight: bold; margin-bottom: 20px; font-size: 14px;">DIRECTOR GENERAL</div>
-              <div style="height: 40px; border-bottom: 1px solid #000; margin-bottom: 10px; margin: 0 10px;"></div>
-              <div style="font-size: 12px;">Nombre y Apellido</div>
+    // ====== Helpers ======
+      const addHeaderToPage = async (pdfDoc) => {
+      // Renderizar el header (logo + textos) como imagen para cada página
+        const headerDiv = document.createElement('div');
+        headerDiv.style.position = 'absolute';
+        headerDiv.style.left = '-9999px';
+        headerDiv.style.top = '0';
+        headerDiv.style.backgroundColor = 'white';
+        headerDiv.style.padding = '20px';
+        headerDiv.style.borderBottom = '2px solid #1e4db7';
+        headerDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+            <div style="width: 90px; height: 70px; border-radius: 8px; overflow: hidden; border: 2px solid #1e4db7; background-color: white; display: flex; align-items: center; justify-content: center;">
+                <img src="${logoCofa}" alt="Logo COFADENA" style="width: 100%; height: 100%; object-fit: contain;" />
+              </div>
+            <div style="line-height: 1.15;">
+              <div style="font-weight: bold; color: #1e4db7; font-size: 16px;">MINISTERIO DE DEFENSA</div>
+              <div style="font-weight: bold; color: #1e4db7; font-size: 14px;">CORPORACIÓN DE LAS FF.AA. PARA EL DESARROLLO NACIONAL</div>
+              <div style="font-weight: bold; color: #1e4db7; font-size: 12px;">EMPRESA PÚBLICA NACIONAL ESTRATÉGICA</div>
+              </div>
             </div>
           </div>
-        </div>
-      `;
-      
-      // Agregar contenido al div temporal
-      tempDiv.appendChild(reportClone);
-      tempDiv.appendChild(firmasDiv);
-      document.body.appendChild(tempDiv);
+        `;
+        document.body.appendChild(headerDiv);
+        
+        const headerCanvas = await html2canvas(headerDiv, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+        height: 100
+        });
+        
+        document.body.removeChild(headerDiv);
+        
+        const headerImgData = headerCanvas.toDataURL('image/png');
+      const headerHeight = 28; // mm (altura ocupada por el encabezado)
+        
+      // Página A4
+      const imgWidth = 210;
+        pdfDoc.addImage(headerImgData, 'PNG', 0, 0, imgWidth, headerHeight);
+        return headerHeight;
+      };
 
-      // Capturar el contenido completo
-      const canvas = await html2canvas(tempDiv, {
+     const paginateSection = async (pdfDoc, sectionCanvas) => {
+       const imgData = sectionCanvas.toDataURL('image/png');
+       const imgWidth = 210; // A4 width mm
+       const pageHeight = 295; // A4 height mm
+       const imgHeight = (sectionCanvas.height * imgWidth) / sectionCanvas.width;
+
+       let heightLeft = imgHeight;
+       let position = 0;
+
+       // Agregar nueva página
+       pdfDoc.addPage();
+       const headerHeight = await addHeaderToPage(pdfDoc);
+       
+       // Solo agregar contenido si hay algo que mostrar
+       if (imgHeight > 0) {
+         // Primera página: usar todo el espacio disponible
+         const availableHeight = pageHeight - headerHeight;
+         pdfDoc.addImage(imgData, 'PNG', 0, headerHeight, imgWidth, Math.min(imgHeight, availableHeight));
+         heightLeft -= availableHeight;
+
+         // Páginas siguientes solo si es necesario
+         while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+           pdfDoc.addPage();
+           await addHeaderToPage(pdfDoc);
+           pdfDoc.addImage(imgData, 'PNG', 0, headerHeight + position, imgWidth, imgHeight);
+           heightLeft -= pageHeight;
+         }
+       }
+     };
+
+    // ====== Construir DOM temporal con contenido + firmas ======
+    const tempRoot = document.createElement('div');
+    tempRoot.style.position = 'absolute';
+    tempRoot.style.left = '-9999px';
+    tempRoot.style.top = '0';
+    tempRoot.style.backgroundColor = 'white';
+    tempRoot.style.padding = '20px';
+
+    // Clonar el contenido de la vista
+    const reportClone = reportRef.current.cloneNode(true);
+
+    // Sección de firmas (se añade al final de CADA sección renderizada)
+    const firmasHTML = `
+      <div style="margin-top: 200px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; gap: 12px;">
+          <div style="text-align: center; width: 33%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">RESPONSABLE DE MANTENIMIENTO</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
+            <div style="font-size: 11px; margin-top: 6px;">Nombre y Apellido</div>
+          </div>
+          <div style="text-align: center; width: 33%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">ENCARGADO DE ACTIVOS FIJOS</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
+            <div style="font-size: 11px; margin-top: 6px;">Nombre y Apellido</div>
+          </div>
+          <div style="text-align: center; width: 33%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">DIRECTOR GENERAL</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
+            <div style="font-size: 11px; margin-top: 6px;">Nombre y Apellido</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // ---- Clones por sección (antes / después del corte) ----
+    // Base para clonar y partir
+    const baseDiv = document.createElement('div');
+    baseDiv.style.backgroundColor = 'white';
+    baseDiv.style.padding = '0';
+    baseDiv.appendChild(reportClone);
+
+     const makeSectionDom = (mode) => {
+       // Clonar base completa
+       const section = baseDiv.cloneNode(true);
+       
+       if (mode === 'before') {
+         // Sección 1: Todo hasta Historial de Mantenimiento (incluyendo Historial)
+         const historialElement = Array.from(section.querySelectorAll('*')).find(el => 
+           el.textContent && el.textContent.trim() === 'HISTORIAL DE MANTENIMIENTO'
+         );
+         
+         if (historialElement) {
+           const historialBox = historialElement.closest('[class*="Box"]') || historialElement.parentElement;
+           let currentNode = historialBox;
+           while (currentNode && currentNode.parentNode) {
+             // Eliminar todos los hermanos siguientes
+             while (currentNode.nextSibling) {
+               currentNode.nextSibling.remove();
+             }
+             break;
+           }
+         }
+         return section;
+       }
+       
+       if (mode === 'middle') {
+         // Sección 2: Desde Control hasta Seguros (sin ITV)
+         const controlElement = Array.from(section.querySelectorAll('*')).find(el => 
+           el.textContent && el.textContent.trim() === 'CONTROL'
+         );
+         const segurosElement = Array.from(section.querySelectorAll('*')).find(el => 
+           el.textContent && el.textContent.trim() === 'SEGUROS'
+         );
+         
+         if (controlElement && segurosElement) {
+           const controlBox = controlElement.closest('[class*="Box"]') || controlElement.parentElement;
+           const segurosBox = segurosElement.closest('[class*="Box"]') || segurosElement.parentElement;
+           
+           // Eliminar todo antes de Control
+           let currentNode = controlBox;
+           while (currentNode && currentNode.parentNode) {
+             while (currentNode.previousSibling) {
+               currentNode.previousSibling.remove();
+             }
+             break;
+           }
+           
+           // Eliminar todo después de Seguros
+           currentNode = segurosBox;
+           while (currentNode && currentNode.parentNode) {
+             while (currentNode.nextSibling) {
+               currentNode.nextSibling.remove();
+             }
+             break;
+           }
+         }
+         return section;
+       }
+       
+       if (mode === 'after') {
+         // Sección 3: Desde ITV hasta el final (con firmas al final)
+         const itvElement = Array.from(section.querySelectorAll('*')).find(el => 
+           el.textContent && el.textContent.trim() === 'ITV'
+         );
+         
+         if (itvElement) {
+           const itvBox = itvElement.closest('[class*="Box"]') || itvElement.parentElement;
+           let currentNode = itvBox;
+           while (currentNode && currentNode.parentNode) {
+             while (currentNode.previousSibling) {
+               currentNode.previousSibling.remove();
+             }
+             break;
+           }
+         }
+         
+         // Añadir firmas al final de la última sección
+         const firmasDiv = document.createElement('div');
+         firmasDiv.innerHTML = firmasHTML;
+         section.appendChild(firmasDiv);
+         
+         return section;
+       }
+       
+       return section;
+     };
+
+     // Construir DOMs de cada sección y convertirlos a canvas
+     console.log('Creando secciones...');
+     const sectionBefore = makeSectionDom('before');
+     const sectionMiddle = makeSectionDom('middle');
+     const sectionAfter  = makeSectionDom('after');
+     
+     console.log('Sección antes:', sectionBefore.innerHTML.length, 'caracteres');
+     console.log('Sección medio:', sectionMiddle.innerHTML.length, 'caracteres');
+     console.log('Sección después:', sectionAfter.innerHTML.length, 'caracteres');
+
+    // Render helpers para html2canvas
+    const renderToCanvas = async (node) => {
+      tempRoot.innerHTML = ''; // limpiar
+      tempRoot.appendChild(node);
+      document.body.appendChild(tempRoot);
+
+      const canvas = await html2canvas(tempRoot, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff'
       });
 
-      // Limpiar el elemento temporal
-      document.body.removeChild(tempDiv);
+      document.body.removeChild(tempRoot);
+      return canvas;
+    };
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
+    const pdf = new jsPDF('p', 'mm', 'a4');
 
-      let position = 0;
+     // ====== Sección 1 (hasta Historial de Mantenimiento) ======
+     const canvasBefore = await renderToCanvas(sectionBefore);
+     const imgDataBefore = canvasBefore.toDataURL('image/png');
+     const imgWidth = 210;
+     const pageHeight = 295;
+     const imgHeightBefore = (canvasBefore.height * imgWidth) / canvasBefore.width;
 
-      // Agregar la primera página
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+     // Solo procesar si hay contenido
+     if (imgHeightBefore > 0) {
+       // Primera página de la primera sección - usar todo el espacio disponible
+       const headerHeightFirst = await addHeaderToPage(pdf);
+       const availableHeight = pageHeight - headerHeightFirst;
+       pdf.addImage(imgDataBefore, 'PNG', 0, headerHeightFirst, imgWidth, Math.min(imgHeightBefore, availableHeight));
 
-      // Agregar páginas adicionales si es necesario
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+       // Paginación de la primera sección (si excede)
+       let heightLeft = imgHeightBefore - availableHeight;
+       while (heightLeft > 0) {
+         const position = heightLeft - imgHeightBefore;
+         pdf.addPage();
+         await addHeaderToPage(pdf);
+         pdf.addImage(imgDataBefore, 'PNG', 0, headerHeightFirst + position, imgWidth, imgHeightBefore);
+         heightLeft -= pageHeight;
+       }
+     }
 
-      // Generar nombre del archivo
+     // ====== Sección 2 (desde Control hasta ITV) ======
+     const canvasMiddle = await renderToCanvas(sectionMiddle);
+     await paginateSection(pdf, canvasMiddle);
+
+     // ====== Sección 3 (desde SOAT hasta firmas) ======
+     const canvasAfter = await renderToCanvas(sectionAfter);
+     await paginateSection(pdf, canvasAfter);
+
+    // Nombre de archivo
       const fecha = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
       const placa = maquinaria?.placa || 'maquinaria';
       const filename = `Hoja_Vida_${placa}_${fecha}.pdf`;
@@ -98,6 +291,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
       alert('Error al exportar el PDF. Por favor, inténtelo de nuevo.');
     }
   };
+
 
   const handleExportExcel = () => {
     try {
@@ -176,49 +370,11 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
       {/* Contenido del Reporte */}
       <Box ref={reportRef} sx={{ backgroundColor: 'white' }}>
-        {/* Header con Logo y Título */}
-        <Box sx={{ textAlign: 'center', mb: 3, borderBottom: '2px solid #1e4db7', pb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-            <Box sx={{ 
-              width: 100, 
-              height: 80, 
-              mr: 3,
-              borderRadius: 2,
-              overflow: 'hidden',
-              border: '2px solid #1e4db7',
-              bgcolor: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <img 
-                src={logoCofa} 
-                alt="Logo COFADENA"
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'contain' 
-                }} 
-              />
-            </Box>
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1e4db7', mb: 0.5 }}>
-                MINISTERIO DE DEFENSA
-              </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1e4db7', mb: 0.5 }}>
-                CORPORACIÓN DE LAS FF.AA. PARA EL DESARROLLO NACIONAL
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e4db7' }}>
-                EMPRESA PÚBLICA NACIONAL ESTRATÉGICA
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
 
         {/* Título Principal */}
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, color: '#1e4db7' }}>
-            HOJA DE VIDA HISTORIAL DE MANTENIMIENTO
+            HISTORIAL DE MAQUINARIA
           </Typography>
           <Typography variant="h6" sx={{ mb: 2, color: '#333' }}>
             CODIGO: {maquinaria?.codigo || 'N/A'}
@@ -228,7 +384,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
         {/* Datos del Vehículo/Maquinaria */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             DATOS VEHICULO, MAQUINARIA, EQUIPO
           </Typography>
           
@@ -256,7 +412,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
                 
                 {/* Datos Generales */}
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#f5f5f5', p: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#eeeef0ff', color: 'black', p: 1 }}>
                     DATOS GENERALES
                   </Typography>
                   <Table size="small" sx={{ border: '1px solid #ddd' }}>
@@ -374,7 +530,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
         {/* Aceites y Fluidos */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             ACEITES Y FLUIDOS
           </Typography>
           
@@ -421,6 +577,27 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
                   </TableRow>
                 </TableBody>
               </Table>
+
+              {/* Líquido de Freno */}
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>LÍQUIDO DE FRENO</Typography>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#f0f0f0' }}>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>NUMERO</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CAMBIO (HR/KM)</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>NUMERO DE FILTRO COMB.</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.liquido_freno_cantidad || '20'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.liquido_freno_numero || '80W90'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.liquido_freno_cambio_km_hr || '40000 KM'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.liquido_freno_numero_filtro_combustible || '-'}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </Grid>
 
             <Grid item xs={12} md={6}>
@@ -461,18 +638,39 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
                   </TableRow>
                 </TableBody>
               </Table>
+
+              {/* Aceite de Transmisión */}
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>ACEITE DE TRANSMISIÓN</Typography>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#f0f0f0' }}>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>NUMERO</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CAMBIO (HR/KM)</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>NUMERO DE FILTRO</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.aceite_transmision_cantidad || '15 LT'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.aceite_transmision_numero || '80W90'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.aceite_transmision_cambio_km_hr || '50000 KM'}</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem' }}>{mantenimientos[0]?.aceite_transmision_numero_filtro || '-'}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </Grid>
           </Grid>
         </Box>
 
         {/* Trabajos a Destinados Realizar */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             TRABAJOS A DESTINADOS REALIZAR
           </Typography>
           
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#f5f5f5', p: 1 }}>
-            TRASLADO DE MATERIAL
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#eeeef0ff', color: 'black', p: 1 }}>
+            {mantenimientos[0]?.trabajos_destinados_realizar || 'TRASLADO DE MATERIAL'}
           </Typography>
           
           <Grid container spacing={2}>
@@ -524,9 +722,70 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
           </Grid>
         </Box>
 
+        {/* Historial de Mantenimiento */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+            HISTORIAL DE MANTENIMIENTO
+          </Typography>
+          
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 1200 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#f0f0f0' }}>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>FECHA</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>N° SALIDA DE MATERIALES</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>DESCRIPCION, DAÑOS, EVENTOS, REPARACION REALIZADA</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>COSTO TOTAL Bs.</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>HOR/KM.</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>OPERADOR</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>ATENDIDO POR</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>ENCARGADO DE ACTIVOS FIJOS</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>UNIDAD/ EMPRESA</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #ddd' }}>UBICACIÓN FISICO/ PROYECTO</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {mantenimientos && mantenimientos.length > 0 ? (
+                  mantenimientos.map((mantenimiento, index) => (
+                    <TableRow key={index} sx={{ '&:nth-of-type(even)': { bgcolor: '#f9f9f9' } }}>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{formatDateOnly(mantenimiento.fecha_mantenimiento)}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.numero_salida_materiales || '-'}</TableCell>
+                      <TableCell sx={{ maxWidth: 200, fontSize: '0.75rem', border: '1px solid #ddd' }}>
+                        {mantenimiento.descripcion_danos_eventos || mantenimiento.reparacion_realizada || '-'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>
+                        {mantenimiento.costo_total ? `${mantenimiento.costo_total.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.horas_kilometros ? mantenimiento.horas_kilometros.toLocaleString('es-BO') : '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.operador || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.atendido_por || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.encargado_activos_fijos || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.unidad_empresa || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>{mantenimiento.ubicacion_fisico_proyecto || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+
         {/* Control */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             CONTROL
           </Typography>
           
@@ -572,9 +831,12 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
           </TableContainer>
         </Box>
 
+        {/* Marcador de salto de página después de Control */}
+        <div style={{ pageBreakAfter: 'always' }}></div>
+
         {/* Asignación */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             ASIGNACIÓN
           </Typography>
           
@@ -616,7 +878,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
         {/* Liberación */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             LIBERACIÓN
           </Typography>
           
@@ -656,9 +918,136 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
           </TableContainer>
         </Box>
 
+        {/* Salto de página después de Liberación */}
+        <div id="break-after-liberacion" style={{ pageBreakAfter: 'always' }} />
+
+        {/* Depreciaciones */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+            DEPRECIACIONES
+          </Typography>
+          
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 800 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#f0f0f0' }}>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>AÑO</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR ANUAL DEPRECIADO</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>DEPRECIACIÓN ACUMULADA</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR EN LIBROS</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {depreciaciones && depreciaciones.length > 0 ? (
+                  depreciaciones.map((item, index) => (
+                    item.depreciacion_por_anio && item.depreciacion_por_anio.length > 0 ? (
+                      item.depreciacion_por_anio.map((dep, depIndex) => (
+                        <TableRow key={`${index}-${depIndex}`}>
+                          <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.anio || '-'}</TableCell>
+                          <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.valor_anual_depreciado ? `${dep.valor_anual_depreciado.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                          <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.depreciacion_acumulada ? `${dep.depreciacion_acumulada.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                          <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.valor_en_libros ? `${dep.valor_en_libros.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow key={index}>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                      </TableRow>
+                    )
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+
+        {/* Pronósticos */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+            PRONÓSTICOS
+          </Typography>
+          
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table size="small" sx={{ minWidth: 800 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#f0f0f0' }}>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>RIESGO</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>RESULTADO</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>PROBABILIDAD (%)</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>FECHA DE ASIGNACIÓN</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>RECORRIDO</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>HORAS DE OPERACIÓN</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>RECOMENDACIONES</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>URGENCIA</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pronosticos && pronosticos.length > 0 ? (
+                  pronosticos.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{item.riesgo || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{item.resultado || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{item.probabilidad || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{formatDateOnly(item.fecha_asig)}</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{item.recorrido || '-'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{item.horas_op || '-'}</TableCell>
+                      <TableCell sx={{ 
+                        fontSize: '0.85rem', 
+                        border: '1px solid #ddd', 
+                        padding: '8px', 
+                        maxWidth: '200px',
+                        whiteSpace: 'pre-line',
+                        verticalAlign: 'top'
+                      }}>
+                        {item.recomendaciones ? 
+                          (() => {
+                            // Si es un array, mostrar como lista con guiones
+                            if (Array.isArray(item.recomendaciones)) {
+                              return item.recomendaciones.slice(0, 3).map(rec => `- ${rec}`).join('\n');
+                            }
+                            // Si es una cadena, convertir a array y mostrar como lista
+                            if (typeof item.recomendaciones === 'string') {
+                              const recomendaciones = item.recomendaciones.split('.').filter(r => r.trim()).slice(0, 3);
+                              return recomendaciones.map(rec => `- ${rec.trim()}`).join('\n');
+                            }
+                            // Si es otro tipo, mostrar como está
+                            return `- ${String(item.recomendaciones)}`;
+                          })()
+                          : '-'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{item.urgencia || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                    <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+
         {/* Seguros */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             SEGUROS
           </Typography>
           
@@ -711,7 +1100,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
         {/* ITV */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             ITV
           </Typography>
           
@@ -750,9 +1139,12 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
           </TableContainer>
         </Box>
 
+        {/* Marcador de salto de página después de ITV */}
+        <div style={{ pageBreakAfter: 'always' }}></div>
+
         {/* SOAT */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             SOAT
           </Typography>
           
@@ -793,7 +1185,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
         {/* Impuestos */}
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             IMPUESTOS
           </Typography>
           
@@ -835,6 +1227,21 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
       </Box> {/* Cierre del contenido del reporte */}
     </Box>
   );
+};
+
+// PropTypes validation
+HojaVidaReporte.propTypes = {
+  maquinaria: PropTypes.object,
+  mantenimientos: PropTypes.array,
+  control: PropTypes.array,
+  asignacion: PropTypes.array,
+  liberacion: PropTypes.array,
+  seguros: PropTypes.array,
+  itv: PropTypes.array,
+  soat: PropTypes.array,
+  impuestos: PropTypes.array,
+  depreciaciones: PropTypes.array,
+  pronosticos: PropTypes.array
 };
 
 export default HojaVidaReporte;

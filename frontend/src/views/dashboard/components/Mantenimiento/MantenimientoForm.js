@@ -206,17 +206,17 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submi
         {isEditing ? 'Editar Mantenimiento' : 'Nuevo Registro de Mantenimiento'}
       </Typography>
       
-      {renderFieldGroup('tipoDesplazamiento', fieldLabels.tipoDesplazamiento, '🚗 Tipo de Desplazamiento')}
-      {renderFieldGroup('sistemaElectrico', fieldLabels.sistemaElectrico, '⚡ Sistema Eléctrico')}
-      {renderFieldGroup('aceiteMotor', fieldLabels.aceiteMotor, '🛢️ Aceite de Motor')}
-      {renderFieldGroup('aceiteHidraulico', fieldLabels.aceiteHidraulico, '🛢️ Aceite Hidráulico')}
-      {renderFieldGroup('aceiteTransmision', fieldLabels.aceiteTransmision, '🛢️ Aceite de Transmisión')}
-      {renderFieldGroup('liquidoFreno', fieldLabels.liquidoFreno, '🛢️ Líquido de Freno')}
-      {renderFieldGroup('liquidoRefrigerante', fieldLabels.liquidoRefrigerante, '🛢️ Líquido Refrigerante')}
-      {renderFieldGroup('otrosAceites', fieldLabels.otrosAceites, '🛢️ Otros Aceites')}
-      {renderFieldGroup('sistemaCombustible', fieldLabels.sistemaCombustible, '⛽ Sistema de Combustible')}
-      {renderFieldGroup('otrosFiltros', fieldLabels.otrosFiltros, '🔧 Otros Filtros')}
-      {renderFieldGroup('trabajosRealizar', fieldLabels.trabajosRealizar, '🔨 Trabajos a Realizar')}
+      {renderFieldGroup('tipoDesplazamiento', fieldLabels.tipoDesplazamiento, 'Tipo de Desplazamiento')}
+      {renderFieldGroup('sistemaElectrico', fieldLabels.sistemaElectrico, 'Sistema Eléctrico')}
+      {renderFieldGroup('aceiteMotor', fieldLabels.aceiteMotor, 'Aceite de Motor')}
+      {renderFieldGroup('aceiteHidraulico', fieldLabels.aceiteHidraulico, 'Aceite Hidráulico')}
+      {renderFieldGroup('aceiteTransmision', fieldLabels.aceiteTransmision, 'Aceite de Transmisión')}
+      {renderFieldGroup('liquidoFreno', fieldLabels.liquidoFreno, 'Líquido de Freno')}
+      {renderFieldGroup('liquidoRefrigerante', fieldLabels.liquidoRefrigerante, 'Líquido Refrigerante')}
+      {renderFieldGroup('otrosAceites', fieldLabels.otrosAceites, 'Otros Aceites')}
+      {renderFieldGroup('sistemaCombustible', fieldLabels.sistemaCombustible, 'Sistema de Combustible')}
+      {renderFieldGroup('otrosFiltros', fieldLabels.otrosFiltros, 'Otros Filtros')}
+      {renderFieldGroup('trabajosRealizar', fieldLabels.trabajosRealizar, 'Trabajos a Realizar')}
       
       {/* Tabla de Información del Mantenimiento */}
       <Box sx={{ mt: 3 }}>

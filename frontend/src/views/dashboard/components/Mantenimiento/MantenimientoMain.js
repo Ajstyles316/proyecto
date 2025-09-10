@@ -261,10 +261,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
           sx: { minHeight: '80vh' }
         }}
       >
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-            Hoja de Vida Historial de Mantenimiento
-          </Typography>
+        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+          Hoja de Vida Historial de Mantenimiento
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
           <HojaVidaMantenimiento 

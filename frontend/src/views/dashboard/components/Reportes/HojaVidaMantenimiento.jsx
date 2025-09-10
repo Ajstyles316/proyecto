@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, Divider, Avatar, CardMedia } from '@mui/material';
+import PropTypes from 'prop-types';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, CardMedia } from '@mui/material';
 import { formatDateOnly } from './helpers';
 import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
 
@@ -60,17 +60,14 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
 
       {/* Título Principal */}
       <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, color: '#1e4db7' }}>
-          HOJA DE VIDA HISTORIAL DE MANTENIMIENTO
-        </Typography>
         <Typography variant="h6" sx={{ mb: 2, color: '#333' }}>
-          CODIGO: {maquinaria?.codigo || 'N/A'}
+          CÓDIGO: {maquinaria?.codigo || 'N/A'}
         </Typography>
       </Box>
 
       {/* Datos del Vehículo/Maquinaria */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
           DATOS VEHICULO, MAQUINARIA, EQUIPO
         </Typography>
         
@@ -458,5 +455,17 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
     </Box>
   );
 };
-
+HojaVidaMantenimiento.propTypes = {
+  maquinaria: PropTypes.object,
+  mantenimientos: PropTypes.array,
+  control: PropTypes.array,
+  asignacion: PropTypes.array,
+  liberacion: PropTypes.array,
+  seguros: PropTypes.array,
+  itv: PropTypes.array,
+  soat: PropTypes.array,
+  impuestos: PropTypes.array,
+  depreciaciones: PropTypes.array,
+  pronosticos: PropTypes.array
+};
 export default HojaVidaMantenimiento;
