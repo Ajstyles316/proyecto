@@ -97,14 +97,14 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
     tempRoot.style.left = '-9999px';
     tempRoot.style.top = '0';
     tempRoot.style.backgroundColor = 'white';
-    tempRoot.style.padding = '20px';
+    tempRoot.style.padding = '10px';
 
     // Clonar el contenido de la vista
     const reportClone = reportRef.current.cloneNode(true);
 
     // Sección de firmas (se añade al final de CADA sección renderizada)
     const firmasHTML = `
-      <div style="margin-top: 200px; margin-bottom: 10px;">
+      <div style="margin-top: 400px; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; gap: 12px;">
           <div style="text-align: center; width: 33%;">
             <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">RESPONSABLE DE MANTENIMIENTO</div>
@@ -369,29 +369,29 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
       </Box>
 
       {/* Contenido del Reporte */}
-      <Box ref={reportRef} sx={{ backgroundColor: 'white' }}>
+      <Box ref={reportRef} sx={{ backgroundColor: 'white', padding: '5px' }}>
 
         {/* Título Principal */}
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
+        <Box sx={{ textAlign: 'center', mb: 2 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, color: '#1e4db7' }}>
             HISTORIAL DE MAQUINARIA
           </Typography>
-          <Typography variant="h6" sx={{ mb: 2, color: '#333' }}>
+          <Typography variant="h6" sx={{ mb: 1, color: '#333' }}>
             CODIGO: {maquinaria?.codigo || 'N/A'}
           </Typography>
         </Box>
 
 
         {/* Datos del Vehículo/Maquinaria */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             DATOS VEHICULO, MAQUINARIA, EQUIPO
           </Typography>
           
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             {/* Columna Izquierda - Imagen y Datos Generales */}
             <Grid item xs={12} md={6}>
-              <Grid container spacing={2}>
+              <Grid container spacing={1}>
                 {/* Imagen */}
                 <Grid item xs={12} md={6}>
                   {maquinaria?.imagen && (
@@ -485,7 +485,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
             <Grid item xs={12} md={6}>
               {/* Tipo de Desplazamiento */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>TIPO DE DESPLAZAMIENTO</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -506,7 +506,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
               {/* Sistema Eléctrico */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>SISTEMA ELÉCTRICO</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -529,16 +529,16 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
         </Box>
 
         {/* Aceites y Fluidos */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             ACEITES Y FLUIDOS
           </Typography>
           
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid item xs={12} md={6}>
               {/* Aceite de Motor */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>ACEITE DE MOTOR</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -559,7 +559,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
               {/* Aceite Hidráulico */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>ACEITE HIDRÁULICO</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -580,7 +580,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
               {/* Líquido de Freno */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>LÍQUIDO DE FRENO</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -603,7 +603,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
             <Grid item xs={12} md={6}>
               {/* Líquido Refrigerante */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>LÍQUIDO REFRIGERANTE</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>TIPO DE REFRIGERANTE</TableCell>
@@ -622,7 +622,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
               
               {/* Otros Aceites */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>OTROS ACEITES</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>TIPO DE REFRIGERANTE</TableCell>
@@ -641,7 +641,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
 
               {/* Aceite de Transmisión */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>ACEITE DE TRANSMISIÓN</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -664,20 +664,20 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
         </Box>
 
         {/* Trabajos a Destinados Realizar */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             TRABAJOS A DESTINADOS REALIZAR
           </Typography>
           
-          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#eeeef0ff', color: 'black', p: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#eeeef0ff', color: 'black', p: 1 }}>
             {mantenimientos[0]?.trabajos_destinados_realizar || 'TRASLADO DE MATERIAL'}
           </Typography>
           
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid item xs={12} md={6}>
               {/* Sistema de Combustible */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>SISTEMA DE COMBUSTIBLE</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>GASOLINA</TableCell>
@@ -700,7 +700,7 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
             <Grid item xs={12} md={6}>
               {/* Otros Filtros */}
               <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>OTROS FILTROS</Typography>
-              <Table size="small" sx={{ border: '1px solid #ddd', mb: 2 }}>
+              <Table size="small" sx={{ border: '1px solid #ddd', mb: 1 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                     <TableCell sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>CANTIDAD</TableCell>
@@ -723,8 +723,8 @@ const HojaVidaReporte = ({ maquinaria, mantenimientos, control, asignacion, libe
         </Box>
 
         {/* Historial de Mantenimiento */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
             HISTORIAL DE MANTENIMIENTO
           </Typography>
           
