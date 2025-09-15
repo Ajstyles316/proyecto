@@ -3862,10 +3862,26 @@ class MaquinariaViewSet(viewsets.ViewSet):
 @api_view(['GET'])
 def activos_list(request):
     try:
-        # Usar la base de datos 'activos' y la colección 'depreciacion'
-        collection = get_collection_from_activos_db('depreciacion')
-        # Ajusta los campos según la estructura real de tus documentos en 'depreciacion'
+        print("DEBUG ACTIVOS: Iniciando consulta de activos")
+        
+        # Intentar primero con la base de datos principal (gestion_maquinaria)
+        collection = get_collection('depreciacion')
+        print(f"DEBUG ACTIVOS: Usando coleccion: {collection.name}")
         activos = list(collection.find({}, {'_id': 0, 'bien_uso': 1, 'vida_util': 1, 'coeficiente': 1}))
+        print(f"DEBUG ACTIVOS: Documentos encontrados en gestion_maquinaria: {len(activos)}")
+        
+        # Si no hay datos en la base principal, intentar con la base 'activos'
+        if not activos:
+            print("DEBUG ACTIVOS: No hay datos en gestion_maquinaria, intentando con activos")
+            try:
+                collection = get_collection_from_activos_db('depreciacion')
+                print(f"DEBUG ACTIVOS: Usando coleccion activos: {collection.name}")
+                activos = list(collection.find({}, {'_id': 0, 'bien_uso': 1, 'vida_util': 1, 'coeficiente': 1}))
+                print(f"DEBUG ACTIVOS: Documentos encontrados en activos: {len(activos)}")
+            except Exception as e:
+                print(f"DEBUG ACTIVOS: Error accediendo a activos: {e}")
+                pass
+        
         resultado = [
             {
                 'bien_uso': a.get('bien_uso', ''),
@@ -3874,9 +3890,11 @@ def activos_list(request):
             }
             for a in activos
         ]
+        print(f"DEBUG ACTIVOS: Resultado final: {len(resultado)} elementos")
         serializer = ActivoSerializer(resultado, many=True)
         return Response(serializer.data)
     except Exception as e:
+        print(f"DEBUG ACTIVOS: Error general: {e}")
         return Response({'error': str(e)}, status=500)
 
 def cargar_funcion_pronostico():
