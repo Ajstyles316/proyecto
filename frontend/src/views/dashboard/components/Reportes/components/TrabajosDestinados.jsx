@@ -5,7 +5,7 @@ const TrabajosDestinados = ({ mantenimientos }) => {
   return (
     <Box sx={{ mb: 2 }}>
       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#e4ecfeff', color: 'black', p: 1, borderRadius: 1 }}>
-        TRABAJOS A DESTINADOS REALIZAR
+        TRABAJOS DESTINADOS A REALIZAR
       </Typography>
       
       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1, bgcolor: '#eeeef0ff', color: 'black', p: 1 }}>

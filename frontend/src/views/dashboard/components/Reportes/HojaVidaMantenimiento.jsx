@@ -349,11 +349,11 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
       {/* Trabajos a Destinados Realizar */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#1e4db7', color: 'white', p: 1, borderRadius: 1 }}>
-          TRABAJOS A DESTINADOS REALIZAR
+          TRABAJOS DESTINADOS A REALIZAR
         </Typography>
         
         <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2, bgcolor: '#f5f5f5', p: 1 }}>
-          TRASLADO DE MATERIAL
+          {mantenimientos[0]?.trabajos_destinados_realizar || '-'}
         </Typography>
         
         <Grid container spacing={2}>

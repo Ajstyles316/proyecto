@@ -212,15 +212,7 @@ const Login = () => {
         </form>
 
         <Box mt={{ xs: 1.5, sm: 2 }} textAlign="center">
-          <Typography variant="body2" sx={{ 
-            mb: { xs: 0.5, sm: 1 },
-            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-          }}>
-            ¿No tienes cuenta?{" "}
-            <Link to="/registro" style={{ textDecoration: "none", color: "primary.main" }}>
-              Regístrate
-            </Link>
-          </Typography>
+          
           <Typography variant="body2" sx={{
             fontSize: { xs: '0.75rem', sm: '0.875rem' },
           }}>

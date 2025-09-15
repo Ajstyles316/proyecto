@@ -441,7 +441,7 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submi
       {isEditing && (
         <>
           <Divider sx={{ my: 2 }} />
-          {renderFieldGroup('camposControl', fieldLabels.camposControl, '📝 Campos de Control')}
+          {renderFieldGroup('camposControl', fieldLabels.camposControl, 'Campos de Control')}
         </>
       )}
       

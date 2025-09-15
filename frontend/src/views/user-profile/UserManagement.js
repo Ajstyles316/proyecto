@@ -723,7 +723,7 @@ const UserManagement = () => {
           {isAdmin && (
             <Button
               variant="contained"
-              color="primary"
+              color="success"
               startIcon={<AddIcon />}
               onClick={handleOpenCrearUsuario}
               sx={{ borderRadius: 2, fontWeight: 600 }}
@@ -1282,7 +1282,7 @@ const UserManagement = () => {
           <Button 
             onClick={handleCrearUsuario} 
             variant="contained" 
-            color="primary"
+            color="success"
             disabled={crearUsuarioLoading || loadingOpcionesCrearUsuario}
             startIcon={crearUsuarioLoading ? <CircularProgress size={16} color="inherit" /> : <PersonAddIcon />}
           >
