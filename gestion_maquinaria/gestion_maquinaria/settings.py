@@ -66,9 +66,15 @@ ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
 CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
-MONGO_CLIENT = pymongo.MongoClient(os.environ.get('MONGO_URI'))
-MONGO_DB = MONGO_CLIENT[os.environ.get('MONGO_DB_NAME', 'activos')]
-MAQUINARIA_COLLECTION = MONGO_DB["maquinaria"]
+
+# MongoDB configuration - lazy loading to avoid connection issues at startup
+MONGO_URI = os.environ.get('MONGO_URI', '')
+MONGO_DB_NAME = os.environ.get('MONGO_DB_NAME', 'activos')
+
+# These will be initialized lazily when needed
+MONGO_CLIENT = None
+MONGO_DB = None
+MAQUINARIA_COLLECTION = None
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -159,9 +165,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configuración explícita para conexión MongoDB usada por los modelos
-MONGO_URI = os.environ.get('MONGO_URI', '')
-MONGO_DB_NAME = os.environ.get('MONGO_DB_NAME', 'activos')
+# MongoDB configuration is already defined above
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',

@@ -30,7 +30,8 @@ from .serializers import (
     ControlOdometroSerializer
 )
 from django.conf import settings
-from .mongo_connection import get_collection, get_collection_from_activos_db
+from .mongo_connection import get_collection, get_collection_from_activos_db, is_mongodb_available
+from functools import wraps
 import bcrypt
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.core.mail import send_mail, EmailMultiAlternatives
@@ -40,6 +41,17 @@ from dateutil.relativedelta import relativedelta
 logger = logging.getLogger(__name__)
 
 # --- Funciones auxiliares para PyMongo y serialización ---
+
+def check_mongodb_availability():
+    """
+    Helper function to check MongoDB availability and return appropriate response if unavailable.
+    """
+    if not is_mongodb_available():
+        return Response({
+            "error": "Base de datos no disponible temporalmente",
+            "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos."
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    return None
 
 def create_default_admin():
     """Crea un usuario admin por defecto si no existe ninguno"""
@@ -273,6 +285,14 @@ def process_file_upload(file_obj, filename):
 class MaquinariaListView(APIView):
     def get(self, request):
         maquinaria_collection = get_collection(Maquinaria)
+        
+        # Check if MongoDB is available
+        if maquinaria_collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos."
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
         try:
             # Solo mostrar maquinarias activas (activo=True o no tiene campo activo)
             maquinarias_cursor = maquinaria_collection.find({
@@ -646,9 +666,35 @@ class MaquinariaDetailView(APIView):
 
 class MaquinariaOptionsView(APIView):
     def get(self, request):
+        # Check MongoDB availability first
+        mongodb_check = check_mongodb_availability()
+        if mongodb_check:
+            return mongodb_check
+        
         maquinaria_collection = get_collection(Maquinaria)
         historial_control_collection = get_collection(HistorialControl)
         mantenimiento_collection = get_collection(Mantenimiento)
+        
+        # Check if any collection is None
+        if not maquinaria_collection or not historial_control_collection or not mantenimiento_collection:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                "options": {
+                    'unidades': [],
+                    'tipos': [],
+                    'marcas': [],
+                    'modelos': [],
+                    'colores': [],
+                    'adquisiciones': [],
+                    'gestiones': [],
+                    'estados': [],
+                    'encargados': [],
+                    'responsables': [],
+                    'tipos_mantenimiento': [],
+                    'estados_mantenimiento': []
+                }
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         try:
             options = {
@@ -709,7 +755,14 @@ class BaseSectionAPIView(APIView):
     def get(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
         collection = get_collection(self.collection_class)
+        if collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                "records": []
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 50))
         # Solo mostrar registros activos
@@ -729,10 +782,23 @@ class BaseSectionAPIView(APIView):
     def post(self, request, maquinaria_id):
         if not ObjectId.is_valid(maquinaria_id):
             return Response({"error": "ID de maquinaria inválido"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check MongoDB availability
+        mongodb_check = check_mongodb_availability()
+        if mongodb_check:
+            return mongodb_check
+        
         data = request.data.copy()
         # --- RESTRICCIÓN DE CAMPOS POR ROL ---
         actor_email = request.headers.get('X-User-Email')
-        user = get_collection(Usuario).find_one({"Email": actor_email})
+        usuarios_collection = get_collection(Usuario)
+        if usuarios_collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos."
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
+        user = usuarios_collection.find_one({"Email": actor_email})
         cargo = user.get('Cargo', '').lower() if user else ''
         if cargo != 'encargado':
             data.pop('validado_por', None)
@@ -754,6 +820,12 @@ class BaseSectionAPIView(APIView):
             validated_data['autorizado_por'] = None  # Se asignará cuando se autorice
             
             collection = get_collection(self.collection_class)
+            if collection is None:
+                return Response({
+                    "error": "Base de datos no disponible temporalmente",
+                    "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos."
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             result = collection.insert_one(validated_data)
             new_record = collection.find_one({"_id": result.inserted_id}, self.projection or None)
@@ -3760,25 +3832,69 @@ class LogoutView(APIView):
 class DashboardStatsView(APIView):
     def get(self, request):
         try:
+            # Check if MongoDB is available
+            if not is_mongodb_available():
+                return Response({
+                    "error": "Base de datos no disponible temporalmente",
+                    "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                    "stats": {
+                        "total_seguros": 0,
+                        "mantenimientos_pendientes": 0,
+                        "unidades_en_control": 0,
+                        "total_maquinaria": 0,
+                        "maquinaria_activa": 0,
+                        "maquinaria_inactiva": 0
+                    }
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            
             # Total de seguros
-            total_seguros = get_collection(Seguro).count_documents({})
+            seguro_collection = get_collection(Seguro)
+            total_seguros = 0
+            if seguro_collection is not None:
+                try:
+                    total_seguros = seguro_collection.count_documents({})
+                except Exception as e:
+                    logger.warning(f"Error contando seguros: {e}")
+                    total_seguros = 0
 
             # Mantenimientos pendientes
-            mantenimientos_pendientes = get_collection(Mantenimiento).count_documents({"estado": "PENDIENTE"})
+            mantenimiento_collection = get_collection(Mantenimiento)
+            mantenimientos_pendientes = 0
+            if mantenimiento_collection is not None:
+                try:
+                    mantenimientos_pendientes = mantenimiento_collection.count_documents({"estado": "PENDIENTE"})
+                except Exception as e:
+                    logger.warning(f"Error contando mantenimientos pendientes: {e}")
+                    mantenimientos_pendientes = 0
 
             # Unidades en control
-            unidades_en_control = get_collection(HistorialControl).count_documents({})
+            historial_collection = get_collection(HistorialControl)
+            unidades_en_control = 0
+            if historial_collection is not None:
+                try:
+                    unidades_en_control = historial_collection.count_documents({})
+                except Exception as e:
+                    logger.warning(f"Error contando unidades en control: {e}")
+                    unidades_en_control = 0
 
             # Total de maquinarias
-            total_maquinarias = get_collection(Maquinaria).count_documents({})
+            maquinaria_collection = get_collection(Maquinaria)
+            total_maquinarias = 0
+            if maquinaria_collection is not None:
+                try:
+                    total_maquinarias = maquinaria_collection.count_documents({})
+                except Exception as e:
+                    logger.warning(f"Error contando maquinarias: {e}")
+                    total_maquinarias = 0
 
             # Horas totales operativas (sumar horas_op de todos los pronósticos, si existen)
             horas_totales_operativas = 0
             try:
                 pronostico_collection = get_collection(Pronostico)
-                horas_totales_operativas = sum([
-                    float(doc.get("horas_op", 0)) for doc in pronostico_collection.find({})
-                ])
+                if pronostico_collection is not None:
+                    horas_totales_operativas = sum([
+                        float(doc.get("horas_op", 0)) for doc in pronostico_collection.find({})
+                    ])
             except Exception as e:
                 logger.warning(f"No se pudo calcular horas totales operativas: {e}")
                 horas_totales_operativas = 0
@@ -3787,10 +3903,12 @@ class DashboardStatsView(APIView):
                 hoy = datetime.now()
                 en_30_dias = hoy.replace(hour=23, minute=59, second=59) + timedelta(days=30)
                 seguros_collection = get_collection(Seguro)
-                seguros_proximos_vencer = seguros_collection.count_documents({
-                    "fecha_vencimiento": {"$gte": hoy, "$lte": en_30_dias}
-                })
+                if seguros_collection is not None:
+                    seguros_proximos_vencer = seguros_collection.count_documents({
+                        "fecha_vencimiento": {"$gte": hoy, "$lte": en_30_dias}
+                    })
             except Exception as e:
+                logger.warning(f"Error contando seguros próximos a vencer: {e}")
                 seguros_proximos_vencer = 0
 
             # Mantenimientos realizados este mes
@@ -3799,29 +3917,35 @@ class DashboardStatsView(APIView):
                 hoy = datetime.now()
                 primer_dia_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 mantenimientos_collection = get_collection(Mantenimiento)
-                mantenimientos_este_mes = mantenimientos_collection.count_documents({
-                    "fecha": {"$gte": primer_dia_mes, "$lte": hoy}
-                })
+                if mantenimientos_collection is not None:
+                    mantenimientos_este_mes = mantenimientos_collection.count_documents({
+                        "fecha": {"$gte": primer_dia_mes, "$lte": hoy}
+                    })
             except Exception as e:
+                logger.warning(f"Error contando mantenimientos este mes: {e}")
                 mantenimientos_este_mes = 0
 
             depreciacion_total = 0
             try:
                 depreciaciones_collection = get_collection("depreciaciones")
-                for dep in depreciaciones_collection.find({}):
-                    por_anio = dep.get("depreciacion_por_anio", [])
-                    if por_anio:
-                        ultimo = por_anio[-1]
-                        depreciacion_total += float(ultimo.get("depreciacion_acumulada", 0))
+                if depreciaciones_collection is not None:
+                    for dep in depreciaciones_collection.find({}):
+                        por_anio = dep.get("depreciacion_por_anio", [])
+                        if por_anio:
+                            ultimo = por_anio[-1]
+                            depreciacion_total += float(ultimo.get("depreciacion_acumulada", 0))
             except Exception as e:
+                logger.warning(f"Error calculando depreciación total: {e}")
                 depreciacion_total = 0
 
             # Próximos mantenimientos según IA (riesgo ALTO en pronóstico)
             proximos_mantenimientos_ia = 0
             try:
                 pronostico_collection = get_collection(Pronostico)
-                proximos_mantenimientos_ia = pronostico_collection.count_documents({"riesgo": "ALTO"})
+                if pronostico_collection is not None:
+                    proximos_mantenimientos_ia = pronostico_collection.count_documents({"riesgo": "ALTO"})
             except Exception as e:
+                logger.warning(f"Error contando próximos mantenimientos IA: {e}")
                 proximos_mantenimientos_ia = 0
 
             data = [
@@ -3862,26 +3986,10 @@ class MaquinariaViewSet(viewsets.ViewSet):
 @api_view(['GET'])
 def activos_list(request):
     try:
-        print("DEBUG ACTIVOS: Iniciando consulta de activos")
-        
-        # Intentar primero con la base de datos principal (gestion_maquinaria)
-        collection = get_collection('depreciacion')
-        print(f"DEBUG ACTIVOS: Usando coleccion: {collection.name}")
+        # Usar la base de datos 'activos' y la colección 'depreciacion'
+        collection = get_collection_from_activos_db('depreciacion')
+        # Ajusta los campos según la estructura real de tus documentos en 'depreciacion'
         activos = list(collection.find({}, {'_id': 0, 'bien_uso': 1, 'vida_util': 1, 'coeficiente': 1}))
-        print(f"DEBUG ACTIVOS: Documentos encontrados en gestion_maquinaria: {len(activos)}")
-        
-        # Si no hay datos en la base principal, intentar con la base 'activos'
-        if not activos:
-            print("DEBUG ACTIVOS: No hay datos en gestion_maquinaria, intentando con activos")
-            try:
-                collection = get_collection_from_activos_db('depreciacion')
-                print(f"DEBUG ACTIVOS: Usando coleccion activos: {collection.name}")
-                activos = list(collection.find({}, {'_id': 0, 'bien_uso': 1, 'vida_util': 1, 'coeficiente': 1}))
-                print(f"DEBUG ACTIVOS: Documentos encontrados en activos: {len(activos)}")
-            except Exception as e:
-                print(f"DEBUG ACTIVOS: Error accediendo a activos: {e}")
-                pass
-        
         resultado = [
             {
                 'bien_uso': a.get('bien_uso', ''),
@@ -3890,11 +3998,9 @@ def activos_list(request):
             }
             for a in activos
         ]
-        print(f"DEBUG ACTIVOS: Resultado final: {len(resultado)} elementos")
         serializer = ActivoSerializer(resultado, many=True)
         return Response(serializer.data)
     except Exception as e:
-        print(f"DEBUG ACTIVOS: Error general: {e}")
         return Response({'error': str(e)}, status=500)
 
 def cargar_funcion_pronostico():
@@ -4256,6 +4362,19 @@ class PronosticoSummaryView(APIView):
     def get(self, request):
         try:
             pronostico_collection = get_collection(Pronostico)
+            
+            # Check if MongoDB is available
+            if pronostico_collection is None:
+                return Response({
+                    "error": "Base de datos no disponible temporalmente",
+                    "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                    "summary": {
+                        "total": 0,
+                        "bajo": 0,
+                        "medio": 0,
+                        "alto": 0
+                    }
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             pipeline = [
                 {
                     "$match": {"activo": {"$ne": False}}
@@ -4318,7 +4437,17 @@ class UsuarioListView(APIView):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        
         collection = get_collection(Usuario)
+        
+        # Check if MongoDB is available
+        if collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                "usuarios": []
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
         user = collection.find_one({"Email": email})
         if not check_user_permissions(user, required_role='admin'):
             return Response({'error': 'Solo el administrador puede ver la lista de usuarios'}, status=status.HTTP_403_FORBIDDEN)
@@ -4337,7 +4466,14 @@ class UsuarioCargoUpdateView(APIView):
         email = request.headers.get('X-User-Email')
         if not email:
             return Response({'error': 'No autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+        
         collection = get_collection(Usuario)
+        if collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos."
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
         user = collection.find_one({"Email": email})
         if not check_user_permissions(user, required_role='admin'):
             return Response({'error': 'Solo el administrador puede cambiar roles'}, status=status.HTTP_403_FORBIDDEN)
@@ -5166,8 +5302,25 @@ class UsuarioUpdateView(APIView):
 class UsuarioOpcionesView(APIView):
     """Devuelve los cargos únicos de usuarios y las unidades únicas de maquinaria (normalizadas)."""
     def get(self, request):
+        # Check if MongoDB is available
+        if not is_mongodb_available():
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                "cargos": [],
+                "unidades": []
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
         # Cargos desde usuarios
         collection = get_collection(Usuario)
+        if collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                "cargos": [],
+                "unidades": []
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
         usuarios = list(collection.find({}, {"Cargo": 1}))
         cargos = set()
         for u in usuarios:
@@ -5175,6 +5328,14 @@ class UsuarioOpcionesView(APIView):
                 cargos.add(str(u["Cargo"]).strip())
         # Unidades desde maquinaria
         maquinaria_collection = get_collection(Maquinaria)
+        if maquinaria_collection is None:
+            return Response({
+                "error": "Base de datos no disponible temporalmente",
+                "message": "El servicio de base de datos está experimentando problemas de conectividad. Por favor, intente nuevamente en unos momentos.",
+                "cargos": list(cargos),
+                "unidades": []
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        
         maquinarias = list(maquinaria_collection.find({}, {"unidad": 1}))
         unidades = set()
         for m in maquinarias:
