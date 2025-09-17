@@ -17,8 +17,28 @@ import os
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(dotenv_path=BASE_DIR / '.env')
-print('MONGO_URI:', os.environ.get('MONGO_URI'))
+
+# Cargar variables de entorno con manejo de errores de codificación
+try:
+    load_dotenv(dotenv_path=BASE_DIR / '.env')
+    print('MONGO_URI:', os.environ.get('MONGO_URI'))
+except UnicodeDecodeError:
+    # Si hay error de codificación, intentar cargar con diferentes encodings
+    import codecs
+    env_path = BASE_DIR / '.env'
+    if env_path.exists():
+        try:
+            with codecs.open(env_path, 'r', encoding='utf-16') as f:
+                content = f.read()
+            with codecs.open(env_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            load_dotenv(dotenv_path=env_path)
+            print('MONGO_URI:', os.environ.get('MONGO_URI'))
+        except Exception as e:
+            print(f'Error al procesar archivo .env: {e}')
+            # Continuar sin el archivo .env
+    else:
+        print('Archivo .env no encontrado, continuando sin variables de entorno')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 
 
@@ -31,7 +51,7 @@ SECRET_KEY = 'django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -68,7 +88,7 @@ CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup
-MONGO_URI = os.environ.get('MONGO_URI', '')
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/')
 MONGO_DB_NAME = os.environ.get('MONGO_DB_NAME', 'activos')
 
 # These will be initialized lazily when needed

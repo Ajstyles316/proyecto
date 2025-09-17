@@ -71,3 +71,4 @@ HistorialMantenimiento.propTypes = {
 };
 
 export default HistorialMantenimiento;
+
