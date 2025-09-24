@@ -42,4 +42,3 @@ BotonesExportacion.propTypes = {
 };
 
 export default BotonesExportacion;
-

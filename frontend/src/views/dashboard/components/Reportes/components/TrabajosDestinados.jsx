@@ -72,4 +72,3 @@ TrabajosDestinados.propTypes = {
 };
 
 export default TrabajosDestinados;
-
