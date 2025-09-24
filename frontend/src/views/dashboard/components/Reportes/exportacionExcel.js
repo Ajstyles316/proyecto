@@ -703,4 +703,75 @@ export const exportHojaVidaExcel = (data, filename = 'hoja_vida') => {
   XLSX.writeFile(wb, `${filename}.xlsx`);
 };
 
+// Función específica para exportar tabla de depreciación detallada
+export const exportTablaDepreciacionExcel = (data, filename = 'tabla_depreciacion') => {
+  const wb = XLSX.utils.book_new();
+  
+  // Hoja 1: Información de la maquinaria
+  const infoHeaders = ['CAMPO', 'VALOR'];
+  const infoData = [
+    ['Placa', data.maquinaria?.placa || '-'],
+    ['Código', data.maquinaria?.codigo || '-'],
+    ['Detalle', data.maquinaria?.detalle || '-'],
+    ['Costo del Activo', `Bs. ${(data.maquinaria?.costo_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`],
+    ['Fecha de Compra', data.maquinaria?.fecha_compra || '-'],
+    ['Método', data.maquinaria?.metodo || '-'],
+    ['Vida Útil', `${data.maquinaria?.vida_util || '-'} años`]
+  ];
+  
+  // Agregar campos específicos para depreciación por horas
+  if (data.maquinaria?.metodo === 'depreciacion_por_horas') {
+    infoData.push(
+      ['UFV Inicial', data.maquinaria?.ufv_inicial || '-'],
+      ['UFV Final', data.maquinaria?.ufv_final || '-'],
+      ['Horas Período', data.maquinaria?.horas_periodo || '-'],
+      ['Depreciación por Hora', `Bs. ${(data.maquinaria?.depreciacion_por_hora || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`]
+    );
+  }
+  
+  const ws1 = XLSX.utils.aoa_to_sheet([infoHeaders, ...infoData]);
+  applyAdvancedStyles(ws1, true);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Información');
+  
+  // Hoja 2: Tabla de depreciación
+  if (data.tabla_depreciacion && data.tabla_depreciacion.length > 0) {
+    const isDepreciacionPorHoras = data.maquinaria?.metodo === 'depreciacion_por_horas';
+    
+    let headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
+    if (isDepreciacionPorHoras) {
+      headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
+    }
+    
+    const tableData = data.tabla_depreciacion.map(item => {
+      const row = [
+        item.anio || '-',
+        item.valor || 0,
+        item.acumulado || 0,
+        item.valor_en_libros || 0
+      ];
+      
+      if (isDepreciacionPorHoras) {
+        row.push(
+          item.valor_actualizado || 0,
+          item.horas_periodo || 0,
+          item.depreciacion_por_hora || 0,
+          item.valor_activo_fijo || 0,
+          item.incremento_actualizacion_activo || 0,
+          item.incremento_actualizacion_depreciacion || 0,
+          item.costo_por_hora_efectiva || 0
+        );
+      }
+      
+      return row;
+    });
+    
+    const ws2 = XLSX.utils.aoa_to_sheet([headers, ...tableData]);
+    applyAdvancedStyles(ws2, true);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Tabla Depreciación');
+  }
+  
+  // Generar y descargar el archivo
+  XLSX.writeFile(wb, `${filename}.xlsx`);
+};
+
 export default exportXLS; 
