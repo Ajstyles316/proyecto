@@ -184,6 +184,10 @@ const DepreciacionesMain = () => {
         valor_residual,
         bien_uso,
         depreciacion_por_anio,
+        ufv_inicial,
+        ufv_final,
+        horas_periodo,
+        depreciacion_por_hora,
       } = datosActualizados;
 
       let { _id } = depreciacionActual || {};
@@ -207,7 +211,13 @@ const DepreciacionesMain = () => {
         valor_residual: valor_residual ? Number(valor_residual) : 0,
         bien_uso: bien_uso || maquinariaSeleccionada.bien_de_uso || '',
         depreciacion_por_anio,
+        ufv_inicial: ufv_inicial || null,
+        ufv_final: ufv_final || null,
+        horas_periodo: horas_periodo || null,
+        depreciacion_por_hora: depreciacion_por_hora || null,
       };
+
+      console.log('Payload que se envía al backend:', payload);
 
       if (!payload.depreciacion_por_anio || payload.depreciacion_por_anio.length === 0) {
         setLoading(false);

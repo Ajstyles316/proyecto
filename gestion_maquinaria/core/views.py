@@ -6,7 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from bson import ObjectId, json_util
 import json, requests, logging, os, traceback, re
 from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
 from .models import Maquinaria, HistorialControl, ActaAsignacion, Liberacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro, ControlOdometro
@@ -248,6 +248,8 @@ def convert_dates_to_str(obj):
         return [convert_dates_to_str(item) for item in obj]
     elif isinstance(obj, (datetime, date)):
         return obj.strftime('%Y-%m-%d')
+    elif isinstance(obj, time):
+        return obj.strftime('%H:%M')
     else:
         return obj
 

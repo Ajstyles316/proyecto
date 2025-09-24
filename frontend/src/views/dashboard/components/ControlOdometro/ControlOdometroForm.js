@@ -36,6 +36,11 @@ const ControlOdometroForm = ({ onSubmit, initialData, isEditing, isReadOnly, sub
     { name: 'odometro_inicial', label: 'Odómetro Inicial', required: true, type: 'number' },
     { name: 'odometro_final', label: 'Odómetro Final', required: true, type: 'number' },
     { name: 'odometro_mes', label: 'Odómetro del Mes', required: true, type: 'number' },
+    // Nuevos campos para horas
+    { name: 'horas_inicial', label: 'Horas Iniciales', required: false, type: 'number' },
+    { name: 'horas_final', label: 'Horas Finales', required: false, type: 'number' },
+    { name: 'fecha_registro', label: 'Fecha de Registro', required: false, type: 'date' },
+    { name: 'hora_registro', label: 'Hora de Registro', required: false, type: 'time' },
     // Solo mostrar estos campos cuando se está editando (no al crear nuevo)
     ...(isEditing ? [
       { name: 'registrado_por', label: 'Registrado por', readonly: true },
@@ -90,6 +95,17 @@ const ControlOdometroForm = ({ onSubmit, initialData, isEditing, isReadOnly, sub
     // Validar que el odómetro final sea mayor o igual al inicial
     if (form.odometro_final && form.odometro_inicial && parseFloat(form.odometro_final) < parseFloat(form.odometro_inicial)) {
       newErrors.odometro_final = 'El odómetro final debe ser mayor o igual al inicial';
+    }
+
+    // Validar horas iniciales y finales
+    if (form.horas_inicial && form.horas_inicial < 0) {
+      newErrors.horas_inicial = 'Las horas iniciales no pueden ser negativas';
+    }
+    if (form.horas_final && form.horas_final < 0) {
+      newErrors.horas_final = 'Las horas finales no pueden ser negativas';
+    }
+    if (form.horas_final && form.horas_inicial && parseFloat(form.horas_final) < parseFloat(form.horas_inicial)) {
+      newErrors.horas_final = 'Las horas finales deben ser mayores o iguales a las iniciales';
     }
 
     setErrors(newErrors);
@@ -191,7 +207,7 @@ const ControlOdometroForm = ({ onSubmit, initialData, isEditing, isReadOnly, sub
                 type={field.type || 'text'}
                 value={form[field.name] || ''}
                 onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
-                InputLabelProps={field.type === 'date' ? { shrink: true } : undefined}
+                InputLabelProps={field.type === 'date' || field.type === 'time' ? { shrink: true } : undefined}
                 multiline={field.multiline}
                 minRows={field.multiline ? 4 : undefined}
                 error={!!errors[field.name]}

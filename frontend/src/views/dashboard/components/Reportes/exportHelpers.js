@@ -95,37 +95,28 @@ export function calcularDepreciacionAnual({ costo_activo, vida_util, metodo = 'l
         valor_en_libros: round(valor_en_libros)
       });
     }
-  } else if (metodo === 'saldo_decreciente') {
-    const tasa = (1 / vida_util) * 2;
-    for (let i = 0; i < vida_util; i++) {
-      let dep_anual = valor_en_libros * tasa;
-      if (i === vida_util - 1 || valor_en_libros - dep_anual < valor_residual) {
-        dep_anual = valor_en_libros - valor_residual;
-      }
-      depreciacion_acumulada += dep_anual;
-      valor_en_libros -= dep_anual;
-      detalle.push({
-        anio: anio_inicio + i,
-        valor_anual_depreciado: round(dep_anual),
-        depreciacion_acumulada: round(depreciacion_acumulada),
-        valor_en_libros: round(valor_en_libros)
-      });
-    }
-  } else if (metodo === 'suma_digitos') {
-    const suma_digitos = (vida_util * (vida_util + 1)) / 2;
-    for (let i = 0; i < vida_util; i++) {
-      const años_restantes = vida_util - i;
-      const factor = años_restantes / suma_digitos;
-      const dep_anual = base * factor;
-      depreciacion_acumulada += dep_anual;
-      valor_en_libros -= dep_anual;
-      detalle.push({
-        anio: anio_inicio + i,
-        valor_anual_depreciado: round(dep_anual),
-        depreciacion_acumulada: round(depreciacion_acumulada),
-        valor_en_libros: round(valor_en_libros)
-      });
-    }
+  } else if (metodo === 'depreciacion_por_horas') {
+    // Depreciación por horas - requiere parámetros adicionales
+    const ufv_inicial = parseFloat(coeficiente) || 1; // Usar coeficiente como UFV inicial temporalmente
+    const ufv_final = parseFloat(valor_residual) || 1; // Usar valor_residual como UFV final temporalmente
+    const horas_periodo = parseFloat(fecha_compra) || 0; // Usar fecha_compra como horas temporalmente
+    const depreciacion_por_hora = parseFloat(costo_activo) / (300 * 8); // Factor de uso estándar
+    
+    // Calcular valor actualizado usando UFV
+    const valor_actualizado = costo_activo * (ufv_final / ufv_inicial);
+    
+    // Calcular depreciación del período
+    const depreciacion_periodo = horas_periodo * depreciacion_por_hora;
+    
+    detalle.push({
+      anio: anio_inicio,
+      valor_anual_depreciado: round(depreciacion_periodo),
+      depreciacion_acumulada: round(depreciacion_periodo),
+      valor_en_libros: round(valor_actualizado - depreciacion_periodo),
+      valor_actualizado: round(valor_actualizado),
+      horas_periodo: horas_periodo,
+      depreciacion_por_hora: round(depreciacion_por_hora)
+    });
   } else {
     const depreciacion_anual = (costo_activo - valor_residual) / vida_util;
     for (let i = 0; i < vida_util; i++) {

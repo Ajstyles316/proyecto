@@ -373,6 +373,11 @@ class ControlOdometroSerializer(serializers.Serializer):
     odometro_inicial = serializers.FloatField(required=True)
     odometro_final = serializers.FloatField(required=True)
     odometro_mes = serializers.FloatField(required=True)
+    # Nuevos campos para horas
+    horas_inicial = serializers.FloatField(required=False, allow_null=True)
+    horas_final = serializers.FloatField(required=False, allow_null=True)
+    fecha_registro = serializers.DateTimeField(required=False, allow_null=True)
+    hora_registro = serializers.TimeField(required=False, allow_null=True)
     fotos = serializers.ListField(
         child=serializers.CharField(),
         required=False,
@@ -403,6 +408,33 @@ class ControlOdometroSerializer(serializers.Serializer):
     def validate_odometro_mes(self, value):
         if value < 0:
             raise serializers.ValidationError("El odómetro del mes no puede ser negativo")
+        return value
+
+    def validate_horas_inicial(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Las horas iniciales no pueden ser negativas")
+        return value
+
+    def validate_horas_final(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Las horas finales no pueden ser negativas")
+        return value
+
+    def validate_fecha_registro(self, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, '%Y-%m-%d')
+            except ValueError:
+                raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        return value
+
+    def validate_hora_registro(self, value):
+        if isinstance(value, str):
+            try:
+                from datetime import time
+                return time.fromisoformat(value)
+            except ValueError:
+                raise serializers.ValidationError("Formato de hora inválido. Use HH:MM")
         return value
 
     def validate_fotos(self, value):
@@ -454,6 +486,9 @@ class DepreciacionEntrySerializer(serializers.Serializer):
     valor_anual_depreciado = serializers.FloatField(required=False)
     depreciacion_acumulada = serializers.FloatField(required=False)
     valor_en_libros = serializers.FloatField(required=False)
+    valor_actualizado = serializers.FloatField(required=False)  # Para depreciación por horas
+    horas_periodo = serializers.FloatField(required=False)  # Para depreciación por horas
+    depreciacion_por_hora = serializers.FloatField(required=False)  # Para depreciación por horas
 
 class DepreciacionSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
@@ -467,6 +502,11 @@ class DepreciacionSerializer(serializers.Serializer):
         child=DepreciacionEntrySerializer(),
         required=True
     )
+    # Campos específicos para depreciación por horas
+    ufv_inicial = serializers.FloatField(required=False, allow_null=True)
+    ufv_final = serializers.FloatField(required=False, allow_null=True)
+    horas_periodo = serializers.FloatField(required=False, allow_null=True)
+    depreciacion_por_hora = serializers.FloatField(required=False, allow_null=True)
     fecha_creacion = serializers.DateTimeField(read_only=True)
     fecha_actualizacion = serializers.DateTimeField(read_only=True)
 
@@ -491,6 +531,26 @@ class DepreciacionSerializer(serializers.Serializer):
         elif isinstance(value, date):
             # Si es un objeto date, convertirlo a datetime
             return datetime.combine(value, datetime.min.time())
+        return value
+    
+    def validate_ufv_inicial(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("El UFV inicial debe ser mayor a 0.")
+        return value
+    
+    def validate_ufv_final(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("El UFV final debe ser mayor a 0.")
+        return value
+    
+    def validate_horas_periodo(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Las horas del período no pueden ser negativas.")
+        return value
+    
+    def validate_depreciacion_por_hora(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("La depreciación por hora debe ser mayor a 0.")
         return value
 
 class ActivoSerializer(serializers.Serializer):
