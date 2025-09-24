@@ -51,7 +51,7 @@ SECRET_KEY = 'django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'gestion-maquinaria-backend.herokuapp.com', 'activos-fijos-cofa.netlify.app']
 
 
 # Application definition
@@ -81,6 +81,7 @@ MIDDLEWARE = [
 ]
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Puerto del frontend
+    "https://activos-fijos-cofa.netlify.app",  # Netlify frontend
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo

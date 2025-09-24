@@ -14,7 +14,8 @@ import {
 import { styled } from "@mui/material/styles";
 import { Visibility, VisibilityOff, HelpOutline } from "@mui/icons-material";
 import { Link } from "react-router-dom";
-import logo from "../../../src/assets/images/logos/logo_login.png";
+// Imagen movida a public para producción
+const logo = "/images/logos/logo_login.png";
 
 const EMAIL_REGEX = /^[\w.-]+@(gmail\.com|enc\.cof\.gob\.bo|tec\.cof\.gob\.bo)$/i;
 const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;

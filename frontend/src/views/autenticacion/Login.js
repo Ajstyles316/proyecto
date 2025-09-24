@@ -124,7 +124,7 @@ const Login = () => {
             mb: { xs: 1, sm: 2 },
           }}>
             <img 
-              src="../../../src/assets/images/logos/logo_login.png"
+              src="/images/logos/logo_login.png"
               alt="Logo Login"
               style={{ width: "100%", height: "auto", display: "block" }}
               onError={(e) => {
