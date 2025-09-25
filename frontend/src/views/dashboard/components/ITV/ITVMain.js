@@ -81,65 +81,42 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
     setShowForm(true);
   };
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingITV 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${editingITV._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/`;
     const method = editingITV ? 'PUT' : 'POST';
     
-    if (formData instanceof FormData) {
-      console.log('FormData detectado para ITV:', {
-        isEditing: editingITV,
-        hasFile: formData.get('archivo_pdf'),
-        fileType: formData.get('archivo_pdf')?.constructor?.name
-      });
-      
-      if (editingITV) {
-        console.log('Editando ITV existente');
-        // Handle file for update
-        if (formData.get('archivo_pdf') && formData.get('archivo_pdf') instanceof File) {
-          console.log('Archivo PDF nuevo detectado en edición de ITV');
-        } else if (editingITV.archivo_pdf) {
-          console.log('Manteniendo archivo PDF existente de ITV');
-          formData.append('archivo_pdf', editingITV.archivo_pdf);
-          formData.append('nombre_archivo', editingITV.nombre_archivo || '');
-        }
-      } else {
-        console.log('Creando nuevo ITV');
-        formData.append('maquinaria', maquinariaId);
-        formData.append('registrado_por', user?.Nombre || user?.Email || 'Usuario');
-      }
-    } else {
-      console.log('Objeto normal detectado para ITV, convirtiendo a payload');
-      const payload = {
-        ...formData,
-        maquinaria: maquinariaId,
-        ...(editingITV ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
-      };
-      formData = payload;
-    }
-    
     try {
-      const headers = { 'X-User-Email': user.Email };
-      if (!(formData instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
+      const payload = {
+        ...data,
+        maquinaria: maquinariaId
+      };
+
+      if (!editingITV) {
+        payload.registrado_por = user?.Nombre || user?.Email || 'Usuario';
       }
-      console.log('Enviando petición ITV:', {
-        method,
-        url,
-        headers,
-        isFormData: formData instanceof FormData,
-        bodyType: formData instanceof FormData ? 'FormData' : 'JSON'
-      });
+
+      console.log('Enviando datos ITV:', payload);
+
       const response = await fetch(url, {
         method,
-        headers,
-        body: formData instanceof FormData ? formData : JSON.stringify(formData),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': user.Email
+        },
+        body: JSON.stringify(payload)
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Manejar error específico de archivo demasiado grande
+        if (response.status === 413 || (errorData.error && (errorData.error.includes('demasiado grande') || errorData.error.includes('timeout')))) {
+          throw new Error('El archivo PDF es demasiado grande o la operación tardó demasiado. El tamaño máximo permitido es 20MB.');
+        }
+        
         throw new Error(errorData.error || 'Error en la operación');
       }
       

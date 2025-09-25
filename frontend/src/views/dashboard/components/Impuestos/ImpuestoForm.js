@@ -49,13 +49,27 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoad
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setForm({
-        ...form,
-        archivo_pdf: file,
-        nombre_archivo: file.name,
-        _remove_existing_file: false
-      });
+    if (file && file.type === 'application/pdf') {
+      // Verificar tamaño del archivo (máximo 20MB)
+      const maxSize = 20 * 1024 * 1024; // 20MB en bytes
+      if (file.size > maxSize) {
+        alert('El archivo es demasiado grande. El tamaño máximo permitido es 20MB.');
+        return;
+      }
+      
+      // Convertir archivo a base64
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setForm({
+          ...form,
+          archivo_pdf: event.target.result, // base64 string
+          nombre_archivo: file.name,
+          _remove_existing_file: false
+        });
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      alert('Por favor selecciona un archivo PDF válido');
     }
   };
 
@@ -75,26 +89,24 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoad
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      const formData = new FormData();
-      Object.keys(form).forEach(key => {
-        if (key === 'archivo_pdf') {
-          if (form[key]) { // New file selected
-            formData.append(key, form[key]);
-            if (form.nombre_archivo) {
-              formData.append('nombre_archivo', form.nombre_archivo);
-            }
-          } else if (isEditing && initialData?.archivo_pdf && !form._remove_existing_file) {
-            // Keep existing file if not removed
-            formData.append(key, initialData.archivo_pdf);
-            if (initialData.nombre_archivo) {
-              formData.append('nombre_archivo', initialData.nombre_archivo);
-            }
-          }
-        } else if (key !== 'archivo_pdf' && key !== '_remove_existing_file' && form[key] !== null && form[key] !== undefined && form[key] !== '') {
-          formData.append(key, form[key]);
-        }
-      });
-      onSubmit(formData);
+      const data = {
+        gestion: form.gestion,
+        registrado_por: form.registrado_por,
+        validado_por: form.validado_por,
+        autorizado_por: form.autorizado_por
+      };
+      
+      // Solo agregar archivo si existe
+      if (form.archivo_pdf) {
+        data.archivo_pdf = form.archivo_pdf;
+        data.nombre_archivo = form.nombre_archivo;
+      } else if (isEditing && initialData?.archivo_pdf && !form._remove_existing_file) {
+        data.archivo_pdf = initialData.archivo_pdf;
+        data.nombre_archivo = initialData.nombre_archivo;
+      }
+      
+      console.log('Datos preparados:', data);
+      onSubmit(data);
     }
   };
 
@@ -103,7 +115,8 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoad
       <Typography variant="subtitle1" sx={{ mb: 2 }}>
         {isEditing ? 'Editar Impuesto' : 'Nuevo Registro'}
       </Typography>
-      <Grid container spacing={2}>
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={2}>
         {fieldLabels.filter(field => 
           isEditing || !['registrado_por', 'validado_por', 'autorizado_por'].includes(field.name)
         ).map((field) => (
@@ -187,15 +200,16 @@ const ImpuestoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoad
         flexWrap: 'wrap'
       }}>
         <Button 
+          type="submit"
           variant="contained" 
           color="success"
-          onClick={handleSubmit}
           disabled={isReadOnly || submitLoading}
           startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
         >
           {submitLoading ? (isEditing ? 'Actualizando...' : 'Guardando...') : (isEditing ? 'Actualizar' : 'Guardar')}
         </Button>
       </Box>
+      </form>
     </Paper>
   );
 };

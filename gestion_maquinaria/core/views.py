@@ -258,13 +258,16 @@ def process_file_upload(file_obj, filename):
     Procesa la subida de archivos y los convierte a base64 para almacenar en MongoDB
     """
     try:
+        logger.info(f"Procesando archivo: {filename}, tipo: {type(file_obj)}")
         if file_obj and hasattr(file_obj, 'read'):
             # Leer el contenido del archivo
             file_content = file_obj.read()
+            logger.info(f"Archivo leído, tamaño: {len(file_content)} bytes")
             
             # Convertir a base64
             import base64
             file_base64 = base64.b64encode(file_content).decode('utf-8')
+            logger.info(f"Archivo convertido a base64, longitud: {len(file_base64)}")
             
             # Obtener el tipo MIME del archivo
             import mimetypes
@@ -272,12 +275,17 @@ def process_file_upload(file_obj, filename):
             if not mime_type:
                 mime_type = 'application/octet-stream'
             
+            logger.info(f"Tipo MIME detectado: {mime_type}")
+            
             return {
                 'content': file_base64,
                 'filename': filename,
                 'mime_type': mime_type,
                 'size': len(file_content)
             }
+        else:
+            logger.error(f"Archivo inválido: {file_obj}")
+            return None
     except Exception as e:
         logger.error(f"Error procesando archivo {filename}: {str(e)}")
         return None
@@ -1908,7 +1916,7 @@ class MantenimientoListView(BaseSectionAPIView):
             logger.info(f"Mantenimiento POST - Datos recibidos: {request.data}")
             logger.info(f"Mantenimiento POST - Headers: {request.headers}")
             
-            data = request.data.copy()
+            data = request.data
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Mantenimiento POST - Datos preparados: {data}")
             
@@ -2133,7 +2141,7 @@ class SeguroListView(BaseSectionAPIView):
             # Verificar si es FormData (archivo) o datos normales
             if hasattr(request, 'FILES') and request.FILES:
                 logger.info(f"Seguro POST - Archivos recibidos: {request.FILES}")
-                data = request.data.copy()
+                data = dict(request.data)
                 
                 # Procesar archivo PDF si existe
                 if 'archivo_pdf' in request.FILES:
@@ -2163,7 +2171,7 @@ class SeguroListView(BaseSectionAPIView):
                     data.pop('tamaño_archivo', None)
                     logger.info("No hay archivo PDF, limpiando campos relacionados")
             else:
-                data = request.data.copy()
+                data = dict(request.data)
             
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Seguro POST - Datos preparados: {data}")
@@ -2200,8 +2208,19 @@ class SeguroListView(BaseSectionAPIView):
             validated_data = convert_dates_to_str(validated_data)  # <-- BSON safe
             logger.info(f"Seguro POST - Datos finales para MongoDB: {validated_data}")
             
-            result = collection.insert_one(validated_data)
-            new_record = collection.find_one({"_id": result.inserted_id})
+            try:
+                result = collection.insert_one(validated_data)
+                new_record = collection.find_one({"_id": result.inserted_id})
+            except Exception as db_error:
+                logger.error(f"Error al insertar en MongoDB: {str(db_error)}")
+                if "too large" in str(db_error).lower() or "timeout" in str(db_error).lower():
+                    return Response({
+                        "error": "El archivo PDF es demasiado grande o la operación tardó demasiado. El tamaño máximo permitido es 20MB."
+                    }, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+                else:
+                    return Response({
+                        "error": f"Error al guardar en la base de datos: {str(db_error)}"
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # --- REGISTRO DE ACTIVIDAD ---
             try:
@@ -2259,7 +2278,7 @@ class SeguroDetailView(BaseSectionDetailAPIView):
             # Verificar si es FormData (archivo) o datos normales
             if hasattr(request, 'FILES') and request.FILES:
                 logger.info(f"Seguro PUT - Archivos recibidos: {request.FILES}")
-                data = request.data.copy()
+                data = dict(request.data)
                 
                 # Procesar archivo PDF si existe
                 if 'archivo_pdf' in request.FILES:
@@ -2289,7 +2308,7 @@ class SeguroDetailView(BaseSectionDetailAPIView):
                     data.pop('tamaño_archivo', None)
                     logger.info("No hay archivo PDF, limpiando campos relacionados")
             else:
-                data = request.data.copy()
+                data = dict(request.data)
             
             data['maquinaria'] = str(maquinaria_id)
             maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
@@ -2458,28 +2477,27 @@ class ITVListView(BaseSectionAPIView):
             logger.info(f"ITV POST - Datos recibidos: {request.data}")
             logger.info(f"ITV POST - Archivos: {getattr(request, 'FILES', {})}")
             
-            # Verificar si es FormData (archivo) o datos normales
-            if hasattr(request, 'FILES') and request.FILES:
-                data = request.data.copy()
+            # Procesar datos y archivos
+            data = dict(request.data)
+            
+            # Procesar archivo PDF si existe
+            if hasattr(request, 'FILES') and request.FILES and 'archivo_pdf' in request.FILES:
+                file_obj = request.FILES['archivo_pdf']
+                filename = file_obj.name
+                logger.info(f"Procesando archivo PDF para ITV: {filename}")
                 
-                # Procesar archivo PDF si existe
-                if 'archivo_pdf' in request.FILES:
-                    file_obj = request.FILES['archivo_pdf']
-                    filename = file_obj.name
-                    logger.info(f"Procesando archivo PDF para ITV: {filename}")
-                    
-                    file_data = process_file_upload(file_obj, filename)
-                    if file_data:
-                        data['archivo_pdf'] = file_data['content']
-                        data['nombre_archivo'] = file_data['filename']
-                        data['tipo_archivo'] = file_data['mime_type']
-                        data['tamaño_archivo'] = file_data['size']
-                        logger.info(f"Archivo procesado exitosamente para ITV: {filename}")
-                    else:
-                        logger.error(f"Error procesando archivo para ITV: {filename}")
-                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                file_data = process_file_upload(file_obj, filename)
+                if file_data:
+                    data['archivo_pdf'] = file_data['content']
+                    data['nombre_archivo'] = file_data['filename']
+                    data['tipo_archivo'] = file_data['mime_type']
+                    data['tamaño_archivo'] = file_data['size']
+                    logger.info(f"Archivo procesado exitosamente para ITV: {filename}")
+                else:
+                    logger.error(f"Error procesando archivo para ITV: {filename}")
+                    return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                data = request.data.copy()
+                logger.info("No hay archivo PDF para ITV, campos de archivo se mantienen vacíos")
             
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"ITV POST - Datos preparados: {data}")
@@ -2563,7 +2581,7 @@ class ITVDetailView(BaseSectionDetailAPIView):
             # Verificar si es FormData (archivo) o datos normales
             if hasattr(request, 'FILES') and request.FILES:
                 logger.info(f"ITV PUT - Archivos recibidos: {request.FILES}")
-                data = request.data.copy()
+                data = dict(request.data)
                 
                 # Procesar archivo PDF si existe
                 if 'archivo_pdf' in request.FILES:
@@ -2593,7 +2611,7 @@ class ITVDetailView(BaseSectionDetailAPIView):
                     data.pop('tamaño_archivo', None)
                     logger.info("No hay archivo PDF, limpiando campos relacionados")
             else:
-                data = request.data.copy()
+                data = dict(request.data)
             
             data['maquinaria'] = str(maquinaria_id)
             maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
@@ -2735,28 +2753,27 @@ class SOATListView(BaseSectionAPIView):
             logger.info(f"SOAT POST - Datos recibidos: {request.data}")
             logger.info(f"SOAT POST - Archivos: {getattr(request, 'FILES', {})}")
             
-            # Verificar si es FormData (archivo) o datos normales
-            if hasattr(request, 'FILES') and request.FILES:
-                data = request.data.copy()
+            # Procesar datos y archivos
+            data = dict(request.data)
+            
+            # Procesar archivo PDF si existe
+            if hasattr(request, 'FILES') and request.FILES and 'archivo_pdf' in request.FILES:
+                file_obj = request.FILES['archivo_pdf']
+                filename = file_obj.name
+                logger.info(f"Procesando archivo PDF para SOAT: {filename}")
                 
-                # Procesar archivo PDF si existe
-                if 'archivo_pdf' in request.FILES:
-                    file_obj = request.FILES['archivo_pdf']
-                    filename = file_obj.name
-                    logger.info(f"Procesando archivo PDF para SOAT: {filename}")
-                    
-                    file_data = process_file_upload(file_obj, filename)
-                    if file_data:
-                        data['archivo_pdf'] = file_data['content']
-                        data['nombre_archivo'] = file_data['filename']
-                        data['tipo_archivo'] = file_data['mime_type']
-                        data['tamaño_archivo'] = file_data['size']
-                        logger.info(f"Archivo procesado exitosamente para SOAT: {filename}")
-                    else:
-                        logger.error(f"Error procesando archivo para SOAT: {filename}")
-                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                file_data = process_file_upload(file_obj, filename)
+                if file_data:
+                    data['archivo_pdf'] = file_data['content']
+                    data['nombre_archivo'] = file_data['filename']
+                    data['tipo_archivo'] = file_data['mime_type']
+                    data['tamaño_archivo'] = file_data['size']
+                    logger.info(f"Archivo procesado exitosamente para SOAT: {filename}")
+                else:
+                    logger.error(f"Error procesando archivo para SOAT: {filename}")
+                    return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                data = request.data.copy()
+                logger.info("No hay archivo PDF para SOAT, campos de archivo se mantienen vacíos")
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"SOAT POST - Datos preparados: {data}")
             
@@ -2851,7 +2868,7 @@ class SOATDetailView(BaseSectionDetailAPIView):
             # Verificar si es FormData (archivo) o datos normales
             if hasattr(request, 'FILES') and request.FILES:
                 logger.info(f"SOAT PUT - Archivos recibidos: {request.FILES}")
-                data = request.data.copy()
+                data = dict(request.data)
                 
                 # Procesar archivo PDF si existe
                 if 'archivo_pdf' in request.FILES:
@@ -2881,7 +2898,7 @@ class SOATDetailView(BaseSectionDetailAPIView):
                     data.pop('tamaño_archivo', None)
                     logger.info("No hay archivo PDF, limpiando campos relacionados")
             else:
-                data = request.data.copy()
+                data = dict(request.data)
             
             data['maquinaria'] = str(maquinaria_id)
             maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
@@ -3026,28 +3043,27 @@ class ImpuestoListView(BaseSectionAPIView):
             logger.info(f"Impuesto POST - Datos recibidos: {request.data}")
             logger.info(f"Impuesto POST - Archivos: {getattr(request, 'FILES', {})}")
             
-            # Verificar si es FormData (archivo) o datos normales
-            if hasattr(request, 'FILES') and request.FILES:
-                data = request.data.copy()
+            # Procesar datos y archivos
+            data = dict(request.data)
+            
+            # Procesar archivo PDF si existe
+            if hasattr(request, 'FILES') and request.FILES and 'archivo_pdf' in request.FILES:
+                file_obj = request.FILES['archivo_pdf']
+                filename = file_obj.name
+                logger.info(f"Procesando archivo PDF para Impuesto: {filename}")
                 
-                # Procesar archivo PDF si existe
-                if 'archivo_pdf' in request.FILES:
-                    file_obj = request.FILES['archivo_pdf']
-                    filename = file_obj.name
-                    logger.info(f"Procesando archivo PDF para Impuesto: {filename}")
-                    
-                    file_data = process_file_upload(file_obj, filename)
-                    if file_data:
-                        data['archivo_pdf'] = file_data['content']
-                        data['nombre_archivo'] = file_data['filename']
-                        data['tipo_archivo'] = file_data['mime_type']
-                        data['tamaño_archivo'] = file_data['size']
-                        logger.info(f"Archivo procesado exitosamente para Impuesto: {filename}")
-                    else:
-                        logger.error(f"Error procesando archivo para Impuesto: {filename}")
-                        return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
+                file_data = process_file_upload(file_obj, filename)
+                if file_data:
+                    data['archivo_pdf'] = file_data['content']
+                    data['nombre_archivo'] = file_data['filename']
+                    data['tipo_archivo'] = file_data['mime_type']
+                    data['tamaño_archivo'] = file_data['size']
+                    logger.info(f"Archivo procesado exitosamente para Impuesto: {filename}")
+                else:
+                    logger.error(f"Error procesando archivo para Impuesto: {filename}")
+                    return Response({"error": "Error procesando archivo PDF"}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                data = request.data.copy()
+                logger.info("No hay archivo PDF para Impuesto, campos de archivo se mantienen vacíos")
             
             data['maquinaria'] = str(maquinaria_id)
             logger.info(f"Impuesto POST - Datos preparados: {data}")
@@ -3131,7 +3147,7 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
             # Verificar si es FormData (archivo) o datos normales
             if hasattr(request, 'FILES') and request.FILES:
                 logger.info(f"Impuesto PUT - Archivos recibidos: {request.FILES}")
-                data = request.data.copy()
+                data = dict(request.data)
                 
                 # Procesar archivo PDF si existe
                 if 'archivo_pdf' in request.FILES:
@@ -3161,7 +3177,7 @@ class ImpuestoDetailView(BaseSectionDetailAPIView):
                     data.pop('tamaño_archivo', None)
                     logger.info("No hay archivo PDF, limpiando campos relacionados")
             else:
-                data = request.data.copy()
+                data = dict(request.data)
             
             data['maquinaria'] = str(maquinaria_id)
             maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
@@ -5256,8 +5272,24 @@ class SeguimientoListView(APIView):
         if cargo not in ['admin', 'encargado']:
             return Response({'error': 'Permiso denegado'}, status=status.HTTP_403_FORBIDDEN)
         seguimiento_col = get_collection(Seguimiento)
-        registros = list(seguimiento_col.find({}, {'_id': 0}).sort('fecha_hora', -1))
-        return Response(registros, status=status.HTTP_200_OK)
+        
+        # Usar find() con sort() en lugar de aggregate para mejor rendimiento
+        try:
+            cursor = seguimiento_col.find().sort("fecha_hora", -1).limit(100)
+            registros = []
+            for doc in cursor:
+                # Remover _id manualmente
+                doc.pop('_id', None)
+                registros.append(doc)
+            
+            return Response(registros, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error en seguimiento: {str(e)}")
+            return Response({
+                "error": "Error al obtener registros de seguimiento",
+                "message": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UsuarioUpdateView(APIView):
     def put(self, request):

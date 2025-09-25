@@ -85,7 +85,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
     setShowForm(true);
   };
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingSeguro 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${editingSeguro._id}/` 
@@ -93,88 +93,43 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
 
     const method = editingSeguro ? 'PUT' : 'POST';
 
-    // Si es FormData, agregar los campos adicionales
-    if (formData instanceof FormData) {
-      console.log('FormData detectado:', {
-        isEditing: editingSeguro,
-        hasFile: formData.get('archivo_pdf'),
-        fileType: formData.get('archivo_pdf')?.constructor?.name
-      });
-      
-      // Para edición, solo enviar los campos que han cambiado
-      if (editingSeguro) {
-        console.log('Editando seguro existente');
-        // En edición, enviar todos los campos que estén en el FormData
-        if (formData.get('fecha_inicial')) {
-          formData.set('fecha_inicial', new Date(formData.get('fecha_inicial')).toISOString().split('T')[0]);
-        }
-        if (formData.get('fecha_final')) {
-          formData.set('fecha_final', new Date(formData.get('fecha_final')).toISOString().split('T')[0]);
-        }
-        if (formData.get('importe')) {
-          formData.set('importe', formData.get('importe'));
-        }
-        // Para archivos, si hay uno nuevo, enviarlo; si no, mantener el existente
-        if (formData.get('archivo_pdf') && formData.get('archivo_pdf') instanceof File) {
-          // Hay un archivo nuevo, mantenerlo
-          console.log('Archivo PDF nuevo detectado en edición');
-        } else if (editingSeguro.archivo_pdf) {
-          // Mantener el archivo existente
-          console.log('Manteniendo archivo PDF existente');
-          formData.append('archivo_pdf', editingSeguro.archivo_pdf);
-          formData.append('nombre_archivo', editingSeguro.nombre_archivo || '');
-        }
-      } else {
-        // Para creación, agregar todos los campos requeridos
-        console.log('Creando nuevo seguro');
-        formData.append('maquinaria', maquinariaId);
-        formData.append('fecha_inicial', formData.get('fecha_inicial') ? new Date(formData.get('fecha_inicial')).toISOString().split('T')[0] : '');
-        formData.append('fecha_final', formData.get('fecha_final') ? new Date(formData.get('fecha_final')).toISOString().split('T')[0] : '');
-        formData.append('importe', formData.get('importe') || '0');
-        formData.append('registrado_por', user?.Nombre || user?.Email || 'Usuario');
-      }
-    } else {
-      // Si es objeto normal, crear payload
-      console.log('Objeto normal detectado, convirtiendo a payload');
-      const payload = {
-        ...formData,
-        maquinaria: maquinariaId,
-        fecha_inicial: formData.fecha_inicial ? new Date(formData.fecha_inicial).toISOString().split('T')[0] : null,
-        fecha_final: formData.fecha_final ? new Date(formData.fecha_final).toISOString().split('T')[0] : null,
-        importe: Number(formData.importe) || 0,
-        ...(editingSeguro ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
-      };
-      formData = payload;
-    }
-
     try {
-      const headers = {
-        'X-User-Email': user.Email
+      // Preparar datos para envío
+      const payload = {
+        ...data,
+        maquinaria: maquinariaId
       };
 
-      // Solo agregar Content-Type si no es FormData
-      if (!(formData instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
+      // Solo agregar registrado_por en creación
+      if (!editingSeguro) {
+        payload.registrado_por = user?.Nombre || user?.Email || 'Usuario';
       }
 
-      console.log('Enviando petición:', {
-        method,
-        url,
-        headers,
-        isFormData: formData instanceof FormData,
-        bodyType: formData instanceof FormData ? 'FormData' : 'JSON'
-      });
+      console.log('Enviando datos:', payload);
 
       const response = await fetch(url, {
         method,
-        headers,
-        body: formData instanceof FormData ? formData : JSON.stringify(formData),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': user.Email
+        },
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Error del servidor:', errorData);
+        
+        // Manejar error específico de archivo demasiado grande
+        if (response.status === 413 || (errorData.error && (errorData.error.includes('demasiado grande') || errorData.error.includes('timeout')))) {
+          throw new Error('El archivo PDF es demasiado grande o la operación tardó demasiado. El tamaño máximo permitido es 5MB.');
+        }
+        
         throw new Error(errorData.error || errorData.message || 'Error en la operación');
       }
+
+      const result = await response.json();
+      console.log('Respuesta exitosa:', result);
 
       setSnackbar({ 
         open: true, 
@@ -185,6 +140,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
       handleResetForm();
       fetchSeguros();
     } catch (error) {
+      console.error('Error completo:', error);
       setSnackbar({ 
         open: true, 
         message: `Error: ${error.message}`, 

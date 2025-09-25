@@ -81,65 +81,42 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
     setShowForm(true);
   };
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingImpuesto 
       ? `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${editingImpuesto._id}/` 
       : `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`;
     const method = editingImpuesto ? 'PUT' : 'POST';
     
-    if (formData instanceof FormData) {
-      console.log('FormData detectado para Impuesto:', {
-        isEditing: editingImpuesto,
-        hasFile: formData.get('archivo_pdf'),
-        fileType: formData.get('archivo_pdf')?.constructor?.name
-      });
-      
-      if (editingImpuesto) {
-        console.log('Editando Impuesto existente');
-        // Handle file for update
-        if (formData.get('archivo_pdf') && formData.get('archivo_pdf') instanceof File) {
-          console.log('Archivo PDF nuevo detectado en edición de Impuesto');
-        } else if (editingImpuesto.archivo_pdf) {
-          console.log('Manteniendo archivo PDF existente de Impuesto');
-          formData.append('archivo_pdf', editingImpuesto.archivo_pdf);
-          formData.append('nombre_archivo', editingImpuesto.nombre_archivo || '');
-        }
-      } else {
-        console.log('Creando nuevo Impuesto');
-        formData.append('maquinaria', maquinariaId);
-        formData.append('registrado_por', user?.Nombre || user?.Email || 'Usuario');
-      }
-    } else {
-      console.log('Objeto normal detectado para Impuesto, convirtiendo a payload');
-      const payload = {
-        ...formData,
-        maquinaria: maquinariaId,
-        ...(editingImpuesto ? {} : { registrado_por: user?.Nombre || user?.Email || 'Usuario' }),
-      };
-      formData = payload;
-    }
-    
     try {
-      const headers = { 'X-User-Email': user.Email };
-      if (!(formData instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
+      const payload = {
+        ...data,
+        maquinaria: maquinariaId
+      };
+
+      if (!editingImpuesto) {
+        payload.registrado_por = user?.Nombre || user?.Email || 'Usuario';
       }
-      console.log('Enviando petición Impuesto:', {
-        method,
-        url,
-        headers,
-        isFormData: formData instanceof FormData,
-        bodyType: formData instanceof FormData ? 'FormData' : 'JSON'
-      });
+
+      console.log('Enviando datos Impuesto:', payload);
+
       const response = await fetch(url, {
         method,
-        headers,
-        body: formData instanceof FormData ? formData : JSON.stringify(formData),
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': user.Email
+        },
+        body: JSON.stringify(payload)
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Manejar error específico de archivo demasiado grande
+        if (response.status === 413 || (errorData.error && (errorData.error.includes('demasiado grande') || errorData.error.includes('timeout')))) {
+          throw new Error('El archivo PDF es demasiado grande o la operación tardó demasiado. El tamaño máximo permitido es 5MB.');
+        }
+        
         throw new Error(errorData.error || 'Error en la operación');
       }
       

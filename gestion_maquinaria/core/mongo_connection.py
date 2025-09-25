@@ -17,17 +17,17 @@ def get_client():
     
     if _client is None:
         try:
-            # Connection options optimized for MongoDB Atlas with aggressive timeouts
+            # Connection options optimized for MongoDB Atlas with longer timeouts for file operations
             connection_options = {
-                'serverSelectionTimeoutMS': 2000,  # 2 seconds timeout (very aggressive)
-                'connectTimeoutMS': 3000,  # 3 seconds connection timeout
-                'socketTimeoutMS': 5000,  # 5 seconds socket timeout
-                'maxPoolSize': 5,  # Smaller connection pool
-                'retryWrites': False,  # Disable retries to fail fast
-                'retryReads': False,  # Disable retries to fail fast
+                'serverSelectionTimeoutMS': 5000,  # 5 seconds timeout
+                'connectTimeoutMS': 10000,  # 10 seconds connection timeout
+                'socketTimeoutMS': 30000,  # 30 seconds socket timeout for large files
+                'maxPoolSize': 10,  # Larger connection pool
+                'retryWrites': True,  # Enable retries for write operations
+                'retryReads': True,  # Enable retries for read operations
                 'heartbeatFrequencyMS': 10000,  # Heartbeat every 10 seconds
                 'maxIdleTimeMS': 30000,  # Close idle connections after 30 seconds
-                'waitQueueTimeoutMS': 2000,  # Wait max 2 seconds for connection from pool
+                'waitQueueTimeoutMS': 5000,  # Wait max 5 seconds for connection from pool
             }
             
             # Check if MONGO_URI is available

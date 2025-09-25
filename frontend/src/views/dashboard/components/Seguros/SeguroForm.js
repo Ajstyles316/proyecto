@@ -76,11 +76,23 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file && file.type === 'application/pdf') {
-      setForm({
-        ...form,
-        archivo_pdf: file,
-        nombre_archivo: file.name
-      });
+      // Verificar tamaño del archivo (máximo 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB en bytes
+      if (file.size > maxSize) {
+        alert('El archivo es demasiado grande. El tamaño máximo permitido es 5MB.');
+        return;
+      }
+      
+      // Convertir archivo a base64
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setForm({
+          ...form,
+          archivo_pdf: e.target.result, // base64 string
+          nombre_archivo: file.name
+        });
+      };
+      reader.readAsDataURL(file);
     } else {
       alert('Por favor selecciona un archivo PDF válido');
     }
@@ -112,31 +124,29 @@ const SeguroForm = ({ onSubmit, initialData, isEditing, submitLoading = false })
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      // Crear FormData para enviar archivo
-      const formData = new FormData();
-      Object.keys(form).forEach(key => {
-        if (key === 'archivo_pdf') {
-          // Para archivos PDF, manejar diferente en edición vs creación
-          if (form[key]) {
-            // Hay un archivo nuevo o existente
-            formData.append(key, form[key]);
-            if (form.nombre_archivo) {
-              formData.append('nombre_archivo', form.nombre_archivo);
-            }
-          } else if (isEditing && initialData?.archivo_pdf && !form._remove_existing_file) {
-            // En edición, si no hay archivo nuevo pero hay uno existente y no se quiere eliminar, mantenerlo
-            formData.append(key, initialData.archivo_pdf);
-            if (initialData.nombre_archivo) {
-              formData.append('nombre_archivo', initialData.nombre_archivo);
-            }
-          }
-          // Si _remove_existing_file es true, no se envía el archivo (se elimina)
-        } else if (key !== 'archivo_pdf' && key !== '_remove_existing_file' && form[key] !== null && form[key] !== undefined && form[key] !== '') {
-          // Solo enviar campos que tengan valor (no vacíos)
-          formData.append(key, form[key]);
-        }
-      });
-      onSubmit(formData);
+      // Crear objeto de datos simple
+      const data = {
+        fecha_inicial: form.fecha_inicial,
+        fecha_final: form.fecha_final,
+        numero_poliza: form.numero_poliza,
+        compania_aseguradora: form.compania_aseguradora,
+        importe: parseFloat(form.importe) || 0,
+        registrado_por: form.registrado_por,
+        validado_por: form.validado_por,
+        autorizado_por: form.autorizado_por
+      };
+      
+      // Solo agregar archivo si existe
+      if (form.archivo_pdf) {
+        data.archivo_pdf = form.archivo_pdf;
+        data.nombre_archivo = form.nombre_archivo;
+      } else if (isEditing && initialData?.archivo_pdf && !form._remove_existing_file) {
+        data.archivo_pdf = initialData.archivo_pdf;
+        data.nombre_archivo = initialData.nombre_archivo;
+      }
+      
+      console.log('Datos preparados:', data);
+      onSubmit(data);
     }
   };
 

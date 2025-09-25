@@ -20,7 +20,13 @@ const SOATTable = ({
   const handleDownloadPDF = (soat) => {
     if (soat.archivo_pdf) {
       try {
-        const byteCharacters = atob(soat.archivo_pdf);
+        // Limpiar el base64 removiendo el prefijo data:application/pdf;base64,
+        let base64Data = soat.archivo_pdf;
+        if (base64Data.includes(',')) {
+          base64Data = base64Data.split(',')[1];
+        }
+        
+        const byteCharacters = atob(base64Data);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);

@@ -21,8 +21,8 @@ const ControlForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoadi
 
   // Usar los fieldLabels correctos del archivo centralizado
   const controlFields = [
-    { name: 'fecha_inicio', label: 'Fecha de Inicio', required: true },
-    { name: 'fecha_final', label: 'Fecha Final', required: true },
+    { name: 'fecha_inicio', label: 'Fecha de Inicio', required: true, type: 'date' },
+    { name: 'fecha_final', label: 'Fecha Final', required: true, type: 'date' },
     { name: 'proyecto', label: 'Proyecto', required: true },
     { name: 'ubicacion', label: 'Ubicación', required: true },
     { name: 'estado', label: 'Estado', required: true},

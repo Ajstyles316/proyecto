@@ -85,7 +85,7 @@ class MantenimientoSerializer(serializers.Serializer):
     maquinaria = serializers.CharField(write_only=True, required=True)
     
     # Campos básicos del mantenimiento
-    tipo_mantenimiento = serializers.CharField(max_length=100, required=True)
+    tipo_mantenimiento = serializers.CharField(max_length=100, required=False)
     fecha_mantenimiento = serializers.DateField(required=True, input_formats=['%Y-%m-%d'])
     numero_salida_materiales = serializers.CharField(max_length=50, required=False, allow_blank=True)
     descripcion_danos_eventos = serializers.CharField(max_length=500, required=False, allow_blank=True)

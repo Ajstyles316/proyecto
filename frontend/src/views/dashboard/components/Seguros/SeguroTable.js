@@ -25,8 +25,14 @@ const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit =
   const handleDownloadPDF = (seguro) => {
     if (seguro.archivo_pdf) {
       try {
+        // Limpiar el base64 removiendo el prefijo data:application/pdf;base64,
+        let base64Data = seguro.archivo_pdf;
+        if (base64Data.includes(',')) {
+          base64Data = base64Data.split(',')[1];
+        }
+        
         // Convertir base64 a blob
-        const byteCharacters = atob(seguro.archivo_pdf);
+        const byteCharacters = atob(base64Data);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);

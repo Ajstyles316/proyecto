@@ -36,7 +36,6 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submi
   const fieldLabels = {
     // Información básica del mantenimiento
     informacionBasica: [
-      { name: 'tipo_mantenimiento', label: 'Tipo de Mantenimiento', required: true },
       { name: 'fecha_mantenimiento', label: 'Fecha de Mantenimiento', type: 'date', required: true },
       { name: 'numero_salida_materiales', label: 'N° Salida de Materiales', required: false },
       { name: 'descripcion_danos_eventos', label: 'Descripción, Daños, Eventos', multiline: true, required: false },
@@ -146,18 +145,30 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submi
   };
 
   const validateForm = () => {
+    console.log('🔍 Validando formulario...');
     const newErrors = {};
     Object.values(fieldLabels).flat().forEach(field => {
       if (field.required && !form[field.name]) {
+        console.log(`❌ Campo requerido vacío: ${field.name}`);
         newErrors[field.name] = `${field.label} es obligatorio`;
       }
     });
+    console.log('🔍 Errores encontrados:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = () => {
-    if (!validateForm()) return;
+    console.log('🔍 MantenimientoForm - handleSubmit llamado');
+    console.log('🔍 Form data:', form);
+    console.log('🔍 Errors:', errors);
+    
+    if (!validateForm()) {
+      console.log('❌ Validación falló');
+      return;
+    }
+    
+    console.log('✅ Validación exitosa, enviando datos');
     onSubmit(form);
   };
 
@@ -455,7 +466,12 @@ const MantenimientoForm = ({ onSubmit, initialData, isEditing, isReadOnly, submi
         <Button 
           variant="contained" 
           color="success"
-          onClick={handleSubmit}
+          onClick={() => {
+            console.log('🔍 Botón Guardar clickeado');
+            console.log('🔍 isReadOnly:', isReadOnly);
+            console.log('🔍 submitLoading:', submitLoading);
+            handleSubmit();
+          }}
           disabled={isReadOnly || submitLoading}
           startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : null}
           size="large"
