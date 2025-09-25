@@ -3,6 +3,33 @@ import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 
+// Función auxiliar para validar y limpiar base64
+const validateAndCleanBase64 = (base64String) => {
+  if (!base64String || typeof base64String !== 'string') {
+    return null;
+  }
+
+  // Limpiar espacios y caracteres de nueva línea
+  let cleaned = base64String.trim().replace(/\s/g, '');
+  
+  // Remover prefijos comunes de data URLs
+  if (cleaned.startsWith('data:application/pdf;base64,')) {
+    cleaned = cleaned.replace('data:application/pdf;base64,', '');
+  }
+  
+  // Verificar que solo contenga caracteres válidos de base64
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleaned)) {
+    return null;
+  }
+  
+  // Asegurar que la longitud sea múltiplo de 4
+  while (cleaned.length % 4 !== 0) {
+    cleaned += '=';
+  }
+  
+  return cleaned;
+};
+
 const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
   if (!fileName) {
     return <Typography variant="body2" color="text.secondary">Sin archivo</Typography>;
@@ -24,7 +51,17 @@ const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
         return;
       }
 
-      const byteCharacters = atob(fileData.archivo_pdf);
+      // Validar y limpiar la cadena base64
+      const cleanedBase64 = validateAndCleanBase64(fileData.archivo_pdf);
+      
+      if (!cleanedBase64) {
+        console.error('❌ Cadena base64 inválida:', fileData.archivo_pdf.substring(0, 100) + '...');
+        alert('El archivo no está en formato válido para descarga. Por favor, contacte al administrador.');
+        return;
+      }
+
+      console.log('🔍 Intentando decodificar base64 limpio...');
+      const byteCharacters = atob(cleanedBase64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -46,8 +83,13 @@ const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
       
       console.log('✅ Archivo descargado exitosamente:', fileName);
     } catch (error) {
-      console.error('Error descargando archivo:', error);
-      alert(`Error al descargar el archivo: ${error.message}`);
+      console.error('❌ Error descargando archivo:', error);
+      console.error('❌ Datos problemáticos:', { 
+        fileName, 
+        dataLength: fileData.archivo_pdf?.length,
+        dataPreview: fileData.archivo_pdf?.substring(0, 100) + '...'
+      });
+      alert(`Error al descargar el archivo: ${error.message}\n\nPor favor, contacte al administrador del sistema.`);
     }
   };
 
