@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Configuración de API para desarrollo y producción
+const isDevelopment = import.meta.env.DEV;
+const API_BASE = isDevelopment 
+  ? 'http://localhost:8000/api'  // Para desarrollo local
+  : 'https://gestion-maquinaria-backend.herokuapp.com/api';  // Para producción
 
 export async function fetchMaquinarias() {
   const res = await fetch(`${API_BASE}/maquinaria/`);

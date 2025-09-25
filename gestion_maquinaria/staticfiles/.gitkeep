@@ -1,0 +1,2 @@
+# Este archivo es necesario para que Django pueda crear el directorio staticfiles
+# Se puede eliminar después del primer despliegue

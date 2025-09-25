@@ -1,0 +1,38 @@
+{
+  "name": "Gestion Maquinaria Backend",
+  "description": "Backend API para el sistema de gestión de maquinaria",
+  "repository": "https://github.com/tu-usuario/gestion-maquinaria",
+  "keywords": ["django", "api", "maquinaria", "activos"],
+  "success_url": "/api/",
+  "env": {
+    "DEBUG": {
+      "description": "Debug mode",
+      "value": "False"
+    },
+    "SECRET_KEY": {
+      "description": "Django secret key",
+      "generator": "secret"
+    },
+    "MONGO_URI": {
+      "description": "MongoDB connection string",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:hobby-dev",
+      "as": "DATABASE"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}

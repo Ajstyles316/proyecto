@@ -1,4 +1,8 @@
-const API_BASE = 'http://localhost:8000/api';
+// Configuración de API para desarrollo y producción
+const isDevelopment = import.meta.env.DEV;
+const API_BASE = isDevelopment 
+  ? 'http://localhost:8000/api'  // Para desarrollo local
+  : 'https://gestion-maquinaria-backend.herokuapp.com/api';  // Para producción
 
 export async function fetchMaquinarias() {
   const res = await fetch(`${API_BASE}/maquinaria/`);
@@ -43,7 +47,7 @@ export async function deleteMaquinaria(id) {
 // 📌 -- Depreciación --
 
 export async function fetchDepreciaciones(maquinariaId) {
-  const res = await fetch(`http://localhost:8000/api/depreciaciones/${maquinariaId}/`);
+  const res = await fetch(`${API_BASE}/depreciaciones/${maquinariaId}/`);
   if (!res.ok) {
     console.error('ERROR', res.status, res.statusText);
     throw new Error('Error al obtener depreciaciones');
@@ -80,7 +84,7 @@ export async function deleteDepreciacion(maquinariaId, recordId) {
 }
 
 export async function fetchDetalleDepreciacion(maquinariaId) {
-  const res = await fetch(`http://localhost:8000/api/depreciaciones/detalle/${maquinariaId}/`);
+  const res = await fetch(`${API_BASE}/depreciaciones/detalle/${maquinariaId}/`);
   if (!res.ok) throw new Error('Error al obtener el detalle de depreciación');
   return await res.json();
 }
