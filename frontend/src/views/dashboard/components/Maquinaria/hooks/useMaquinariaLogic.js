@@ -34,13 +34,7 @@ const useMaquinariaLogic = () => {
   const fetchMaquinarias = async () => {
     setLoading(true);
     try {
-      // Configuración de API para desarrollo y producción
-      const isDevelopment = import.meta.env.DEV;
-      const API_BASE = isDevelopment 
-        ? 'http://localhost:8000/api'  // Para desarrollo local
-        : 'https://gestion-maquinaria-backend.herokuapp.com/api';  // Para producción
-      
-      const response = await fetch(`${API_BASE}/maquinaria/`);
+      const response = await fetch("http://localhost:8000/api/maquinaria/");
       if (!response.ok) throw new Error("Error al cargar datos");
       const data = await response.json();
       setMaquinarias(Array.isArray(data) ? data : []);

@@ -49,7 +49,7 @@ except UnicodeDecodeError:
 SECRET_KEY = 'django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'gestion-maquinaria-backend.herokuapp.com', 'activos-fijos-cofa.netlify.app']
 
@@ -165,13 +165,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Configuración adicional para Heroku
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+STATIC_URL = 'static/'
 
 # Configuración para archivos subidos
 MEDIA_URL = '/media/'
