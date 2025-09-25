@@ -49,7 +49,7 @@ except UnicodeDecodeError:
 SECRET_KEY = 'django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'gestion-maquinaria-backend.herokuapp.com', 'activos-fijos-cofa.netlify.app']
 
@@ -72,6 +72,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -166,6 +167,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Configuración para archivos estáticos en Heroku
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Configuración para archivos subidos
 MEDIA_URL = '/media/'
