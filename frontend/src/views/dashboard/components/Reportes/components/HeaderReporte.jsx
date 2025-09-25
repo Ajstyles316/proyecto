@@ -1,6 +1,5 @@
 import PropTypes from 'prop-types';
 import { Box, Typography } from '@mui/material';
-import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
 
 const HeaderReporte = ({ maquinaria }) => {
   return (

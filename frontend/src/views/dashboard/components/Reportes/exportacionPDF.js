@@ -1,4 +1,3 @@
-import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -85,13 +84,6 @@ function addSectionTitle(doc, title, y, pageWidth) {
 }
 
 function addMainHeader(doc, pageWidth) {
-  // Configuración del logo
-  const logoWidth = 38;
-  const logoHeight = 24;
-  const logoX = 18;
-  const logoY = 15;
-  doc.addImage(logoCofa, 'PNG', logoX, logoY, logoWidth, logoHeight);
-
   // Configuración del texto del header
   doc.setFontSize(13);
   doc.setTextColor(80, 80, 80);
@@ -105,8 +97,8 @@ function addMainHeader(doc, pageWidth) {
   
   const lineHeight = 7;
   const totalTextHeight = lines.length * lineHeight;
-  const textY = logoY + (logoHeight - totalTextHeight) / 2 + 5;
-  const textMarginLeft = logoX + logoWidth + 10;
+  const textY = 20;
+  const textMarginLeft = 18;
   const textMarginRight = 18;
   const textWidth = pageWidth - textMarginLeft - textMarginRight;
   lines.forEach((line, i) => doc.text(line, textMarginLeft + textWidth / 2, textY + i * lineHeight, { align: 'center' }));
@@ -115,10 +107,10 @@ function addMainHeader(doc, pageWidth) {
   // Línea divisoria
   doc.setDrawColor(30, 77, 183);
   doc.setLineWidth(0.5);
-  doc.line(18, logoY + logoHeight + 8, pageWidth - 18, logoY + logoHeight + 8);
+  doc.line(18, textY + totalTextHeight + 8, pageWidth - 18, textY + totalTextHeight + 8);
 
   // Retornar la altura total del header
-  return textY + lines.length * lineHeight + 10;
+  return textY + totalTextHeight + 10;
 }
 
 function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacion, liberacion, mantenimiento, soat, seguros, itv, impuestos }) {
@@ -827,8 +819,7 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
   const margin = 15;
   const contentWidth = pageWidth - (margin * 2);
   
-  // Logo y encabezado
-  doc.addImage(logoCofa, 'PNG', margin, margin, 30, 15);
+  // Encabezado
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text('TABLA DE DEPRECIACIÓN DETALLADA', pageWidth / 2, margin + 10, { align: 'center' });

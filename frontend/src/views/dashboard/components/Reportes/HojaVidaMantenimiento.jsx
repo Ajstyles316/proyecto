@@ -1,9 +1,65 @@
 import PropTypes from 'prop-types';
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, CardMedia } from '@mui/material';
+import { useState, useRef } from 'react';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, CardMedia, Button } from '@mui/material';
 import { formatDateOnly } from './helpers';
-import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
+  const reportRef = useRef(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Función para exportar PDF
+  const handleExportPDF = async () => {
+    if (!reportRef.current) return;
+    
+    setIsExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 1,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        quality: 0.8,
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.8);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // Agregar imagen a la primera página
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+
+      // Si la imagen es más alta que una página, agregar páginas adicionales
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      while (heightLeft > pageHeight) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Guardar el PDF
+      const fecha = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+      const placa = maquinaria?.placa || 'maquinaria';
+      const filename = `Hoja_Vida_Mantenimiento_${placa}_${fecha}.pdf`;
+      
+      pdf.save(filename);
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      alert('Error al exportar el PDF. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (!mantenimientos || mantenimientos.length === 0) {
     return (
@@ -17,46 +73,22 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
 
   return (
     <Box sx={{ p: 2, maxWidth: '100%', overflow: 'hidden' }}>
-      {/* Contenido del Reporte */}
-      <Box sx={{ backgroundColor: 'white' }}>
-        {/* Header con Logo y Título */}
-        <Box sx={{ textAlign: 'center', mb: 3, borderBottom: '2px solid #1e4db7', pb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-          <Box sx={{ 
-            width: 100, 
-            height: 80, 
-            mr: 3,
-            borderRadius: 2,
-            overflow: 'hidden',
-            border: '2px solid #1e4db7',
-            bgcolor: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <img 
-              src={logoCofa} 
-              alt="Logo COFADENA"
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                objectFit: 'contain' 
-              }} 
-            />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1e4db7', mb: 0.5 }}>
-              MINISTERIO DE DEFENSA
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#1e4db7', mb: 0.5 }}>
-              CORPORACIÓN DE LAS FF.AA. PARA EL DESARROLLO NACIONAL
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#1e4db7' }}>
-              EMPRESA PÚBLICA NACIONAL ESTRATÉGICA
-            </Typography>
-          </Box>
-        </Box>
+      {/* Botón de Exportar PDF */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Button
+          variant="contained"
+          color="error"
+          startIcon={<PictureAsPdfIcon />}
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          sx={{ minWidth: 150 }}
+        >
+          {isExporting ? 'Exportando...' : 'Exportar PDF'}
+        </Button>
       </Box>
+
+      {/* Contenido del Reporte */}
+      <Box ref={reportRef} sx={{ backgroundColor: 'white' }}>
 
       {/* Título Principal */}
       <Box sx={{ textAlign: 'center', mb: 3 }}>

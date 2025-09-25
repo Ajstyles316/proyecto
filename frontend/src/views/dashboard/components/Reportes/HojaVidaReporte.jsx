@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Typography } from '@mui/material';
+import MantenimientoSection from './MantenimientoSection';
+import { formatDateOnly } from './helpers';
 import logoCofa from 'src/assets/images/logos/logo_cofa_new.png';
 
 // Importar componentes modulares
@@ -46,14 +48,12 @@ const HojaVidaReporte = ({
         <div style="text-align: center; margin-bottom: 8px;">
           <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
             <div style="width: 90px; height: 70px; border-radius: 8px; overflow: hidden; border: 2px solid #1e4db7; background-color: white; display: flex; align-items: center; justify-content: center;">
-                <img src="${logoCofa}" alt="Logo COFADENA" style="width: 100%; height: 100%; object-fit: contain;" />
-              </div>
+              <img src="${logoCofa}" alt="Logo COFADENA" style="width: 100%; height: 100%; object-fit: contain;" />
+            </div>
             <div style="line-height: 1.15;">
               <div style="font-weight: bold; color: #1e4db7; font-size: 16px;">CORPORACIÓN DE LAS FUERZAS ARMADAS PARA EL DESARROLLO NACIONAL</div>
-              </div>
             </div>
           </div>
-          <div style="width: 100%; height: 3px; background-color: #1e4db7; margin-top: 10px;"></div>
         `;
         document.body.appendChild(headerDiv);
         
@@ -153,23 +153,10 @@ const HojaVidaReporte = ({
        const section = baseDiv.cloneNode(true);
        
        if (mode === 'before') {
-         // Sección 1: Todo hasta Historial de Mantenimiento (incluyendo Historial)
-         const historialElement = Array.from(section.querySelectorAll('*')).find(el => 
-           el.textContent && el.textContent.trim() === 'HISTORIAL DE MANTENIMIENTO'
-         );
-         
-         if (historialElement) {
-           const historialBox = historialElement.closest('[class*="Box"]') || historialElement.parentElement;
-           let currentNode = historialBox;
-           while (currentNode && currentNode.parentNode) {
-             // Eliminar todos los hermanos siguientes
-             while (currentNode.nextSibling) {
-               currentNode.nextSibling.remove();
-             }
-             break;
-           }
-         }
-         return section;
+         // Sección 1: Usar contenido de MantenimientoSection
+         const mantenimientoDiv = document.createElement('div');
+         mantenimientoDiv.innerHTML = MantenimientoSection({ maquinaria, mantenimientos });
+         return mantenimientoDiv;
        }
        
        if (mode === 'middle') {
