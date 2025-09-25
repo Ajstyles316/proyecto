@@ -366,17 +366,42 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
   }
 
   if (depAnual?.length) {
-    autoTable(doc, {
-      startY: y,
-      head: [['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros']],
-      body: depAnual.map(row => [
+    const dep = depreciaciones?.[0];
+    const isDepreciacionPorHoras = dep?.metodo === 'depreciacion_por_horas' || dep?.metodo_depreciacion?.includes('HRS.');
+    
+    let headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
+    let bodyData = depAnual.map(row => [
+      row.anio ?? '-', 
+      formatCurrency(row.valor_anual_depreciado ?? row.valor),
+      formatCurrency(row.depreciacion_acumulada), 
+      formatCurrency(row.valor_en_libros)
+    ]);
+    
+    // Si es depreciación por horas, agregar columnas adicionales
+    if (isDepreciacionPorHoras) {
+      headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
+      
+      bodyData = depAnual.map(row => [
         row.anio ?? '-', 
         formatCurrency(row.valor_anual_depreciado ?? row.valor),
         formatCurrency(row.depreciacion_acumulada), 
-        formatCurrency(row.valor_en_libros)
-      ]),
+        formatCurrency(row.valor_en_libros),
+        formatCurrency(row.valor_actualizado || 0),
+        row.horas_periodo || 0,
+        formatCurrency(row.depreciacion_por_hora || 0),
+        formatCurrency(row.valor_activo_fijo || 0),
+        formatCurrency(row.incremento_actualizacion_activo || 0),
+        formatCurrency(row.incremento_actualizacion_depreciacion || 0),
+        formatCurrency(row.costo_por_hora_efectiva || 0)
+      ]);
+    }
+    
+    autoTable(doc, {
+      startY: y,
+      head: [headers],
+      body: bodyData,
       styles: { 
-        fontSize: 9, 
+        fontSize: 8, 
         cellPadding: 2,
         minCellHeight: 8,
         halign: 'center',
@@ -385,14 +410,14 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10,
+        fontSize: 9,
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9,
+        fontSize: 8,
         halign: 'center',
         valign: 'middle'
       },
@@ -791,6 +816,134 @@ function exportPDFMasivo(data, filename = 'reporte') {
 
   doc.save(`${filename}.pdf`);
 }
+
+// Función específica para exportar tabla de depreciación detallada
+export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion') => {
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  
+  // Configuración de página
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  const contentWidth = pageWidth - (margin * 2);
+  
+  // Logo y encabezado
+  doc.addImage(logoCofa, 'PNG', margin, margin, 30, 15);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TABLA DE DEPRECIACIÓN DETALLADA', pageWidth / 2, margin + 10, { align: 'center' });
+  
+  // Información de la maquinaria
+  if (data.maquinaria) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    let y = margin + 25;
+    
+    doc.text(`Placa: ${data.maquinaria.placa || '-'}`, margin, y);
+    doc.text(`Código: ${data.maquinaria.codigo || '-'}`, margin + 60, y);
+    doc.text(`Detalle: ${data.maquinaria.detalle || '-'}`, margin + 120, y);
+    
+    y += 8;
+    doc.text(`Costo del Activo: Bs. ${(data.maquinaria.costo_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`, margin, y);
+    doc.text(`Fecha de Compra: ${data.maquinaria.fecha_compra || '-'}`, margin + 80, y);
+    doc.text(`Método: ${data.maquinaria.metodo || '-'}`, margin + 160, y);
+    
+    y += 8;
+    doc.text(`Vida Útil: ${data.maquinaria.vida_util || '-'} años`, margin, y);
+    
+    // Campos específicos para depreciación por horas
+    if (data.maquinaria.metodo === 'depreciacion_por_horas') {
+      doc.text(`UFV Inicial: ${data.maquinaria.ufv_inicial || '-'}`, margin + 60, y);
+      doc.text(`UFV Final: ${data.maquinaria.ufv_final || '-'}`, margin + 120, y);
+      doc.text(`Horas Período: ${data.maquinaria.horas_periodo || '-'}`, margin + 180, y);
+      
+      y += 8;
+      doc.text(`Depreciación por Hora: Bs. ${(data.maquinaria.depreciacion_por_hora || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`, margin, y);
+    }
+  }
+  
+  // Tabla de depreciación
+  if (data.tabla_depreciacion && data.tabla_depreciacion.length > 0) {
+    let y = margin + 60;
+    
+    // Preparar datos para la tabla
+    const headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
+    const isDepreciacionPorHoras = data.maquinaria?.metodo === 'depreciacion_por_horas';
+    
+    if (isDepreciacionPorHoras) {
+      headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
+    }
+    
+    const tableData = data.tabla_depreciacion.map(item => {
+      const row = [
+        item.anio || '-',
+        `Bs. ${(item.valor || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+        `Bs. ${(item.acumulado || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+        `Bs. ${(item.valor_en_libros || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
+      ];
+      
+      if (isDepreciacionPorHoras) {
+        row.push(
+          `Bs. ${(item.valor_actualizado || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+          item.horas_periodo || 0,
+          `Bs. ${(item.depreciacion_por_hora || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+          `Bs. ${(item.valor_activo_fijo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+          `Bs. ${(item.incremento_actualizacion_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+          `Bs. ${(item.incremento_actualizacion_depreciacion || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
+          `Bs. ${(item.costo_por_hora_efectiva || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
+        );
+      }
+      
+      return row;
+    });
+    
+    // Crear la tabla
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: y,
+      margin: { left: margin, right: margin },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: 'linebreak',
+        halign: 'center'
+      },
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 248]
+      },
+      columnStyles: {
+        0: { halign: 'center' }, // Año
+        1: { halign: 'right' },   // Valor Anual
+        2: { halign: 'right' },   // Depreciación Acumulada
+        3: { halign: 'right' }    // Valor en Libros
+      }
+    });
+  }
+  
+  // Pie de página
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const pageY = doc.internal.pageSize.getHeight() - 10;
+    doc.setDrawColor(30, 77, 183);
+    doc.setLineWidth(0.2);
+    doc.line(18, pageY - 5, pageWidth - 18, pageY - 5);
+    doc.setFontSize(8);
+    doc.setTextColor(80, 80, 80);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageY, { align: 'center' });
+    doc.text(`Generado el: ${new Date().toLocaleString('es-BO')}`, 18, pageY);
+    doc.text(`Sistema de Gestión de Maquinaria`, pageWidth - 18, pageY, { align: 'right' });
+  }
+  
+  doc.save(`${filename}.pdf`);
+};
 
 export default exportPDF;
 export { exportPDFMasivo };

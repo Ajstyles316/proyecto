@@ -49,7 +49,7 @@ const HojaVidaReporte = ({
                 <img src="${logoCofa}" alt="Logo COFADENA" style="width: 100%; height: 100%; object-fit: contain;" />
               </div>
             <div style="line-height: 1.15;">
-              <div style="font-weight: bold; color: #1e4db7; font-size: 14px;">CORPORACIÓN DE LAS FUERZAS ARMADAS PARA EL DESARROLLO NACIONAL</div>
+              <div style="font-weight: bold; color: #1e4db7; font-size: 16px;">CORPORACIÓN DE LAS FUERZAS ARMADAS PARA EL DESARROLLO NACIONAL</div>
               </div>
             </div>
           </div>
@@ -248,17 +248,72 @@ const HojaVidaReporte = ({
     const renderToCanvas = async (node) => {
       tempRoot.innerHTML = ''; // limpiar
       tempRoot.appendChild(node);
-      document.body.appendChild(tempRoot);
+      
+      // Detectar si es la primera sección (hasta Historial de Mantenimiento)
+      const isFirstSection = node.innerHTML.includes('HISTORIAL DE MAQUINARIA') && 
+                            node.innerHTML.includes('DATOS VEHICULO, MAQUINARIA, EQUIPO');
+      
+      if (isFirstSection) {
+        // Aplicar estilos CSS temporales SOLO para aumentar filas de tablas en la primera sección
+        const style = document.createElement('style');
+        style.textContent = `
+          .pdf-first-section .MuiTableRow-root { 
+            height: 80px !important; 
+            min-height: 80px !important;
+          }
+          .pdf-first-section .MuiTableCell-root { 
+            height: 80px !important; 
+            min-height: 80px !important;
+            padding: 12px 8px !important;
+            font-size: 1rem !important;
+            vertical-align: middle !important;
+          }
+          .pdf-first-section table { 
+            border-collapse: collapse !important;
+          }
+          .pdf-first-section .MuiCardMedia-root { 
+            height: 300px !important; 
+            width: auto !important;
+            object-fit: cover !important;
+          }
+          .pdf-first-section .MuiGrid-container { 
+            gap: 0px !important; 
+          }
+        `;
+        document.head.appendChild(style);
+        
+        // Aplicar clase a todos los elementos de la primera sección
+        const allElements = tempRoot.querySelectorAll('*');
+        allElements.forEach(el => {
+          el.classList.add('pdf-first-section');
+        });
+        
+        document.body.appendChild(tempRoot);
 
-      const canvas = await html2canvas(tempRoot, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
+        const canvas = await html2canvas(tempRoot, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        });
 
-      document.body.removeChild(tempRoot);
-      return canvas;
+        document.body.removeChild(tempRoot);
+        document.head.removeChild(style); // Limpiar estilos temporales
+        return canvas;
+      } else {
+        // Para otras secciones, renderizar normalmente
+        document.body.appendChild(tempRoot);
+
+        const canvas = await html2canvas(tempRoot, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        });
+
+        document.body.removeChild(tempRoot);
+        return canvas;
+      }
     };
 
     const pdf = new jsPDF('p', 'mm', 'a4');

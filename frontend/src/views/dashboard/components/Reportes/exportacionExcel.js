@@ -355,29 +355,74 @@ export const exportHojaVidaExcel = (data, filename = 'hoja_vida') => {
     data.depreciaciones.forEach(item => {
       const costoActivo = parseFloat(item.costo_activo) || 0;
       const vidaUtil = parseInt(item.vida_util) || 1;
-      const depreciacionAnual = costoActivo / vidaUtil;
+      const isDepreciacionPorHoras = item.metodo === 'depreciacion_por_horas' || item.metodo_depreciacion?.includes('HRS.');
       
-      // Valor inicial al principio
-      depData.push(['VALOR INICIAL:', costoActivo.toLocaleString('es-BO', { minimumFractionDigits: 2 }), '', '']);
+      // Información de la depreciación
+      depData.push([`DEPRECIACIÓN - ${item.metodo || item.metodo_depreciacion || 'Línea Recta'}`]);
+      depData.push(['Costo del Activo:', costoActivo.toLocaleString('es-BO', { minimumFractionDigits: 2 }), '', '']);
+      depData.push(['Fecha de Compra:', item.fecha_compra || '-', '', '']);
+      depData.push(['Método:', item.metodo || item.metodo_depreciacion || '-', '', '']);
+      depData.push(['Vida Útil:', `${vidaUtil} años`, '', '']);
       
-      // Encabezados
-      depData.push([
-        'AÑO',
-        'DEPRECIACIÓN ANUAL',
-        'DEPRECIACIÓN ACUMULADA',
-        'VALOR RESIDUAL'
-      ]);
+      // Campos específicos para depreciación por horas
+      if (isDepreciacionPorHoras) {
+        depData.push(['UFV Inicial:', item.ufv_inicial || '-', '', '']);
+        depData.push(['UFV Final:', item.ufv_final || '-', '', '']);
+        depData.push(['Horas Período:', item.horas_periodo || '-', '', '']);
+        depData.push(['Depreciación por Hora:', item.depreciacion_por_hora ? parseFloat(item.depreciacion_por_hora).toLocaleString('es-BO', { minimumFractionDigits: 2 }) : '-', '', '']);
+      }
       
-      for (let año = 1; año <= vidaUtil; año++) {
-        const depreciacionAcumulada = depreciacionAnual * año;
-        const valorResidual = costoActivo - depreciacionAcumulada;
+      depData.push(['']); // Línea en blanco
+      
+      // Tabla de depreciación por año
+      if (item.depreciacion_por_anio && item.depreciacion_por_anio.length > 0) {
+        let headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
+        if (isDepreciacionPorHoras) {
+          headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
+        }
         
-        depData.push([
-          año,
-          depreciacionAnual.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
-          depreciacionAcumulada.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
-          valorResidual.toLocaleString('es-BO', { minimumFractionDigits: 2 })
-        ]);
+        depData.push(headers);
+        
+        item.depreciacion_por_anio.forEach(dep => {
+          const row = [
+            dep.anio || '-',
+            dep.valor_anual_depreciado || 0,
+            dep.depreciacion_acumulada || 0,
+            dep.valor_en_libros || 0
+          ];
+          
+          if (isDepreciacionPorHoras) {
+            row.push(
+              dep.valor_actualizado || 0,
+              dep.horas_periodo || 0,
+              dep.depreciacion_por_hora || 0,
+              dep.valor_activo_fijo || 0,
+              dep.incremento_actualizacion_activo || 0,
+              dep.incremento_actualizacion_depreciacion || 0,
+              dep.costo_por_hora_efectiva || 0
+            );
+          }
+          
+          depData.push(row);
+        });
+      } else {
+        // Fallback al cálculo simple si no hay tabla detallada
+        const depreciacionAnual = costoActivo / vidaUtil;
+        
+        let headers = ['Año', 'Depreciación Anual', 'Depreciación Acumulada', 'Valor Residual'];
+        depData.push(headers);
+        
+        for (let año = 1; año <= vidaUtil; año++) {
+          const depreciacionAcumulada = depreciacionAnual * año;
+          const valorResidual = costoActivo - depreciacionAcumulada;
+          
+          depData.push([
+            año,
+            depreciacionAnual.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
+            depreciacionAcumulada.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
+            valorResidual.toLocaleString('es-BO', { minimumFractionDigits: 2 })
+          ]);
+        }
       }
       
       // Separador entre depreciaciones

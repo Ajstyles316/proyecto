@@ -17,8 +17,6 @@ import {
   MenuItem
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import TableChartIcon from '@mui/icons-material/TableChart';
 import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useCanEdit } from 'src/components/hooks';
@@ -391,56 +389,6 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     return tabla;
   };
 
-  // Funciones de exportación
-  const exportarTablaDepreciacionPDF = () => {
-    const detalleArray = generarTablaDepreciacion();
-    let acumulado = 0;
-    const detalleConAcumulado = detalleArray.map((item) => {
-      acumulado += item.valor;
-      return { ...item, acumulado };
-    });
-
-    const datosExportar = {
-      maquinaria: {
-        placa: maquinariaInfo?.placa || '',
-        codigo: maquinariaInfo?.codigo || '',
-        detalle: maquinariaInfo?.detalle || '',
-        costo_activo: editableData.costo_activo || 0,
-        fecha_compra: editableData.fecha_compra || '',
-        metodo: editableData.metodo || '',
-        vida_util: editableData.vida_util || 0,
-        ufv_inicial: editableData.ufv_inicial || '',
-        ufv_final: editableData.ufv_final || '',
-        horas_periodo: editableData.horas_periodo || '',
-        depreciacion_por_hora: editableData.depreciacion_por_hora || ''
-      },
-      tabla_depreciacion: detalleConAcumulado
-    };
-
-    // Importar dinámicamente las funciones de exportación
-    import('../../Reportes/exportacionPDF').then(({ exportTablaDepreciacionPDF }) => {
-      exportTablaDepreciacionPDF(datosExportar, `depreciacion_${maquinariaInfo?.placa || 'detalle'}`);
-    });
-  };
-
-  const exportarTablaDepreciacionExcel = () => {
-    const detalleArray = generarTablaDepreciacion();
-    let acumulado = 0;
-    const detalleConAcumulado = detalleArray.map((item) => {
-      acumulado += item.valor;
-      return { ...item, acumulado };
-    });
-
-    const datosExportar = {
-      tabla_depreciacion: detalleConAcumulado
-    };
-
-    // Importar dinámicamente las funciones de exportación
-    import('../../Reportes/exportacionExcel').then(({ exportTablaDepreciacionExcel }) => {
-      exportTablaDepreciacionExcel(datosExportar, `depreciacion_${maquinariaInfo?.placa || 'detalle'}`);
-    });
-  };
-
   const detalleArray = generarTablaDepreciacion();
   let acumulado = 0;
   const detalleConAcumulado = detalleArray.map((item) => {
@@ -697,56 +645,19 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
           </Table>
         )}
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3 }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<PictureAsPdfIcon />}
-              onClick={exportarTablaDepreciacionPDF}
-              disabled={faltaDatos}
-              sx={{ 
-                borderColor: '#d32f2f',
-                color: '#d32f2f',
-                '&:hover': {
-                  borderColor: '#b71c1c',
-                  backgroundColor: 'rgba(211, 47, 47, 0.04)'
-                }
-              }}
-            >
-              Exportar PDF
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<TableChartIcon />}
-              onClick={exportarTablaDepreciacionExcel}
-              disabled={faltaDatos}
-              sx={{ 
-                borderColor: '#2e7d32',
-                color: '#2e7d32',
-                '&:hover': {
-                  borderColor: '#1b5e20',
-                  backgroundColor: 'rgba(46, 125, 50, 0.04)'
-                }
-              }}
-            >
-              Exportar Excel
-            </Button>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button onClick={handleClose} sx={{ mr: 1 }}>
-              Cancelar
-            </Button>
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSaveClick}
-              sx={{ mr: 1 }}
-              disabled={!canEditDepreciacion}
-            >
-              Guardar
-            </Button>
-          </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          <Button onClick={handleClose} sx={{ mr: 1 }}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSaveClick}
+            sx={{ mr: 1 }}
+            disabled={!canEditDepreciacion}
+          >
+            Guardar
+          </Button>
         </Box>
       </Paper>
     </Modal>
