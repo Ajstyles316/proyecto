@@ -1,30 +1,14 @@
 {
   "builds": [
     {
-      "src": "gestion_maquinaria/wsgi.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "gestion_maquinaria/wsgi.py"
-    },
-    {
-      "src": "/admin/(.*)",
-      "dest": "gestion_maquinaria/wsgi.py"
-    },
-    {
-      "src": "/login/",
-      "dest": "gestion_maquinaria/wsgi.py"
-    },
-    {
-      "src": "/registro/",
-      "dest": "gestion_maquinaria/wsgi.py"
-    },
-    {
       "src": "/(.*)",
-      "dest": "gestion_maquinaria/wsgi.py"
+      "dest": "api/index.py"
     }
   ]
 }
