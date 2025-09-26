@@ -57,7 +57,9 @@ ALLOWED_HOSTS = [
     '0.0.0.0', 
     'gestion-maquinaria-backend.herokuapp.com', 
     'activos-fijos-cofa.netlify.app',
-    '.herokuapp.com'  # Permitir cualquier subdominio de Heroku
+    '.herokuapp.com',  # Permitir cualquier subdominio de Heroku
+    '.vercel.app',     # Permitir cualquier subdominio de Vercel
+    '.vercel.com'      # Permitir cualquier subdominio de Vercel
 ]
 
 
@@ -89,6 +91,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Puerto del frontend
     "https://activos-fijos-cofa.netlify.app",  # Netlify frontend
+    "https://backend-woad-nine-53.vercel.app",  # Vercel frontend
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ORIGIN_ALLOW_ALL = True  # Temporal para debugging
@@ -214,6 +217,14 @@ CORS_ALLOW_METHODS = [
 ]
 
 CORS_PREFLIGHT_MAX_AGE = 86400  # 24 horas
+
+# Configuración para Vercel
+VERCEL_ENV = os.environ.get('VERCEL_ENV', 'development')
+if VERCEL_ENV == 'production':
+    # Configuraciones específicas para producción en Vercel
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_TZ = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

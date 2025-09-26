@@ -1,5 +1,13 @@
 {
+  "version": 2,
   "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
     {
       "src": "gestion_maquinaria/wsgi.py",
       "use": "@vercel/python"
@@ -7,13 +15,18 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/(.*)",
       "dest": "gestion_maquinaria/wsgi.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/dist/$1"
     }
   ],
   "env": {
     "DEBUG": "False",
     "SECRET_KEY": "django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@",
-    "MONGO_URI": "mongodb+srv://activosfijos39:cmpunk@cluster0.iig1hgi.mongodb.net/"
+    "MONGO_URI": "mongodb+srv://activosfijos39:cmpunk@cluster0.iig1hgi.mongodb.net/",
+    "VITE_API_URL": "https://backend-woad-nine-53.vercel.app/api"
   }
 }
