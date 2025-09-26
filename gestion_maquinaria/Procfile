@@ -1,0 +1,2 @@
+web: gunicorn gestion_maquinaria.wsgi --log-file -
+

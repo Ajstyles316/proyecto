@@ -409,8 +409,8 @@ class ControlOdometroSerializer(serializers.Serializer):
         if not value:
             return value
         
-        # Validar que cada imagen no exceda 2MB (base64)
-        max_size_per_image = 2 * 1024 * 1024  # 2MB en bytes
+        # Validar que cada imagen no exceda 10MB (base64)
+        max_size_per_image = 10 * 1024 * 1024  # 10MB en bytes
         total_size = 0
         
         for i, foto in enumerate(value):
@@ -429,16 +429,16 @@ class ControlOdometroSerializer(serializers.Serializer):
             
             if size_bytes > max_size_per_image:
                 raise serializers.ValidationError(
-                    f"La imagen {i+1} es demasiado grande. Máximo 2MB por imagen."
+                    f"La imagen {i+1} es demasiado grande. Máximo 10MB por imagen."
                 )
             
             total_size += size_bytes
         
-        # Validar tamaño total (máximo 10MB para todas las imágenes)
-        max_total_size = 10 * 1024 * 1024  # 10MB
+        # Validar tamaño total (máximo 60MB para todas las imágenes)
+        max_total_size = 60 * 1024 * 1024  # 60MB
         if total_size > max_total_size:
             raise serializers.ValidationError(
-                f"El tamaño total de las imágenes ({total_size // (1024*1024)}MB) excede el límite de 10MB."
+                f"El tamaño total de las imágenes ({total_size // (1024*1024)}MB) excede el límite de 60MB."
             )
         
         return value

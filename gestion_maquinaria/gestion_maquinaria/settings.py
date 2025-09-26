@@ -46,12 +46,19 @@ except UnicodeDecodeError:
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'gestion-maquinaria-backend.herokuapp.com', 'activos-fijos-cofa.netlify.app']
+ALLOWED_HOSTS = [
+    'localhost', 
+    '127.0.0.1', 
+    '0.0.0.0', 
+    'gestion-maquinaria-backend.herokuapp.com', 
+    'activos-fijos-cofa.netlify.app',
+    '.herokuapp.com'  # Permitir cualquier subdominio de Heroku
+]
 
 
 # Application definition
@@ -84,9 +91,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://activos-fijos-cofa.netlify.app",  # Netlify frontend
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
-CORS_ORIGIN_ALLOW_ALL = False  # Más seguro para producción
+CORS_ORIGIN_ALLOW_ALL = True  # Temporal para debugging
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False  # Asegurar que no permita todos los orígenes
+CORS_ALLOW_ALL_ORIGINS = True  # Temporal para debugging
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup
