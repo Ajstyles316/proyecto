@@ -1,0 +1,18 @@
+{
+  "builds": [
+    {
+      "src": "gestion_maquinaria/wsgi.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "gestion_maquinaria/wsgi.py"
+    }
+  ],
+  "env": {
+    "DEBUG": "False",
+    "SECRET_KEY": "django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@"
+  }
+}
