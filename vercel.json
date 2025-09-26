@@ -1,14 +1,19 @@
 {
   "builds": [
     {
-      "src": "api/index.py",
+      "src": "gestion_maquinaria/wsgi.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.py"
+      "dest": "gestion_maquinaria/wsgi.py"
     }
-  ]
+  ],
+  "env": {
+    "DEBUG": "False",
+    "SECRET_KEY": "django-insecure-7k)417d#((!8+nx4&(@w+9!+gv9cztauv@b6(($ziw4&0h!)+@",
+    "MONGO_URI": "mongodb+srv://activosfijos39:cmpunk@cluster0.iig1hgi.mongodb.net/"
+  }
 }
