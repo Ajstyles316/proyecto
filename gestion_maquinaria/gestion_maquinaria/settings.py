@@ -84,8 +84,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://activos-fijos-cofa.netlify.app",  # Netlify frontend
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
-CORS_ORIGIN_ALLOW_ALL = True  # Solo para desarrollo
+CORS_ORIGIN_ALLOW_ALL = False  # Más seguro para producción
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False  # Asegurar que no permita todos los orígenes
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup
@@ -190,7 +191,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',
+    'authorization',
+    'content-type',
+    'x-csrftoken',
 ]
+
+# Configuración adicional para CORS
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 horas
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

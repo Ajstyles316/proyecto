@@ -405,6 +405,44 @@ class ControlOdometroSerializer(serializers.Serializer):
             raise serializers.ValidationError("El odómetro final no puede ser negativo")
         return value
 
+    def validate_fotos(self, value):
+        if not value:
+            return value
+        
+        # Validar que cada imagen no exceda 2MB (base64)
+        max_size_per_image = 2 * 1024 * 1024  # 2MB en bytes
+        total_size = 0
+        
+        for i, foto in enumerate(value):
+            if not foto:
+                continue
+                
+            # Calcular tamaño aproximado del base64 (base64 es ~33% más grande que el original)
+            # Remover el prefijo "data:image/..." para calcular solo el base64
+            if foto.startswith('data:image/'):
+                base64_part = foto.split(',')[1] if ',' in foto else foto
+            else:
+                base64_part = foto
+                
+            # Calcular tamaño en bytes (base64 es 4/3 del tamaño original)
+            size_bytes = len(base64_part) * 3 // 4
+            
+            if size_bytes > max_size_per_image:
+                raise serializers.ValidationError(
+                    f"La imagen {i+1} es demasiado grande. Máximo 2MB por imagen."
+                )
+            
+            total_size += size_bytes
+        
+        # Validar tamaño total (máximo 10MB para todas las imágenes)
+        max_total_size = 10 * 1024 * 1024  # 10MB
+        if total_size > max_total_size:
+            raise serializers.ValidationError(
+                f"El tamaño total de las imágenes ({total_size // (1024*1024)}MB) excede el límite de 10MB."
+            )
+        
+        return value
+
     def validate_odometro_mes(self, value):
         if value < 0:
             raise serializers.ValidationError("El odómetro del mes no puede ser negativo")

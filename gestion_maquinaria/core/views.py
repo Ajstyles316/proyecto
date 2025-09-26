@@ -5741,6 +5741,17 @@ class ControlOdometroListView(BaseSectionAPIView):
             validated_data = self.convert_date_to_datetime(validated_data)
             logger.info(f"Datos convertidos: {validated_data}")
 
+            # Validar tamaño del documento antes de insertar
+            import sys
+            doc_size = sys.getsizeof(str(validated_data))
+            max_doc_size = 15 * 1024 * 1024  # 15MB (dejando margen para el límite de 16MB)
+            
+            if doc_size > max_doc_size:
+                logger.error(f"Documento demasiado grande: {doc_size} bytes")
+                return Response({
+                    "error": f"El documento es demasiado grande ({doc_size // (1024*1024)}MB). Reduzca el tamaño de las imágenes."
+                }, status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
             # Insertar en MongoDB
             collection = get_collection('control_odometro')
             validated_data = convert_dates_to_str(validated_data)
