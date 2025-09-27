@@ -55,7 +55,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control/`, {
         headers: {
           'X-User-Email': user.Email
         }
@@ -88,8 +88,8 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleSubmit = async (formData) => {
     setSubmitLoading(true);
     const url = editingControl 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${editingControl._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/control/`;
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control/${editingControl._id}/` 
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control/`;
 
     const method = editingControl ? 'PUT' : 'POST';
 
@@ -141,7 +141,7 @@ const ControlMain = ({ maquinariaId, maquinariaPlaca }) => {
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
       console.log('Desactivando registro:', id);
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/control/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email

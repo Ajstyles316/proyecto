@@ -55,7 +55,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/seguros/`, {
         headers: {
           'X-User-Email': user.Email
         }
@@ -88,8 +88,8 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingSeguro 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${editingSeguro._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/`;
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/seguros/${editingSeguro._id}/` 
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/seguros/`;
 
     const method = editingSeguro ? 'PUT' : 'POST';
 
@@ -155,7 +155,7 @@ const SeguroMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!window.confirm('¿Estás seguro de que quieres desactivar este seguro?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/seguros/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email

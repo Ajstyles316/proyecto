@@ -34,7 +34,7 @@ const useMaquinariaLogic = () => {
   const fetchMaquinarias = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/maquinaria/");
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/`);
       if (!response.ok) throw new Error("Error al cargar datos");
       const data = await response.json();
       setMaquinarias(Array.isArray(data) ? data : []);
@@ -109,7 +109,7 @@ const useMaquinariaLogic = () => {
         maquinariaData.fecha_registro = new Date(maquinariaData.fecha_registro).toISOString().split('T')[0];
       }
 
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/`, {
         method: 'PUT',
         headers: {
           "Content-Type": "application/json",
@@ -195,7 +195,7 @@ const useMaquinariaLogic = () => {
     
     console.log("Body a enviar:", cleanedData); // <- Agregado
 
-    const response = await fetch("http://localhost:8000/api/maquinaria/", {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/`, {
       method: 'POST',
       headers: {
         "Content-Type": "application/json",
@@ -263,7 +263,7 @@ const useMaquinariaLogic = () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:8000/api/maquinaria/${id}/`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${id}/`, {
       method: 'DELETE',
       headers: {
         "X-User-Email": user?.Email || ''
@@ -315,7 +315,7 @@ const metodosUnicos = [...new Set(
     const cleanId = id.toString().replace(/[^a-zA-Z0-9]/g, '');
     setCurrentMaquinariaId(cleanId);
     
-    const response = await fetch(`http://localhost:8000/api/maquinaria/${cleanId}/`);
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${cleanId}/`);
     if (!response.ok) throw new Error('Error al cargar detalles');
 
     const data = await response.json();

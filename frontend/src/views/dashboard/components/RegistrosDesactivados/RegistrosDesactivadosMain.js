@@ -28,8 +28,8 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
     try {
       // Si maquinariaId es "all", obtener registros de todas las maquinarias
       const url = maquinariaId === "all" 
-        ? `http://localhost:8000/api/registros-desactivados/`
-        : `http://localhost:8000/api/maquinaria/${maquinariaId}/desactivados/`;
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/registros-desactivados/`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/desactivados/`;
       
       const response = await fetch(url, {
         headers: {
@@ -74,40 +74,40 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       let url;
       switch (tipo) {
         case 'Usuario':
-          url = `http://localhost:8000/usuarios/${recordId}/reactivar/`;
+          url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/reactivar/`;
           break;
         case 'Maquinaria':
-          url = `http://localhost:8000/api/maquinaria/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/`;
           break;
         case 'Control':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control/${recordId}/`;
           break;
         case 'Asignación':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/asignacion/${recordId}/`;
           break;
         case 'Liberación':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/liberacion/${recordId}/`;
           break;
         case 'Mantenimiento':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/mantenimiento/${recordId}/`;
           break;
         case 'Seguro':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/seguros/${recordId}/`;
           break;
         case 'ITV':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/itv/${recordId}/`;
           break;
         case 'SOAT':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/soat/${recordId}/`;
           break;
         case 'Impuesto':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/impuestos/${recordId}/`;
           break;
         case 'Control de Odómetros':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control-odometro/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/${recordId}/`;
           break;
         case 'Depreciación':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/depreciaciones/${recordId}/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/depreciaciones/${recordId}/`;
           break;
         default:
           throw new Error('Tipo de registro no válido');
@@ -172,40 +172,40 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       let url;
       switch (tipo) {
         case 'Usuario':
-          url = `http://localhost:8000/usuarios/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/?permanent=true`;
           break;
         case 'Maquinaria':
-          url = `http://localhost:8000/api/maquinaria/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/?permanent=true`;
           break;
         case 'Control':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control/${recordId}/?permanent=true`;
           break;
         case 'Asignación':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/asignacion/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/asignacion/${recordId}/?permanent=true`;
           break;
         case 'Liberación':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/liberacion/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/liberacion/${recordId}/?permanent=true`;
           break;
         case 'Mantenimiento':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/mantenimiento/${recordId}/?permanent=true`;
           break;
         case 'Seguro':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/seguros/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/seguros/${recordId}/?permanent=true`;
           break;
         case 'ITV':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/itv/${recordId}/?permanent=true`;
           break;
         case 'SOAT':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/soat/${recordId}/?permanent=true`;
           break;
         case 'Impuesto':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/impuestos/${recordId}/?permanent=true`;
           break;
         case 'Control de Odómetros':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/control-odometro/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/${recordId}/?permanent=true`;
           break;
         case 'Depreciación':
-          url = `http://localhost:8000/api/maquinaria/${maquinariaId}/depreciaciones/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/depreciaciones/${recordId}/?permanent=true`;
           break;
         default:
           throw new Error('Tipo de registro no válido');

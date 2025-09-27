@@ -154,7 +154,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     
     setLoadingOdometer(true);
     try {
-      const response = await fetch(`/api/maquinaria/${maquinariaId}/control-odometro/`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/`);
       if (response.ok) {
         const data = await response.json();
         setOdometerData(data);

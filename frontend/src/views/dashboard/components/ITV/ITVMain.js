@@ -55,7 +55,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/itv/`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/itv/`);
       if (!response.ok) throw new Error('Error al cargar ITVs');
       const data = await response.json();
       setItvs(Array.isArray(data) ? data : []);
@@ -84,8 +84,8 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingITV 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${editingITV._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/itv/`;
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/itv/${editingITV._id}/` 
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/itv/`;
     const method = editingITV ? 'PUT' : 'POST';
     
     try {
@@ -143,7 +143,7 @@ const ITVMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!window.confirm('¿Desactivar este ITV?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/itv/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/itv/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email

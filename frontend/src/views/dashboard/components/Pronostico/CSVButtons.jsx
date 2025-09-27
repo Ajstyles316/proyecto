@@ -55,7 +55,7 @@ const CSVButtons = ({ onDataUpdated }) => {
     formData.append('excel_file', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:8000/api/pronostico/excel-upload/', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/excel-upload/`, {
         method: 'POST',
         body: formData,
       });
@@ -84,7 +84,7 @@ const CSVButtons = ({ onDataUpdated }) => {
 
   const handleExportExcel = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/pronostico/');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/`);
       const data = await response.json();
       
       // Crear el contenido del Excel usando la librería XLSX

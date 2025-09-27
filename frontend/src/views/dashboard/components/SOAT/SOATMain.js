@@ -55,7 +55,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/soat/`);
       if (!response.ok) throw new Error('Error al cargar SOATs');
       const data = await response.json();
       setSoats(Array.isArray(data) ? data : []);
@@ -84,8 +84,8 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingSOAT 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${editingSOAT._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/soat/`;
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/soat/${editingSOAT._id}/` 
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/soat/`;
     const method = editingSOAT ? 'PUT' : 'POST';
     
     try {
@@ -143,7 +143,7 @@ const SOATMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!window.confirm('¿Desactivar este SOAT?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/soat/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/soat/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email

@@ -51,7 +51,7 @@ const ProfilePage = () => {
     // Obtener opciones de unidades
     const fetchOpciones = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/opciones/`);
         if (!res.ok) throw new Error("No se pudieron cargar las opciones");
         const data = await res.json();
         setOpciones({
@@ -123,7 +123,7 @@ const ProfilePage = () => {
       };
       if (form.Password) payload.Password = form.Password;
 
-      const res = await fetch('http://localhost:8000/api/usuarios/me/', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/me/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

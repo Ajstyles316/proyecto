@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 export async function fetchMaquinarias() {
   const res = await fetch(`${API_BASE}/maquinaria/`);
@@ -43,7 +43,7 @@ export async function deleteMaquinaria(id) {
 // 📌 -- Depreciación --
 
 export async function fetchDepreciaciones(maquinariaId) {
-  const res = await fetch(`http://localhost:8000/api/depreciaciones/${maquinariaId}/`);
+  const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/depreciaciones/${maquinariaId}/`);
   if (!res.ok) {
     console.error('ERROR', res.status, res.statusText);
     throw new Error('Error al obtener depreciaciones');
@@ -80,7 +80,7 @@ export async function deleteDepreciacion(maquinariaId, recordId) {
 }
 
 export async function fetchDetalleDepreciacion(maquinariaId) {
-  const res = await fetch(`http://localhost:8000/api/depreciaciones/detalle/${maquinariaId}/`);
+  const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/depreciaciones/detalle/${maquinariaId}/`);
   if (!res.ok) throw new Error('Error al obtener el detalle de depreciación');
   return await res.json();
 }

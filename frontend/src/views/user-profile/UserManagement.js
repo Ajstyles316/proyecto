@@ -380,7 +380,7 @@ const UserManagement = () => {
   const totalSeguimientoPages = Math.ceil(filteredSeguimiento.length / rowsPerPage);
   const fetchUsuarios = () => {
     setLoading(true);
-    fetch('http://localhost:8000/api/usuarios/', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/`, {
       headers: { 'X-User-Email': user.Email }
     })
       .then(res => res.json())
@@ -404,7 +404,7 @@ const UserManagement = () => {
   const [memorandumLoading, setMemorandumLoading] = useState({});
   const handleCargoChange = (id, newCargo) => {
     setCargoLoading(prev => ({ ...prev, [id]: true }));
-    fetch(`http://localhost:8000/api/usuarios/${id}/cargo/`, {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${id}/cargo/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -431,7 +431,7 @@ const UserManagement = () => {
 
   const handleMemorandumChange = (id, newMemorandum) => {
     setMemorandumLoading(prev => ({ ...prev, [id]: true }));
-    fetch(`http://localhost:8000/api/usuarios/${id}/memorandum/`, {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${id}/memorandum/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -474,7 +474,7 @@ const UserManagement = () => {
   }
   
   setActionLoading(prev => ({ ...prev, [`delete_${usuarioId}`]: true }));
-  fetch(`http://localhost:8000/api/usuarios/${usuarioId}/`, {
+  fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${usuarioId}/`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
@@ -502,7 +502,7 @@ const UserManagement = () => {
   const handleReactivarUsuario = (id) => {
     if (!window.confirm('¿Seguro que deseas reactivar este usuario?')) return;
     setActionLoading(prev => ({ ...prev, [`reactivate_${id}`]: true }));
-    fetch(`http://localhost:8000/api/usuarios/${id}/`, {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${id}/`, {
       method: 'PATCH',
       headers: { 'X-User-Email': user.Email }
     })
@@ -533,7 +533,7 @@ const UserManagement = () => {
     const id = modalPermisos.usuario._id?.$oid || modalPermisos.usuario._id || modalPermisos.usuario.Email;
     // Fusionar defaultPermisos con los permisos actuales para asegurar que todos los módulos estén presentes
     const permisosAEnviar = { ...{}, ...modalPermisos.permisos };
-    fetch(`http://localhost:8000/api/usuarios/${id}/permisos/`, {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${id}/permisos/`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -557,7 +557,7 @@ const UserManagement = () => {
     setSeguimientoLoading(true);
     setSeguimientoError('');
     // Cargar usuarios registrados
-    fetch('http://localhost:8000/api/usuarios/', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/`, {
       headers: { 'X-User-Email': user.Email }
     })
       .then(res => res.json())
@@ -566,7 +566,7 @@ const UserManagement = () => {
       })
       .catch(() => setUsuariosRegistrados([]));
     // Cargar seguimiento
-    fetch('http://localhost:8000/api/seguimiento/', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/seguimiento/`, {
       headers: { 'X-User-Email': user.Email }
     })
       .then(res => {
@@ -632,7 +632,7 @@ const UserManagement = () => {
         confirmPassword: crearUsuarioForm.Password, // Para el backend
       };
 
-      const response = await fetch("http://localhost:8000/api/usuarios/crear/", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/crear/`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -684,7 +684,7 @@ const UserManagement = () => {
     
     // Cargar opciones de cargos y unidades
     try {
-      const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/opciones/`);
       if (!res.ok) throw new Error("No se pudieron cargar las opciones");
       const data = await res.json();
       setOpcionesCrearUsuario({

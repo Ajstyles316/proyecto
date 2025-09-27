@@ -58,7 +58,7 @@ const ControlOdometroMain = ({ maquinariaId, maquinariaPlaca }) => {
       console.log('Fetching controles de odómetro for maquinaria:', maquinariaId);
       console.log('User email:', user?.Email);
       
-      const response = await fetch(`/api/maquinaria/${maquinariaId}/control-odometro/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/`, {
         headers: {
           'X-User-Email': user?.Email || '',
           'Content-Type': 'application/json',
@@ -102,8 +102,8 @@ const ControlOdometroMain = ({ maquinariaId, maquinariaPlaca }) => {
     try {
       setSubmitLoading(true);
       const url = editingControl 
-        ? `/api/maquinaria/${maquinariaId}/control-odometro/${editingControl._id}/`
-        : `/api/maquinaria/${maquinariaId}/control-odometro/`;
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/${editingControl._id}/`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/`;
       
       const method = editingControl ? 'PUT' : 'POST';
       
@@ -168,7 +168,7 @@ const ControlOdometroMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleDelete = async (id) => {
     try {
       setDeleteLoading(prev => ({ ...prev, [id]: true }));
-      const response = await fetch(`/api/maquinaria/${maquinariaId}/control-odometro/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/control-odometro/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user?.Email || '',

@@ -329,14 +329,14 @@ const RegistroActividadMain = () => {
     
     try {
       // Cargar usuarios registrados
-      const usuariosRes = await fetch('http://localhost:8000/api/usuarios/', {
+      const usuariosRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/`, {
         headers: { 'X-User-Email': user.Email }
       });
       const usuariosData = await usuariosRes.json();
       setUsuariosRegistrados(Array.isArray(usuariosData) ? usuariosData : []);
 
       // Cargar seguimiento
-      const seguimientoRes = await fetch('http://localhost:8000/api/seguimiento/', {
+      const seguimientoRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/seguimiento/`, {
         headers: { 'X-User-Email': user.Email }
       });
       

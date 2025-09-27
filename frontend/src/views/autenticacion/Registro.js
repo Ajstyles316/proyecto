@@ -71,7 +71,7 @@ const Register = () => {
     // Obtener opciones de cargos y unidades
     const fetchOpciones = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/usuarios/opciones/");
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/opciones/`);
         if (!res.ok) throw new Error("No se pudieron cargar las opciones");
         const data = await res.json();
         setOpciones({
@@ -128,7 +128,7 @@ const Register = () => {
         Password: formData.Password,
         confirmPassword: formData.confirmPassword,
       };
-      const response = await fetch("http://localhost:8000/registro/", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/registro/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -165,7 +165,7 @@ const Register = () => {
     setVerifyLoading(true);
     try {
       console.log('Verificando código para:', formData.Email, 'Código:', codigo);
-      const response = await fetch("http://localhost:8000/registro/verificar/", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/registro/verificar/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Email: formData.Email, codigo }),
@@ -193,7 +193,7 @@ const Register = () => {
   const handleResend = async () => {
     setResendLoading(true);
     try {
-      await fetch("http://localhost:8000/registro/reenviar/", {
+      await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/registro/reenviar/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Email: formData.Email }),

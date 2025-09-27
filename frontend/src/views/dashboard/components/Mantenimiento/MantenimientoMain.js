@@ -63,7 +63,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/mantenimiento/`, {
         headers: {
           'X-User-Email': user.Email
         }
@@ -82,7 +82,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const fetchMaquinariaData = useCallback(async () => {
     if (!maquinariaId) return;
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/`, {
         headers: {
           'X-User-Email': user.Email
         }
@@ -113,8 +113,8 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleSubmit = async (formData) => {
     setSubmitLoading(true);
     const url = editingMantenimiento 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${editingMantenimiento._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/`;
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/mantenimiento/${editingMantenimiento._id}/` 
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/mantenimiento/`;
 
     const method = editingMantenimiento ? 'PUT' : 'POST';
 
@@ -164,7 +164,7 @@ const MantenimientoMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!window.confirm('¿Desactivar este mantenimiento?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/mantenimiento/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/mantenimiento/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email

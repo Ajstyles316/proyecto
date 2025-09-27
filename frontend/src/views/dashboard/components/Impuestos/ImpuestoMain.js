@@ -55,7 +55,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!maquinariaId) return;
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/impuestos/`);
       if (!response.ok) throw new Error('Error al cargar Impuestos');
       const data = await response.json();
       setImpuestos(Array.isArray(data) ? data : []);
@@ -84,8 +84,8 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
   const handleSubmit = async (data) => {
     setSubmitLoading(true);
     const url = editingImpuesto 
-      ? `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${editingImpuesto._id}/` 
-      : `http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/`;
+      ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/impuestos/${editingImpuesto._id}/` 
+      : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/impuestos/`;
     const method = editingImpuesto ? 'PUT' : 'POST';
     
     try {
@@ -143,7 +143,7 @@ const ImpuestoMain = ({ maquinariaId, maquinariaPlaca }) => {
     if (!window.confirm('¿Desactivar este Impuesto?')) return;
     setDeleteLoading(prev => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`http://localhost:8000/api/maquinaria/${maquinariaId}/impuestos/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/impuestos/${id}/`, {
         method: 'DELETE',
         headers: {
           'X-User-Email': user.Email
