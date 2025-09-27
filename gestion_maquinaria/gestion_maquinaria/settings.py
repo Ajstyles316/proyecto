@@ -55,10 +55,11 @@ ALLOWED_HOSTS = [
     'localhost', 
     '127.0.0.1', 
     '0.0.0.0', 
-    'backend-woad-nine-53.vercel.app',  # Tu backend real en Vercel
+    'proyecto-2-9nl5.onrender.com',  # Tu backend en Render
     'activos-fijos-cofa.netlify.app',
-    '.vercel.app',     # Permitir cualquier subdominio de Vercel
-    '.vercel.com'      # Permitir cualquier subdominio de Vercel
+    'activos-fijos.onrender.com',  # Tu frontend en Render
+    '.render.com',     # Permitir cualquier subdominio de Render
+    '.onrender.com'    # Permitir cualquier subdominio de Render
 ]
 
 
@@ -90,7 +91,8 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  
     "https://activos-fijos-cofa.netlify.app",  
-    "https://proyecto-2-9nl5.onrender.com",  
+    "https://proyecto-2-9nl5.onrender.com",
+    "https://activos-fijos.onrender.com",  # Tu frontend en Render
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ALLOW_CREDENTIALS = True
