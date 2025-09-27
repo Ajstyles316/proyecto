@@ -90,7 +90,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  
     "https://activos-fijos-cofa.netlify.app",  
-    "https://backend-woad-nine-53.vercel.app",  
+    "https://proyecto-2-9nl5.onrender.com",  
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ALLOW_CREDENTIALS = True
