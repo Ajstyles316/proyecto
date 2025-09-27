@@ -36,8 +36,8 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
     setLoading(true);
     try {
       const url = maquinariaId === "all" 
-        ? `http://localhost:8000/api/registros-desactivados/`
-        : `http://localhost:8000/api/maquinaria/${maquinariaId}/desactivados/`;
+        ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/registros-desactivados/`
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/desactivados/`;
       
       console.log('Fetching URL:', url);
       const response = await fetch(url, {
@@ -144,9 +144,9 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
 
       // Para usuarios y maquinaria, usar endpoint diferente
       if (tipo === 'Usuario') {
-        url = `http://localhost:8000/usuarios/${recordId}/reactivar/`;
+        url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/reactivar/`;
       } else if (tipo === 'Maquinaria') {
-        url = `http://localhost:8000/api/maquinaria/${recordId}/`;
+        url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/`;
       } else {
         // Para otros tipos, usar endpoint con maquinaria_id
         if (!maquinariaId) {
@@ -154,7 +154,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
           // Intentar obtener maquinariaId del registro
           throw new Error(`No se puede reactivar este registro de ${tipo} porque no se encontró la información de la maquinaria asociada. Contacte al administrador.`);
         }
-        url = `http://localhost:8000/api/maquinaria/${maquinariaId}/${endpoint}/${recordId}/`;
+        url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/${endpoint}/${recordId}/`;
       }
 
       console.log('Reactivating URL:', url);
@@ -230,14 +230,14 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
 
       let url;
       if (tipo === 'Usuario') {
-        url = `http://localhost:8000/usuarios/${recordId}/?permanent=true`;
+        url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/?permanent=true`;
       } else if (tipo === 'Maquinaria') {
-        url = `http://localhost:8000/api/maquinaria/${recordId}/?permanent=true`;
+        url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/?permanent=true`;
       } else {
         if (!maquinariaId) {
           throw new Error(`No se puede eliminar este registro de ${tipo} porque no se encontró la maquinaria asociada.`);
         }
-        url = `http://localhost:8000/api/maquinaria/${maquinariaId}/${endpoint}/${recordId}/?permanent=true`;
+        url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${maquinariaId}/${endpoint}/${recordId}/?permanent=true`;
       }
 
       const response = await fetch(url, {

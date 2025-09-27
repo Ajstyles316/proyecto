@@ -664,7 +664,7 @@ export const useUnidades = () => {
   useEffect(() => {
     const fetchUnidades = async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/usuarios/opciones/");
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/opciones/`);
         if (!response.ok) throw new Error("No se pudieron cargar las opciones");
         const data = await response.json();
         setUnidades(data.unidades || []);
