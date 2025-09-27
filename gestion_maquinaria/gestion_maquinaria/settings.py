@@ -55,9 +55,8 @@ ALLOWED_HOSTS = [
     'localhost', 
     '127.0.0.1', 
     '0.0.0.0', 
-    'gestion-maquinaria-backend.herokuapp.com', 
+    'backend-woad-nine-53.vercel.app',  # Tu backend real en Vercel
     'activos-fijos-cofa.netlify.app',
-    '.herokuapp.com',  # Permitir cualquier subdominio de Heroku
     '.vercel.app',     # Permitir cualquier subdominio de Vercel
     '.vercel.com'      # Permitir cualquier subdominio de Vercel
 ]
