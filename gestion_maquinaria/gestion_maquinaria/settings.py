@@ -89,14 +89,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Puerto del frontend
-    "https://activos-fijos-cofa.netlify.app",  # Netlify frontend
-    "https://backend-woad-nine-53.vercel.app",  # Vercel frontend
+    "http://localhost:5173",  
+    "https://activos-fijos-cofa.netlify.app",  
+    "https://backend-woad-nine-53.vercel.app",  
 ]
 ROOT_URLCONF = 'gestion_maquinaria.urls'
-CORS_ORIGIN_ALLOW_ALL = True  # Temporal para debugging
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = True  # Temporal para debugging
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup
