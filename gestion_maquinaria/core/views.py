@@ -4116,8 +4116,14 @@ def enviar_correo_a_todos_usuarios_html(maquinaria, pronostico):
 
 class PronosticoAPIView(APIView):
     def post(self, request):
-        serializer = PronosticoInputSerializer(data=request.data)
-        if serializer.is_valid():
+        try:
+            if request.method != "POST":
+                return Response({"detail": "Method Not Allowed"}, status=405)
+            
+            serializer = PronosticoInputSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({"ok": False, "error": "Datos inválidos", "details": serializer.errors}, status=400)
+            
             data = serializer.validated_data
             import sys, os
             pronostico_dir = os.path.join(os.path.dirname(__file__), '../pronostico-v1')
@@ -4149,13 +4155,18 @@ class PronosticoAPIView(APIView):
                 collection.update_one({'_id': existing['_id']}, {'$set': data})
                 updated = collection.find_one({'_id': existing['_id']})
                 enviar_correo_a_todos_usuarios_html(maquinaria_doc, data)
-                return Response(serialize_doc(updated), status=status.HTTP_200_OK)
+                return Response({"ok": True, "resultado": serialize_doc(updated)}, status=200)
             else:
                 result = collection.insert_one(data)
                 new_doc = collection.find_one({'_id': result.inserted_id})
                 enviar_correo_a_todos_usuarios_html(maquinaria_doc, data)
-                return Response(serialize_doc(new_doc), status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"ok": True, "resultado": serialize_doc(new_doc)}, status=201)
+        except Exception as e:
+            # Loguea e y devuelve JSON; no dejes que el worker se caiga
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error en pronóstico: {str(e)}")
+            return Response({"ok": False, "error": str(e)}, status=500)
 
     def get(self, request):
         # Devolver todos los pronósticos sin paginación

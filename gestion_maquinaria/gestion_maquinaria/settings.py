@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Cargar variables de entorno con manejo de errores de codificación
 try:
     load_dotenv(dotenv_path=BASE_DIR / '.env')
-    print('MONGO_URI:', os.environ.get('MONGO_URI'))
+    # MONGO_URI cargado correctamente
 except UnicodeDecodeError:
     # Si hay error de codificación, intentar cargar con diferentes encodings
     import codecs
@@ -33,7 +33,7 @@ except UnicodeDecodeError:
             with codecs.open(env_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             load_dotenv(dotenv_path=env_path)
-            print('MONGO_URI:', os.environ.get('MONGO_URI'))
+            # MONGO_URI cargado correctamente
         except Exception as e:
             print(f'Error al procesar archivo .env: {e}')
             # Continuar sin el archivo .env
@@ -62,6 +62,11 @@ ALLOWED_HOSTS = [
     '.onrender.com'    # Permitir cualquier subdominio de Render
 ]
 
+# Configuración específica para Render
+if os.environ.get('RENDER'):
+    DEBUG = False
+    ALLOWED_HOSTS = ['*']  # Permitir todos los hosts en Render
+
 
 # Application definition
 
@@ -79,7 +84,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'core.middleware.CorsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -90,42 +94,35 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+# Configuración CORS duplicada eliminada - se define abajo
+
+# Origins permitidos (explícitos + regex para previews)
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  
-    "https://activos-fijos-cofa.netlify.app",  
-    "https://proyecto-2-9nl5.onrender.com",
+    "https://activos-fijos-cofa.netlify.app",
 ]
-
-# Permitir CORS para todos los orígenes (temporal para debug)
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_HEADERS = True
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-# Configuración adicional para CORS en producción
-CORS_EXPOSE_HEADERS = [
-    'Content-Type',
-    'X-CSRFToken',
-    'X-User-Email',
-]
-
-# Configuración para preflight requests
-CORS_PREFLIGHT_MAX_AGE = 86400
-
-# Configuración adicional para CORS
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.netlify\.app$",
     r"^https://.*\.onrender\.com$",
-    r"^http://localhost:\d+$",
+]
+
+# Si no usas cookies: NO credenciales
+CORS_ALLOW_CREDENTIALS = False
+
+# Métodos y headers
+CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+CORS_ALLOW_HEADERS = [
+    "accept","accept-encoding","authorization","content-type","dnt","origin",
+    "user-agent","x-csrftoken","x-requested-with","x-user-email","X-User-Email",
+]
+CORS_EXPOSE_HEADERS = ["Content-Type","X-CSRFToken","X-User-Email"]
+CORS_PREFLIGHT_MAX_AGE = 86400
+
+# CSRF (por si algún día usas cookies/CSRF)
+CSRF_TRUSTED_ORIGINS = [
+    "https://activos-fijos-cofa.netlify.app",
+    "https://*.netlify.app",
+    "https://*.onrender.com",
 ]
 
 ROOT_URLCONF = 'gestion_maquinaria.urls'
@@ -231,39 +228,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # MongoDB configuration is already defined above
 
-CORS_ALLOW_HEADERS = list(default_headers) + [
-    'x-user-email',
-    'X-User-Email',
-    'authorization',
-    'content-type',
-    'x-csrftoken',
-    'X-CSRFToken',
-    'accept',
-    'accept-encoding',
-    'accept-language',
-    'connection',
-    'host',
-    'origin',
-    'referer',
-    'user-agent',
-]
+# Esta configuración ya está definida arriba
 
-# Configuración adicional para CORS
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-CORS_PREFLIGHT_MAX_AGE = 86400  # 24 horas
+# Configuración duplicada eliminada - ya está definida arriba
 
 # Configuración para producción
-if not DEBUG:
+if not DEBUG or os.environ.get('RENDER'):
     # Configuraciones específicas para producción
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False  # Render maneja SSL
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_TZ = True
     
