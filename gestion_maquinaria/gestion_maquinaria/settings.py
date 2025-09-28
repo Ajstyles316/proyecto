@@ -108,6 +108,16 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
+# Configuración adicional para CORS en producción
+CORS_EXPOSE_HEADERS = [
+    'Content-Type',
+    'X-CSRFToken',
+    'X-User-Email',
+]
+
+# Configuración para preflight requests
+CORS_PREFLIGHT_MAX_AGE = 86400
+
 ROOT_URLCONF = 'gestion_maquinaria.urls'
 APPEND_SLASH = False
 
@@ -213,9 +223,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',
+    'X-User-Email',
     'authorization',
     'content-type',
     'x-csrftoken',
+    'X-CSRFToken',
+    'accept',
+    'accept-encoding',
+    'accept-language',
+    'connection',
+    'host',
+    'origin',
+    'referer',
+    'user-agent',
 ]
 
 # Configuración adicional para CORS
@@ -230,13 +250,33 @@ CORS_ALLOW_METHODS = [
 
 CORS_PREFLIGHT_MAX_AGE = 86400  # 24 horas
 
-# Configuración para Vercel
-VERCEL_ENV = os.environ.get('VERCEL_ENV', 'development')
-if VERCEL_ENV == 'production':
-    # Configuraciones específicas para producción en Vercel
+# Configuración para producción
+if not DEBUG:
+    # Configuraciones específicas para producción
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_TZ = True
+    
+    # Configuración de logging para producción
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+            },
+            'corsheaders': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+            },
+        },
+    }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

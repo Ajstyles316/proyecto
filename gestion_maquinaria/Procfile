@@ -1,2 +1,2 @@
-web: gunicorn gestion_maquinaria.wsgi --log-file - --bind 0.0.0.0:$PORT --timeout 120
+web: gunicorn gestion_maquinaria.wsgi --log-file - --bind 0.0.0.0:$PORT --timeout 300 --workers 2 --worker-class sync --worker-connections 1000 --max-requests 1000 --max-requests-jitter 100 --preload
 
