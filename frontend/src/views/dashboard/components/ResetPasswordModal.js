@@ -55,7 +55,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     try {
       const r = await apiFetch('/api/usuarios/reset_password/', {
         method: 'POST',
-        body: JSON.stringify({ Email: email }),
+        body: JSON.stringify({ email: email }),
       });
       console.log('Reset password response status:', r.status); // Debug
       const data = await r.json();
@@ -84,7 +84,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     try {
       const r = await apiFetch('/api/usuarios/reset_password/', {
         method: 'POST',
-        body: JSON.stringify({ Email: email }),
+        body: JSON.stringify({ email: email }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'No se pudo reenviar el código');
@@ -119,7 +119,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     try {
       const r = await apiFetch('/api/usuarios/reset_password/', {
         method: 'POST',
-        body: JSON.stringify({ Email: email, codigo, nueva_password: nuevaPassword }),
+        body: JSON.stringify({ email: email, codigo, nueva_password: nuevaPassword }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Error al actualizar contraseña');
