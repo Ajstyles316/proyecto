@@ -144,7 +144,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
 
       // Para usuarios y maquinaria, usar endpoint diferente
       if (tipo === 'Usuario') {
-        url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/reactivar/`;
+        url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${recordId}/reactivar/`;
       } else if (tipo === 'Maquinaria') {
         url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/`;
       } else {
@@ -230,7 +230,7 @@ const RegistrosDesactivadosModal = ({ open, onClose, maquinariaId, isAdmin }) =>
 
       let url;
       if (tipo === 'Usuario') {
-        url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/?permanent=true`;
+        url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${recordId}/?permanent=true`;
       } else if (tipo === 'Maquinaria') {
         url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/?permanent=true`;
       } else {

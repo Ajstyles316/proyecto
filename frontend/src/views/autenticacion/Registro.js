@@ -128,7 +128,7 @@ const Register = () => {
         Password: formData.Password,
         confirmPassword: formData.confirmPassword,
       };
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/registro/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/registro/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -165,7 +165,7 @@ const Register = () => {
     setVerifyLoading(true);
     try {
       console.log('Verificando código para:', formData.Email, 'Código:', codigo);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/registro/verificar/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/registro/verificar/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Email: formData.Email, codigo }),
@@ -193,7 +193,7 @@ const Register = () => {
   const handleResend = async () => {
     setResendLoading(true);
     try {
-      await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/registro/reenviar/`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/registro/reenviar/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Email: formData.Email }),

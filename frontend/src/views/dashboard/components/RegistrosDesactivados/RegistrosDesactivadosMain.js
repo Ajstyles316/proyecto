@@ -74,7 +74,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       let url;
       switch (tipo) {
         case 'Usuario':
-          url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/reactivar/`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${recordId}/reactivar/`;
           break;
         case 'Maquinaria':
           url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/`;
@@ -172,7 +172,7 @@ const RegistrosDesactivadosMain = ({ maquinariaId }) => {
       let url;
       switch (tipo) {
         case 'Usuario':
-          url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/usuarios/${recordId}/?permanent=true`;
+          url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/usuarios/${recordId}/?permanent=true`;
           break;
         case 'Maquinaria':
           url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/${recordId}/?permanent=true`;
