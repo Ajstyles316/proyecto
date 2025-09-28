@@ -11,13 +11,12 @@ import PropTypes from 'prop-types';
 // Helper: resuelve base URL automáticamente
 const apiFetch = (path, options = {}) => {
   const p = path.startsWith('/') ? path : `/${path}`;
-  // 1) Si pones VITE_API_BASE_URL, se usa (ej: http://localhost:8000 ó https://proyecto-2-9nl5.onrender.com)
-  const envBase = import.meta.env?.VITE_API_BASE_URL?.trim();
+  // 1) Si pones VITE_API_URL, se usa (ej: http://localhost:8000/api ó https://api.midominio.com/api)
+  const envBase = import.meta.env?.VITE_API_URL?.trim();
   // 2) Si estamos en Vite dev (5173), fallback al backend local 8000
   const isViteDev = typeof window !== 'undefined' && window.location.port === '5173' && window.location.hostname === 'localhost';
-  const base = envBase || (isViteDev ? 'http://localhost:8000/api' : '');
+  const base = envBase || (isViteDev ? 'http://localhost:8000' : '');
   const url = `${base}${p}`;
-  console.log('ResetPassword URL:', url); // Debug
   return fetch(url, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
@@ -53,13 +52,11 @@ const ResetPasswordModal = ({ open, onClose }) => {
     if (!email) return showSnack('Ingresa tu email', 'error');
     setLoading(true);
     try {
-      const r = await apiFetch('/api/usuarios/reset/solicitar/', {
+      const r = await apiFetch('api/usuarios/reset/solicitar/', {
         method: 'POST',
-        body: JSON.stringify({ email: email }),
+        body: JSON.stringify({ Email: email }),
       });
-      console.log('Reset password response status:', r.status); // Debug
       const data = await r.json();
-      console.log('Reset password response data:', data); // Debug
       if (!r.ok) throw new Error(data.error || 'No se pudo enviar el código');
       showSnack('Código enviado a tu correo', 'success');
       setStep(2);
@@ -82,9 +79,9 @@ const ResetPasswordModal = ({ open, onClose }) => {
     if (resendCooldown > 0) return;
     setLoading(true);
     try {
-      const r = await apiFetch('/api/usuarios/reset/solicitar/', {
+      const r = await apiFetch('api/usuarios/reset/reenviar/', {
         method: 'POST',
-        body: JSON.stringify({ email: email }),
+        body: JSON.stringify({ Email: email }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'No se pudo reenviar el código');
@@ -117,9 +114,9 @@ const ResetPasswordModal = ({ open, onClose }) => {
 
     setLoading(true);
     try {
-      const r = await apiFetch('/api/usuarios/reset/verificar/', {
+      const r = await apiFetch('api/usuarios/reset/verificar/', {
         method: 'POST',
-        body: JSON.stringify({ email: email, codigo, nueva_password: nuevaPassword }),
+        body: JSON.stringify({ Email: email, codigo, nueva_password: nuevaPassword }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'Error al actualizar contraseña');

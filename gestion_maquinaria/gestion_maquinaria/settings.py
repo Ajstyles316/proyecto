@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Cargar variables de entorno con manejo de errores de codificación
 try:
     load_dotenv(dotenv_path=BASE_DIR / '.env')
-    # MONGO_URI cargado correctamente
+    print('MONGO_URI:', os.environ.get('MONGO_URI'))
 except UnicodeDecodeError:
     # Si hay error de codificación, intentar cargar con diferentes encodings
     import codecs
@@ -33,7 +33,7 @@ except UnicodeDecodeError:
             with codecs.open(env_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             load_dotenv(dotenv_path=env_path)
-            # MONGO_URI cargado correctamente
+            print('MONGO_URI:', os.environ.get('MONGO_URI'))
         except Exception as e:
             print(f'Error al procesar archivo .env: {e}')
             # Continuar sin el archivo .env
@@ -62,11 +62,6 @@ ALLOWED_HOSTS = [
     '.onrender.com'    # Permitir cualquier subdominio de Render
 ]
 
-# Configuración específica para Render
-if os.environ.get('RENDER'):
-    DEBUG = False
-    ALLOWED_HOSTS = ['*']  # Permitir todos los hosts en Render
-
 
 # Application definition
 
@@ -86,7 +81,6 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -94,38 +88,17 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-# Configuración CORS duplicada eliminada - se define abajo
-
-# Origins permitidos (explícitos + regex para previews)
-CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "https://activos-fijos-cofa.netlify.app",
-]
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.netlify\.app$",
-    r"^https://.*\.onrender\.com$",
-]
-
-# Si no usas cookies: NO credenciales
-CORS_ALLOW_CREDENTIALS = False
-
-# Métodos y headers
-CORS_ALLOW_METHODS = ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
-CORS_ALLOW_HEADERS = [
-    "accept","accept-encoding","authorization","content-type","dnt","origin",
-    "user-agent","x-csrftoken","x-requested-with","x-user-email","X-User-Email",
-]
-CORS_EXPOSE_HEADERS = ["Content-Type","X-CSRFToken","X-User-Email"]
-CORS_PREFLIGHT_MAX_AGE = 86400
-
-# CSRF (por si algún día usas cookies/CSRF)
-CSRF_TRUSTED_ORIGINS = [
-    "https://activos-fijos-cofa.netlify.app",
-    "https://*.netlify.app",
-    "https://*.onrender.com",
+    "http://localhost:5173",  
+    "https://activos-fijos-cofa.netlify.app",  
+    "https://proyecto-2-9nl5.onrender.com",
+    "https://activos-fijos.onrender.com",  # Tu frontend en Render
 ]
 
+# Permitir CORS para todos los orígenes (temporal para debug)
+CORS_ALLOW_ALL_ORIGINS = True
 ROOT_URLCONF = 'gestion_maquinaria.urls'
+CORS_ALLOW_CREDENTIALS = True
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup
@@ -228,42 +201,37 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # MongoDB configuration is already defined above
 
-# Esta configuración ya está definida arriba
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-user-email',
+    'authorization',
+    'content-type',
+    'x-csrftoken',
+]
 
-# Configuración duplicada eliminada - ya está definida arriba
+# Configuración adicional para CORS
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
 
-# Configuración para producción
-if not DEBUG or os.environ.get('RENDER'):
-    # Configuraciones específicas para producción
-    SECURE_SSL_REDIRECT = False  # Render maneja SSL
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 horas
+
+# Configuración para Vercel
+VERCEL_ENV = os.environ.get('VERCEL_ENV', 'development')
+if VERCEL_ENV == 'production':
+    # Configuraciones específicas para producción en Vercel
+    SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_TZ = True
-    
-    # Configuración de logging para producción
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-            },
-        },
-        'loggers': {
-            'django': {
-                'handlers': ['console'],
-                'level': 'INFO',
-            },
-            'corsheaders': {
-                'handlers': ['console'],
-                'level': 'DEBUG',
-            },
-        },
-    }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'activosfijos39@gmail.com'
-EMAIL_HOST_PASSWORD = 'tdvf wsbt dudz clmc'
-DEFAULT_FROM_EMAIL = 'Sistema de Mantenimiento <activosfijos39@gmail.com>'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'activosfijos39@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'tdvf wsbt dudz clmc')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Sistema de Mantenimiento <activosfijos39@gmail.com>')
