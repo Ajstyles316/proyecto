@@ -196,6 +196,7 @@ const ModalPronostico = ({ open, onClose, maquinaria, historial = [], onPredicti
       console.log('Pronóstico result:', result); // Debug
       setIaResult(result);
       setSaveSuccess(true);
+      setShowForm(false); // Mostrar resultado
       onPredictionSaved();
     } catch (error) {
       setFormError(error.message);

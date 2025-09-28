@@ -15,7 +15,7 @@ const apiFetch = (path, options = {}) => {
   const envBase = import.meta.env?.VITE_API_BASE_URL?.trim();
   // 2) Si estamos en Vite dev (5173), fallback al backend local 8000
   const isViteDev = typeof window !== 'undefined' && window.location.port === '5173' && window.location.hostname === 'localhost';
-  const base = envBase || (isViteDev ? 'http://localhost:8000' : '');
+  const base = envBase || (isViteDev ? 'http://localhost:8000/api' : '');
   const url = `${base}${p}`;
   console.log('ResetPassword URL:', url); // Debug
   return fetch(url, {
@@ -53,7 +53,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     if (!email) return showSnack('Ingresa tu email', 'error');
     setLoading(true);
     try {
-      const r = await apiFetch('/usuarios/reset/solicitar/', {
+      const r = await apiFetch('/api/usuarios/reset_password/', {
         method: 'POST',
         body: JSON.stringify({ Email: email }),
       });
@@ -82,7 +82,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     if (resendCooldown > 0) return;
     setLoading(true);
     try {
-      const r = await apiFetch('/usuarios/reset/reenviar/', {
+      const r = await apiFetch('/api/usuarios/reset_password/', {
         method: 'POST',
         body: JSON.stringify({ Email: email }),
       });
@@ -117,7 +117,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
 
     setLoading(true);
     try {
-      const r = await apiFetch('/usuarios/reset/verificar/', {
+      const r = await apiFetch('/api/usuarios/reset_password/', {
         method: 'POST',
         body: JSON.stringify({ Email: email, codigo, nueva_password: nuevaPassword }),
       });
