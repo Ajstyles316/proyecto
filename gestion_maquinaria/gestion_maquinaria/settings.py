@@ -79,6 +79,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'core.middleware.CorsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -117,6 +118,15 @@ CORS_EXPOSE_HEADERS = [
 
 # Configuración para preflight requests
 CORS_PREFLIGHT_MAX_AGE = 86400
+
+# Configuración adicional para CORS
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.netlify\.app$",
+    r"^https://.*\.onrender\.com$",
+    r"^http://localhost:\d+$",
+]
 
 ROOT_URLCONF = 'gestion_maquinaria.urls'
 APPEND_SLASH = False

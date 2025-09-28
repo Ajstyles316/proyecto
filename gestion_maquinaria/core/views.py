@@ -5386,10 +5386,26 @@ class UsuarioOpcionesView(APIView):
             "unidades": unidades
         }, status=status.HTTP_200_OK)
 
-@api_view(['GET'])
+@api_view(['GET', 'POST', 'OPTIONS'])
 def test_api(request):
     """Vista de prueba para verificar que la API funciona"""
-    return Response({"message": "API funcionando correctamente", "status": "ok"})
+    if request.method == 'OPTIONS':
+        response = Response({})
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-User-Email'
+        return response
+    
+    return Response({
+        "message": "API funcionando correctamente", 
+        "status": "ok",
+        "method": request.method,
+        "timestamp": datetime.now().isoformat(),
+        "cors_headers": {
+            'origin': request.META.get('HTTP_ORIGIN', 'No origin'),
+            'user_agent': request.META.get('HTTP_USER_AGENT', 'No user agent')
+        }
+    })
 
 @api_view(['POST'])
 def validar_password_usuario(request):
