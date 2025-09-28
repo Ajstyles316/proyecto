@@ -177,7 +177,7 @@ const ModalPronostico = ({ open, onClose, maquinaria, historial = [], onPredicti
         recorrido: parseFloat(form.recorrido)
       };
 
-      const res = await fetch("http://localhost:8000/api/pronostico/", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

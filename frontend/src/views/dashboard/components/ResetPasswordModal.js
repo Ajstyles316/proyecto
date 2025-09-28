@@ -11,11 +11,11 @@ import PropTypes from 'prop-types';
 // Helper: resuelve base URL automáticamente
 const apiFetch = (path, options = {}) => {
   const p = path.startsWith('/') ? path : `/${path}`;
-  // 1) Si pones VITE_API_URL, se usa (ej: http://localhost:8000 ó https://api.midominio.com)
+  // 1) Si pones VITE_API_URL, se usa (ej: http://localhost:8000/api ó https://api.midominio.com/api)
   const envBase = import.meta.env?.VITE_API_URL?.trim();
   // 2) Si estamos en Vite dev (5173), fallback al backend local 8000
   const isViteDev = typeof window !== 'undefined' && window.location.port === '5173' && window.location.hostname === 'localhost';
-  const base = envBase || (isViteDev ? 'http://localhost:8000' : '');
+  const base = envBase || (isViteDev ? 'http://localhost:8000/api' : '');
   const url = `${base}${p}`;
   return fetch(url, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },

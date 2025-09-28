@@ -16,7 +16,7 @@ const handleLogout = async () => {
   try {
     const user = JSON.parse(localStorage.getItem("user"));
     if (user && user.Email) {
-      await fetch("http://localhost:8000/api/logout/", {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/logout/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

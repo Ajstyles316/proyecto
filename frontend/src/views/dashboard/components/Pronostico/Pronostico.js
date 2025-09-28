@@ -73,7 +73,7 @@ const Pronostico = () => {
 
   const handleDataUpdated = () => {
     // Recargar datos cuando se actualicen desde CSV
-    fetch("http://localhost:8000/api/pronostico/")
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/`)
       .then((res) => res.json())
       .then((data) => {
         setPronosticos(data);
@@ -87,8 +87,8 @@ const Pronostico = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const resPronostico = await fetch("http://localhost:8000/api/pronostico/?page_size=1000");
-        const resMaquinarias = await fetch("http://localhost:8000/api/maquinaria/");
+        const resPronostico = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/?page_size=1000`);
+        const resMaquinarias = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/`);
         const dataPronostico = await resPronostico.json();
         const dataMaquinarias = await resMaquinarias.json();
         setPronosticos(dataPronostico);
@@ -104,7 +104,7 @@ const Pronostico = () => {
 
   useEffect(() => {
     if (mainTab === 1) {
-      fetch('http://localhost:8000/api/pronostico/?page_size=1000')
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/?page_size=1000`)
         .then(res => res.json())
         .then(data => setAllForecasts(data));
     }
@@ -198,7 +198,7 @@ const Pronostico = () => {
         maquinaria={selectedMaquinaria}
         historial={pronosticos.filter(p => p.placa === selectedMaquinaria?.placa)}
         onPredictionSaved={() => {
-          fetch("http://localhost:8000/api/pronostico/")
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/`)
             .then((res) => res.json())
             .then((data) => setPronosticos(data));
         }}

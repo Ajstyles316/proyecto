@@ -67,13 +67,13 @@ export async function fetchImpuestos(maquinariaId) {
 }
 
 export async function fetchMaquinariasConDepreciacion() {
-  const res = await fetch('/api/maquinarias_con_depreciacion/');
+  const res = await fetch(`${API_BASE}/maquinarias_con_depreciacion/`);
   if (!res.ok) throw new Error('Error al obtener maquinarias con depreciación');
   return await res.json();
 }
 
 export async function fetchMaquinariaConDepreciacionBuscar(q) {
-  const res = await fetch(`/api/maquinarias_con_depreciacion/buscar/?q=${encodeURIComponent(q)}`);
+  const res = await fetch(`${API_BASE}/maquinarias_con_depreciacion/buscar/?q=${encodeURIComponent(q)}`);
   if (!res.ok) throw new Error('No se encontró la maquinaria');
   return await res.json();
 }

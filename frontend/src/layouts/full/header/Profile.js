@@ -33,7 +33,7 @@ const Profile = () => {
     try {
       // Llamar al endpoint de logout
       if (user && user.Email) {
-        await fetch("http://localhost:8000/api/logout/", {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/logout/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
