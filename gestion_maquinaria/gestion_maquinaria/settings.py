@@ -81,6 +81,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -92,10 +93,25 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  
     "https://activos-fijos-cofa.netlify.app",  
     "https://proyecto-2-9nl5.onrender.com",
-    "https://activos-fijos.onrender.com",  # Tu frontend en Render
 ]
-ROOT_URLCONF = 'gestion_maquinaria.urls'
+
+# Permitir CORS para todos los orígenes (temporal para debug)
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-user-email',
+]
+
+ROOT_URLCONF = 'gestion_maquinaria.urls'
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup

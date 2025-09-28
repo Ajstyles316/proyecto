@@ -102,3 +102,4 @@ xgboost==3.0.3
 xlrd==2.0.2
 zipp==3.23.0
 gunicorn==21.2.0
+whitenoise==6.6.0

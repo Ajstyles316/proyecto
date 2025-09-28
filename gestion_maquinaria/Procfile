@@ -1,2 +1,2 @@
-web: gunicorn gestion_maquinaria.wsgi --log-file -
+web: gunicorn gestion_maquinaria.wsgi --log-file - --bind 0.0.0.0:$PORT --timeout 120
 
