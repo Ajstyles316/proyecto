@@ -177,18 +177,23 @@ const ModalPronostico = ({ open, onClose, maquinaria, historial = [], onPredicti
         recorrido: parseFloat(form.recorrido)
       };
 
+      console.log('Pronóstico URL:', `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/`); // Debug
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/pronostico/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
+      console.log('Pronóstico response status:', res.status); // Debug
+      
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        console.error('Pronóstico error:', err); // Debug
         throw new Error(err.error || "Error al obtener pronóstico");
       }
 
       const result = await res.json();
+      console.log('Pronóstico result:', result); // Debug
       setIaResult(result);
       setSaveSuccess(true);
       onPredictionSaved();
