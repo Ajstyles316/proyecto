@@ -97,8 +97,20 @@ CORS_ALLOWED_ORIGINS = [
 
 # Permitir CORS para todos los orígenes (temporal para debug)
 CORS_ALLOW_ALL_ORIGINS = True
-ROOT_URLCONF = 'gestion_maquinaria.urls'
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'x-user-email',
+]
+ROOT_URLCONF = 'gestion_maquinaria.urls'
 APPEND_SLASH = False
 
 # MongoDB configuration - lazy loading to avoid connection issues at startup
