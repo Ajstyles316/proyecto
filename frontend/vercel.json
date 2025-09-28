@@ -1,8 +1,0 @@
-{
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "npm install"
-}
-
-

@@ -53,7 +53,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     if (!email) return showSnack('Ingresa tu email', 'error');
     setLoading(true);
     try {
-      const r = await apiFetch('/api/usuarios/reset_password/', {
+      const r = await apiFetch('/api/usuarios/reset/solicitar/', {
         method: 'POST',
         body: JSON.stringify({ email: email }),
       });
@@ -82,7 +82,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
     if (resendCooldown > 0) return;
     setLoading(true);
     try {
-      const r = await apiFetch('/api/usuarios/reset_password/', {
+      const r = await apiFetch('/api/usuarios/reset/solicitar/', {
         method: 'POST',
         body: JSON.stringify({ email: email }),
       });
@@ -117,7 +117,7 @@ const ResetPasswordModal = ({ open, onClose }) => {
 
     setLoading(true);
     try {
-      const r = await apiFetch('/api/usuarios/reset_password/', {
+      const r = await apiFetch('/api/usuarios/reset/verificar/', {
         method: 'POST',
         body: JSON.stringify({ email: email, codigo, nueva_password: nuevaPassword }),
       });
