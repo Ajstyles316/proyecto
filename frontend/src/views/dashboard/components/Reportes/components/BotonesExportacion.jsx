@@ -40,5 +40,4 @@ BotonesExportacion.propTypes = {
   onExportPDF: PropTypes.func.isRequired,
   onExportExcel: PropTypes.func.isRequired,
 };
-
 export default BotonesExportacion;
