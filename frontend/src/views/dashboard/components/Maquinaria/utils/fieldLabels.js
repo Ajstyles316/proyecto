@@ -45,7 +45,7 @@ export const fieldLabels = {
   ],
   Mantenimiento: [
     { name: 'tipo', label: 'Tipo' },
-    { name: 'gestion', label: 'Gestión' },
+    { name: 'gestion', label: 'Gestión', type: 'number' },
     { name: 'lugarMantenimiento', label: 'Lugar de Mantenimiento' },
   ],
   Seguros: [

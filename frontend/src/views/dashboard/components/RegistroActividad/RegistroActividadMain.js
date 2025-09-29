@@ -317,7 +317,7 @@ const RegistroActividadMain = () => {
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ usuario: '', modulo: '', desde: '', hasta: '' });
   const [page, setPage] = useState(1);
-  const rowsPerPage = 8;
+  const rowsPerPage = 10;
 
   useEffect(() => {
     fetchData();
@@ -335,8 +335,8 @@ const RegistroActividadMain = () => {
       const usuariosData = await usuariosRes.json();
       setUsuariosRegistrados(Array.isArray(usuariosData) ? usuariosData : []);
 
-      // Cargar seguimiento
-      const seguimientoRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/seguimiento/`, {
+      // Cargar seguimiento con paginación
+      const seguimientoRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/seguimiento/?page=1&limit=100`, {
         headers: { 'X-User-Email': user.Email }
       });
       
@@ -347,10 +347,13 @@ const RegistroActividadMain = () => {
       const seguimientoData = await seguimientoRes.json();
       setSeguimientoData(Array.isArray(seguimientoData) ? seguimientoData : []);
       
-      // Cargar maquinarias para reemplazar IDs con placas
+      // Cargar maquinarias para reemplazar IDs con placas (limitado)
       try {
-        const maquinariasData = await fetchMaquinarias();
-        setMaquinarias(maquinariasData);
+        const maquinariasRes = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/?page=1&limit=200`);
+        if (maquinariasRes.ok) {
+          const maquinariasData = await maquinariasRes.json();
+          setMaquinarias(Array.isArray(maquinariasData) ? maquinariasData : []);
+        }
       } catch (maqError) {
         console.warn('No se pudieron cargar las maquinarias:', maqError);
       }
@@ -509,9 +512,21 @@ const RegistroActividadMain = () => {
       }
     }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6" fontWeight={700} color="primary.main">
-          Registro de Actividad
-        </Typography>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography variant="h6" fontWeight={700} color="primary.main">
+            Registro de Actividad
+          </Typography>
+          <Chip
+            label={`${paginatedData.length} registro${paginatedData.length !== 1 ? 's' : ''}`}
+            size="small"
+            color="primary"
+            variant="outlined"
+            sx={{ 
+              fontWeight: 600,
+              fontSize: '0.75rem'
+            }}
+          />
+        </Box>
         
         {/* Botón de exportación PDF */}
         <ExportToPDFButton

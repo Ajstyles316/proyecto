@@ -62,22 +62,27 @@ const HojaVidaReporte = ({
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
-        height: 100
+          height: 100,
+          quality: 0.6,
+          logging: false,
+          removeContainer: true,
+          foreignObjectRendering: false,
+          imageTimeout: 15000
         });
         
         document.body.removeChild(headerDiv);
         
-        const headerImgData = headerCanvas.toDataURL('image/png');
+        const headerImgData = headerCanvas.toDataURL('image/jpeg', 0.5);
       const headerHeight = 28; // mm (altura ocupada por el encabezado)
         
       // Página A4
       const imgWidth = 210;
-        pdfDoc.addImage(headerImgData, 'PNG', 0, 0, imgWidth, headerHeight);
+        pdfDoc.addImage(headerImgData, 'JPEG', 0, 0, imgWidth, headerHeight);
         return headerHeight;
       };
 
      const paginateSection = async (pdfDoc, sectionCanvas) => {
-       const imgData = sectionCanvas.toDataURL('image/png');
+       const imgData = sectionCanvas.toDataURL('image/jpeg', 0.5);
        const imgWidth = 210; // A4 width mm
        const pageHeight = 295; // A4 height mm
        const imgHeight = (sectionCanvas.height * imgWidth) / sectionCanvas.width;
@@ -93,7 +98,7 @@ const HojaVidaReporte = ({
        if (imgHeight > 0) {
          // Primera página: usar todo el espacio disponible
          const availableHeight = pageHeight - headerHeight;
-         pdfDoc.addImage(imgData, 'PNG', 0, headerHeight, imgWidth, Math.min(imgHeight, availableHeight));
+         pdfDoc.addImage(imgData, 'JPEG', 0, headerHeight, imgWidth, Math.min(imgHeight, availableHeight));
          heightLeft -= availableHeight;
 
          // Páginas siguientes solo si es necesario
@@ -101,7 +106,7 @@ const HojaVidaReporte = ({
         position = heightLeft - imgHeight;
            pdfDoc.addPage();
            await addHeaderToPage(pdfDoc);
-           pdfDoc.addImage(imgData, 'PNG', 0, headerHeight + position, imgWidth, imgHeight);
+           pdfDoc.addImage(imgData, 'JPEG', 0, headerHeight + position, imgWidth, imgHeight);
            heightLeft -= pageHeight;
          }
        }
@@ -281,7 +286,12 @@ const HojaVidaReporte = ({
           scale: 2,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          quality: 0.6,
+          logging: false,
+          removeContainer: true,
+          foreignObjectRendering: false,
+          imageTimeout: 15000
         });
 
         document.body.removeChild(tempRoot);
@@ -295,7 +305,12 @@ const HojaVidaReporte = ({
           scale: 2,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          quality: 0.6,
+          logging: false,
+          removeContainer: true,
+          foreignObjectRendering: false,
+          imageTimeout: 15000
         });
 
         document.body.removeChild(tempRoot);
@@ -303,11 +318,19 @@ const HojaVidaReporte = ({
       }
     };
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+      precision: 1,
+      userUnit: 1.0,
+      hotfixes: ["px_scaling"]
+    });
 
      // ====== Sección 1 (hasta Historial de Mantenimiento) ======
      const canvasBefore = await renderToCanvas(sectionBefore);
-     const imgDataBefore = canvasBefore.toDataURL('image/png');
+     const imgDataBefore = canvasBefore.toDataURL('image/jpeg', 0.5);
      const imgWidth = 210;
      const pageHeight = 295;
      const imgHeightBefore = (canvasBefore.height * imgWidth) / canvasBefore.width;
@@ -317,7 +340,7 @@ const HojaVidaReporte = ({
        // Primera página de la primera sección - usar todo el espacio disponible
        const headerHeightFirst = await addHeaderToPage(pdf);
        const availableHeight = pageHeight - headerHeightFirst;
-       pdf.addImage(imgDataBefore, 'PNG', 0, headerHeightFirst, imgWidth, Math.min(imgHeightBefore, availableHeight));
+       pdf.addImage(imgDataBefore, 'JPEG', 0, headerHeightFirst, imgWidth, Math.min(imgHeightBefore, availableHeight));
 
        // Paginación de la primera sección (si excede)
        let heightLeft = imgHeightBefore - availableHeight;
@@ -325,7 +348,7 @@ const HojaVidaReporte = ({
          const position = heightLeft - imgHeightBefore;
          pdf.addPage();
          await addHeaderToPage(pdf);
-         pdf.addImage(imgDataBefore, 'PNG', 0, headerHeightFirst + position, imgWidth, imgHeightBefore);
+         pdf.addImage(imgDataBefore, 'JPEG', 0, headerHeightFirst + position, imgWidth, imgHeightBefore);
          heightLeft -= pageHeight;
        }
      }

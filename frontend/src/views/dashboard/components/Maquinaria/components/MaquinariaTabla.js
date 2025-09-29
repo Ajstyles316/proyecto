@@ -57,7 +57,7 @@ const MaquinariaTabla = ({
           </Typography>
         </Box>
         <Chip
-          label={`${maquinarias.length} registro${maquinarias.length !== 1 ? 's' : ''}`}
+          label={`${getDisplayedData().length} registro${getDisplayedData().length !== 1 ? 's' : ''}`}
           size="small"
           sx={{ 
             bgcolor: 'rgba(255,255,255,0.2)',

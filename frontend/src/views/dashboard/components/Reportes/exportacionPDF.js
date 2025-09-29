@@ -128,7 +128,10 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     impuestos: Array.isArray(impuestos) ? impuestos.length : 'No es array'
   });
   
-  const doc = new jsPDF();
+  const doc = new jsPDF({
+    compress: true,
+    precision: 2
+  });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   let y = 40;
@@ -151,22 +154,22 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       head: [['Campo', 'Valor']],
       body: maqRows,
       styles: { 
-        fontSize: 9, 
-        cellPadding: 2,
+        fontSize: 8, 
+        cellPadding: 1,
         halign: 'left',
         valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10,
+        fontSize: 9,
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9,
+        fontSize: 8,
         halign: 'left',
         valign: 'middle'
       },
@@ -175,7 +178,7 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       },
       margin: { left: 30, right: 30 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.3,
+      tableLineWidth: 0.2,
       pageBreak: 'avoid',
       theme: 'grid'
     });
@@ -252,23 +255,23 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       head: [filteredKeys.map(formatHeader)],
       body: rows.map(r => filteredKeys.map(k => fmt(r[k]) || '-')),
       styles: { 
-        fontSize: 9, 
-        cellPadding: 2,
-        minCellHeight: 8,
+        fontSize: 8, 
+        cellPadding: 1,
+        minCellHeight: 6,
         halign: 'center',
         valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10,
+        fontSize: 9,
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9,
+        fontSize: 8,
         halign: 'center',
         valign: 'middle'
       },
@@ -277,7 +280,7 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       },
       margin: { left: 30, right: 30 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.3,
+      tableLineWidth: 0.2,
       pageBreak: 'auto',
       theme: 'grid'
     });
@@ -393,23 +396,23 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       head: [headers],
       body: bodyData,
       styles: { 
-        fontSize: 8, 
-        cellPadding: 2,
-        minCellHeight: 8,
+        fontSize: 7, 
+        cellPadding: 1,
+        minCellHeight: 6,
         halign: 'center',
         valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 9,
+        fontSize: 8,
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 8,
+        fontSize: 7,
         halign: 'center',
         valign: 'middle'
       },
@@ -418,7 +421,7 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       },
       margin: { left: 30, right: 30 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.3,
+      tableLineWidth: 0.2,
       theme: 'grid'
     });
     y = doc.lastAutoTable.finalY + 8;
@@ -489,23 +492,23 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       head: [['Campo', 'Valor']],
       body,
       styles: { 
-        fontSize: 9, 
-        cellPadding: 2,
-        minCellHeight: 8,
+        fontSize: 8, 
+        cellPadding: 1,
+        minCellHeight: 6,
         halign: 'left',
         valign: 'middle'
       },
       headStyles: { 
         fillColor: [30, 77, 183], 
         textColor: 255,
-        fontSize: 10,
+        fontSize: 9,
         fontStyle: 'bold',
         halign: 'center',
         valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9,
+        fontSize: 8,
         halign: 'left',
         valign: 'middle'
       },
@@ -514,11 +517,11 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
       },
       margin: { left: 20, right: 20 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.3,
+      tableLineWidth: 0.2,
       theme: 'grid',
       didParseCell(data) {
         if (data.section === 'body' && data.column.dataKey === 1 && typeof data.cell.raw === 'string' && data.cell.raw.includes('\n')) {
-          data.cell.styles.cellPadding = 2;
+          data.cell.styles.cellPadding = 1;
           data.cell.text = data.cell.raw.split('\n');
         }
       }
@@ -570,7 +573,11 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
 
 
 function exportPDFMasivo(data, filename = 'reporte') {
-  const doc = new jsPDF({ orientation: 'landscape' });
+  const doc = new jsPDF({ 
+    orientation: 'landscape',
+    compress: true,
+    precision: 2
+  });
   let currentY = 20;
 
   // Función para agregar tabla
@@ -709,8 +716,8 @@ function exportPDFMasivo(data, filename = 'reporte') {
       head: [headers],
       body: tableData,
       styles: { 
-        fontSize: 9, 
-        cellPadding: 3,
+        fontSize: 8, 
+        cellPadding: 1,
         textColor: 33,
         halign: 'center',
         valign: 'middle'
@@ -719,19 +726,19 @@ function exportPDFMasivo(data, filename = 'reporte') {
         fillColor: [30, 77, 183], 
         textColor: 255, 
         fontStyle: 'bold',
-        fontSize: 10,
+        fontSize: 9,
         halign: 'center',
         valign: 'middle'
       },
       bodyStyles: { 
         textColor: 33,
-        fontSize: 9,
+        fontSize: 8,
         halign: 'center',
         valign: 'middle'
       },
       margin: { left: 20, right: 20 },
       tableLineColor: [30, 77, 183],
-      tableLineWidth: 0.3,
+      tableLineWidth: 0.2,
       pageBreak: 'auto',
       theme: 'grid',
       alternateRowStyles: { 
@@ -747,7 +754,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
             data.cell.styles.fillColor = [173, 216, 230]; // Azul claro
             data.cell.styles.textColor = [0, 0, 0]; // Texto negro
             data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.cellPadding = 4;
+            data.cell.styles.cellPadding = 2;
           }
         }
       },
@@ -811,7 +818,13 @@ function exportPDFMasivo(data, filename = 'reporte') {
 
 // Función específica para exportar tabla de depreciación detallada
 export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion') => {
-  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+    precision: 2
+  });
   
   // Configuración de página
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -895,8 +908,8 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
       startY: y,
       margin: { left: margin, right: margin },
       styles: {
-        fontSize: 8,
-        cellPadding: 3,
+        fontSize: 7,
+        cellPadding: 1,
         overflow: 'linebreak',
         halign: 'center'
       },

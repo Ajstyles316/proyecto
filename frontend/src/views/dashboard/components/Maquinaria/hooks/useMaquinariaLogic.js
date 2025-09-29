@@ -31,10 +31,10 @@ const useMaquinariaLogic = () => {
     fetchMaquinarias();
   }, []);
 
-  const fetchMaquinarias = async () => {
+  const fetchMaquinarias = async (page = 1, limit = 50) => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/maquinaria/?page=${page}&limit=${limit}`);
       if (!response.ok) throw new Error("Error al cargar datos");
       const data = await response.json();
       setMaquinarias(Array.isArray(data) ? data : []);

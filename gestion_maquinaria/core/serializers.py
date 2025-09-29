@@ -235,7 +235,13 @@ class SeguroSerializer(serializers.Serializer):
 class ITVSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    gestion = serializers.CharField(max_length=100, required=True)
+    gestion = serializers.IntegerField(required=True)
+    
+    def validate_gestion(self, value):
+        if value is not None:
+            if not isinstance(value, int) or value < 1000 or value > 9999:
+                raise serializers.ValidationError("La gestión debe ser un número de 4 dígitos (1000-9999)")
+        return value
     archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
     nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
     tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
@@ -267,7 +273,13 @@ class ITVSerializer(serializers.Serializer):
 class SOATSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    gestion = serializers.CharField(max_length=100, required=True)
+    gestion = serializers.IntegerField(required=True)
+    
+    def validate_gestion(self, value):
+        if value is not None:
+            if not isinstance(value, int) or value < 1000 or value > 9999:
+                raise serializers.ValidationError("La gestión debe ser un número de 4 dígitos (1000-9999)")
+        return value
     archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
     nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
     tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
@@ -299,7 +311,13 @@ class SOATSerializer(serializers.Serializer):
 class ImpuestoSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
     maquinaria = serializers.CharField(write_only=True, required=True)
-    gestion = serializers.CharField(max_length=100, required=True)
+    gestion = serializers.IntegerField(required=True)
+    
+    def validate_gestion(self, value):
+        if value is not None:
+            if not isinstance(value, int) or value < 1000 or value > 9999:
+                raise serializers.ValidationError("La gestión debe ser un número de 4 dígitos (1000-9999)")
+        return value
     archivo_pdf = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # Base64 del archivo
     nombre_archivo = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
     tipo_archivo = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
@@ -330,7 +348,6 @@ class ImpuestoSerializer(serializers.Serializer):
 
 class MaquinariaSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
-    gestion = serializers.CharField(max_length=100, required=False)
     placa = serializers.CharField(max_length=50, required=True)
     detalle = serializers.CharField(max_length=200, required=True)
     unidad = serializers.CharField(max_length=100, required=True)

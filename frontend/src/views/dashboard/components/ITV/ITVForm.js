@@ -30,7 +30,7 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading =
   const canEditAuthFields = isEncargado || isAdmin;
 
   const fieldLabels = [
-    { name: 'gestion', label: 'Gestión', required: true },
+    { name: 'gestion', label: 'Gestión', required: true, type: 'number' },
     { name: 'registrado_por', label: 'Registrado por', readonly: true },
     { name: 'validado_por', label: 'Validado por', readonly: true },
     { name: 'autorizado_por', label: 'Autorizado por', readonly: true },
@@ -41,6 +41,12 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading =
     fieldLabels.forEach(field => {
       if (field.required && !form[field.name]) {
         newErrors[field.name] = `${field.label} es obligatorio`;
+      }
+      if (field.name === 'gestion' && form[field.name]) {
+        const gestionValue = parseInt(form[field.name]);
+        if (isNaN(gestionValue) || gestionValue < 1000 || gestionValue > 9999) {
+          newErrors[field.name] = 'La gestión debe ser un número de 4 dígitos (1000-9999)';
+        }
       }
     });
     setErrors(newErrors);
@@ -127,7 +133,10 @@ const ITVForm = ({ onSubmit, initialData, isEditing, isReadOnly, submitLoading =
               name={field.name}
               type={field.type || 'text'}
               value={form[field.name] || ''}
-              onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+              onChange={(e) => {
+                const value = field.name === 'gestion' ? parseInt(e.target.value) || '' : e.target.value;
+                setForm({ ...form, [field.name]: value });
+              }}
               error={!!errors[field.name]}
               helperText={errors[field.name]}
               required={field.required}
