@@ -104,11 +104,11 @@ const ExportarReportes = () => {
               asignacion: ['unidad', 'fecha_asignacion', 'kilometraje', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
               liberacion: ['unidad', 'fecha_liberacion', 'kilometraje_entregado', 'gerente', 'encargado', 'registrado_por', 'validado_por', 'autorizado_por', 'fecha_creacion', 'fecha_actualizacion'],
               mantenimiento: ['fecha_mantenimiento', 'descripcion_danos_eventos', 'reparacion_realizada', 'costo_total', 'operador', 'horas_kilometros', 'atendido_por'],
-              soat: ['gestion'],
-              seguros: ['fecha_inicial', 'fecha_final', 'numero_poliza', 'compania_aseguradora', 'importe'],
-              itv: ['gestion'],
-              impuestos: ['gestion'],
-              depreciaciones: ['costo_activo', 'fecha_compra', 'vida_util', 'bien_uso', 'metodo_depreciacion', 'valor_residual', 'coeficiente'],
+              soat: ['gestion', 'nombre_archivo'],
+              seguros: ['fecha_inicial', 'fecha_final', 'numero_poliza', 'compania_aseguradora', 'importe', 'nombre_archivo'],
+              itv: ['gestion', 'nombre_archivo'],
+              impuestos: ['gestion', 'nombre_archivo'],
+              depreciaciones: ['costo_activo', 'fecha_compra', 'vida_util', 'metodo_depreciacion', 'horas_periodo', 'valor_activo_fijo', 'depreciacion_acumulada', 'valor_neto', 'depreciacion_por_hora', 'valor_actualizado'],
               pronosticos: ['riesgo', 'resultado', 'probabilidad', 'fecha_asig', 'recorrido', 'horas_op', 'recomendaciones', 'fecha_mantenimiento', 'fecha_recordatorio', 'dias_hasta_mantenimiento', 'urgencia']
             };
             

@@ -12,7 +12,8 @@ const TablasReporte = ({
   seguros, 
   itv, 
   soat, 
-  impuestos 
+  impuestos,
+  odometerData 
 }) => {
   return (
     <>
@@ -165,9 +166,13 @@ const TablasReporte = ({
             <TableHead>
               <TableRow sx={{ bgcolor: '#f0f0f0' }}>
                 <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>AÑO</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR ANUAL DEPRECIADO</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>DEPRECIACIÓN ACUMULADA</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR EN LIBROS</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>MÉTODO</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR ACTIVO FIJO</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>DEPREC. ACUMULADA</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR NETO</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>DEPREC. DE LA GESTIÓN</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>DEPREC. ACUMULADA FINAL</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.9rem', border: '1px solid #ddd', padding: '8px' }}>VALOR NETO FINAL</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -177,13 +182,71 @@ const TablasReporte = ({
                     item.depreciacion_por_anio.map((dep, depIndex) => (
                       <TableRow key={`${index}-${depIndex}`}>
                         <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.anio || '-'}</TableCell>
-                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.valor_anual_depreciado ? `${dep.valor_anual_depreciado.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>
+                          {item.metodo === 'depreciacion_por_horas' ? 'Por Horas' : 
+                           item.metodo === 'linea_recta' ? 'Línea Recta' : 
+                           item.metodo || 'No definido'}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>
+                          {item.costo_activo ? `${parseFloat(item.costo_activo).toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}
+                        </TableCell>
                         <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.depreciacion_acumulada ? `${dep.depreciacion_acumulada.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
                         <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>{dep.valor_en_libros ? `${dep.valor_en_libros.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-'}</TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>
+                          {(() => {
+                            // Usar los datos reales de la API
+                            if (dep.deprec_gestion !== undefined) {
+                              return dep.deprec_gestion > 0 ? `${dep.deprec_gestion.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-';
+                            }
+                            // Fallback: calcular deprec_gestion = horas * depreciacion_por_hora
+                            const horas = dep.horas_periodo || 0;
+                            const deprecPorHora = dep.depreciacion_por_hora || 0;
+                            const deprecGestion = horas * deprecPorHora;
+                            return deprecGestion > 0 ? `${deprecGestion.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-';
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>
+                          {(() => {
+                            // Usar los datos reales de la API
+                            if (dep.depreciacion_acumulada_final !== undefined) {
+                              return dep.depreciacion_acumulada_final > 0 ? `${dep.depreciacion_acumulada_final.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-';
+                            }
+                            // Fallback: calcular depreciacion_acumulada_final = depreciacion_acumulada + incremento + deprec_gestion
+                            const deprecAcumulada = dep.depreciacion_acumulada || 0;
+                            const horas = dep.horas_periodo || 0;
+                            const deprecPorHora = dep.depreciacion_por_hora || 0;
+                            const deprecGestion = horas * deprecPorHora;
+                            const incremento = dep.incremento_actualizacion_depreciacion || 0;
+                            const deprecAcumuladaFinal = deprecAcumulada + incremento + deprecGestion;
+                            return deprecAcumuladaFinal > 0 ? `${deprecAcumuladaFinal.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-';
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>
+                          {(() => {
+                            // Usar los datos reales de la API
+                            if (dep.valor_neto_final !== undefined) {
+                              return dep.valor_neto_final > 0 ? `${dep.valor_neto_final.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-';
+                            }
+                            // Fallback: calcular valor_neto_final = valor_actualizado - depreciacion_acumulada_final
+                            const valorActualizado = dep.valor_actualizado || parseFloat(item.costo_activo) || 0;
+                            const deprecAcumulada = dep.depreciacion_acumulada || 0;
+                            const horas = dep.horas_periodo || 0;
+                            const deprecPorHora = dep.depreciacion_por_hora || 0;
+                            const deprecGestion = horas * deprecPorHora;
+                            const incremento = dep.incremento_actualizacion_depreciacion || 0;
+                            const deprecAcumuladaFinal = deprecAcumulada + incremento + deprecGestion;
+                            const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+                            return valorNetoFinal > 0 ? `${valorNetoFinal.toLocaleString('es-BO', { minimumFractionDigits: 2 })}` : '-';
+                          })()}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow key={index}>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
+                      <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
                       <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
                       <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
                       <TableCell sx={{ fontSize: '0.85rem', border: '1px solid #ddd', padding: '8px' }}>-</TableCell>
@@ -193,6 +256,9 @@ const TablasReporte = ({
                 ))
               ) : (
                 <TableRow>
+                  <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
+                  <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
                   <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
                   <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
                   <TableCell sx={{ fontSize: '0.75rem', border: '1px solid #ddd' }}>-</TableCell>
@@ -470,6 +536,7 @@ TablasReporte.propTypes = {
   itv: PropTypes.array,
   soat: PropTypes.array,
   impuestos: PropTypes.array,
+  odometerData: PropTypes.array,
 };
 
 export default TablasReporte;

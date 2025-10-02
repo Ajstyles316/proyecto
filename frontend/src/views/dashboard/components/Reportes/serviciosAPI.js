@@ -66,6 +66,12 @@ export async function fetchImpuestos(maquinariaId) {
   return await res.json();
 }
 
+export async function fetchOdometerData(maquinariaId) {
+  const res = await fetch(`${API_BASE}/maquinaria/${maquinariaId}/control-odometro/`);
+  if (!res.ok) return [];
+  return await res.json();
+}
+
 export async function fetchMaquinariasConDepreciacion() {
   const res = await fetch(`${API_BASE}/maquinarias_con_depreciacion/`);
   if (!res.ok) throw new Error('Error al obtener maquinarias con depreciación');

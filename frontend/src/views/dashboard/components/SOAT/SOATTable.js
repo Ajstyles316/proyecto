@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   IconButton, Tooltip, Typography, Box, CircularProgress
@@ -6,6 +7,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BlockIcon from '@mui/icons-material/Block';
+import PDFViewer from '../../../../components/PDFViewer';
 const SOATTable = ({ 
   soats, 
   onEdit, 
@@ -17,6 +19,25 @@ const SOATTable = ({
   deleteLoading = {},
   showActionsColumn = true 
 }) => {
+  // Estados para el visor de PDF
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedPdfData, setSelectedPdfData] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  
+  const handleViewPDF = (soat) => {
+    if (soat.archivo_pdf) {
+      setSelectedPdfData(soat.archivo_pdf);
+      setSelectedFileName(soat.nombre_archivo || 'soat.pdf');
+      setPdfViewerOpen(true);
+    }
+  };
+  
+  const handleClosePdfViewer = () => {
+    setPdfViewerOpen(false);
+    setSelectedPdfData(null);
+    setSelectedFileName('');
+  };
+  
   const handleDownloadPDF = (soat) => {
     if (soat.archivo_pdf) {
       try {
@@ -70,6 +91,7 @@ const SOATTable = ({
   }
 
   return (
+    <>
     <TableContainer component={Paper} sx={{ boxShadow: 2 }}>
       <Table>
         <TableHead>
@@ -87,11 +109,11 @@ const SOATTable = ({
               <TableCell>{soat.gestion}</TableCell>
               <TableCell>
                 {soat.archivo_pdf ? (
-                  <Tooltip title="Descargar PDF">
+                  <Tooltip title="Ver PDF">
                     <IconButton 
                       size="small" 
                       color="primary"
-                      onClick={() => handleDownloadPDF(soat)}
+                      onClick={() => handleViewPDF(soat)}
                     >
                       <PictureAsPdfIcon />
                     </IconButton>
@@ -138,7 +160,16 @@ const SOATTable = ({
         </TableBody>
       </Table>
     </TableContainer>
-  );
+    
+    {/* Visor de PDF */}
+    <PDFViewer
+      open={pdfViewerOpen}
+      onClose={handleClosePdfViewer}
+      pdfData={selectedPdfData}
+      fileName={selectedFileName}
+      title="SOAT - Visualizador de PDF"
+    />
+  </>);
 };
 
 SOATTable.propTypes = {

@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   IconButton, Tooltip, Typography, Box, CircularProgress
@@ -6,6 +7,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BlockIcon from '@mui/icons-material/Block';
+import PDFViewer from '../../../../components/PDFViewer';
 
 const ImpuestoTable = ({ 
   impuestos, 
@@ -18,6 +20,25 @@ const ImpuestoTable = ({
   deleteLoading = {},
   showActionsColumn = true 
 }) => {
+  // Estados para el visor de PDF
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedPdfData, setSelectedPdfData] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  
+  const handleViewPDF = (impuesto) => {
+    if (impuesto.archivo_pdf) {
+      setSelectedPdfData(impuesto.archivo_pdf);
+      setSelectedFileName(impuesto.nombre_archivo || 'impuesto.pdf');
+      setPdfViewerOpen(true);
+    }
+  };
+  
+  const handleClosePdfViewer = () => {
+    setPdfViewerOpen(false);
+    setSelectedPdfData(null);
+    setSelectedFileName('');
+  };
+  
   const handleDownloadPDF = (impuesto) => {
     if (impuesto.archivo_pdf) {
       try {
@@ -71,6 +92,7 @@ const ImpuestoTable = ({
   }
 
   return (
+    <>
     <TableContainer component={Paper} sx={{ boxShadow: 2 }}>
       <Table>
         <TableHead>
@@ -88,11 +110,11 @@ const ImpuestoTable = ({
               <TableCell>{impuesto.gestion}</TableCell>
               <TableCell>
                 {impuesto.archivo_pdf ? (
-                  <Tooltip title="Descargar PDF">
+                  <Tooltip title="Ver PDF">
                     <IconButton 
                       size="small" 
                       color="primary"
-                      onClick={() => handleDownloadPDF(impuesto)}
+                      onClick={() => handleViewPDF(impuesto)}
                     >
                       <PictureAsPdfIcon />
                     </IconButton>
@@ -139,7 +161,16 @@ const ImpuestoTable = ({
         </TableBody>
       </Table>
     </TableContainer>
-  );
+    
+    {/* Visor de PDF */}
+    <PDFViewer
+      open={pdfViewerOpen}
+      onClose={handleClosePdfViewer}
+      pdfData={selectedPdfData}
+      fileName={selectedFileName}
+      title="Impuesto - Visualizador de PDF"
+    />
+  </>);
 };
 
 ImpuestoTable.propTypes = {

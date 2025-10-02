@@ -17,7 +17,8 @@ import {
   fetchSOAT,
   fetchSeguros,
   fetchITV,
-  fetchImpuestos
+  fetchImpuestos,
+  fetchOdometerData
 } from './serviciosAPI';
 import { 
   maquinariaFields, 
@@ -49,6 +50,7 @@ const ReportesMain = () => {
   const [seguros, setSeguros] = useState([]);
   const [itv, setITV] = useState([]);
   const [impuestos, setImpuestos] = useState([]);
+  const [odometerData, setOdometerData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
@@ -88,8 +90,8 @@ const ReportesMain = () => {
     setLoading(true);
     setError('');
     setMaquinaria(null);
-    setDepreciaciones([]);
-    setPronosticos([]);
+      setDepreciaciones([]);
+      setPronosticos([]);
           setControl([]);
       setAsignacion([]);
       setLiberacion([]);
@@ -98,6 +100,7 @@ const ReportesMain = () => {
       setSeguros([]);
       setITV([]);
       setImpuestos([]);
+      setOdometerData([]);
     setSearched(true);
 
     try {
@@ -115,7 +118,7 @@ const ReportesMain = () => {
       }
       setMaquinaria(maq);
       const maqId = maq._id?.$oid || maq._id || maq.id;
-      const [deps, pros, ctrl, asig, lib, mant, soat, seg, itv, imp] = await Promise.all([
+      const [deps, pros, ctrl, asig, lib, mant, soat, seg, itv, imp, odom] = await Promise.all([
         fetchDepreciaciones(maqId),
         fetchPronosticos(maqId),
         fetchControl(maqId),
@@ -126,9 +129,11 @@ const ReportesMain = () => {
         fetchSeguros(maqId),
         fetchITV(maqId),
         fetchImpuestos(maqId),
+        fetchOdometerData(maqId),
       ]);
 
       setDepreciaciones(Array.isArray(deps) ? deps : []);
+      setOdometerData(Array.isArray(odom) ? odom : []);
       let filteredPros = Array.isArray(pros) ? pros : [];
       if (filteredPros.length > 0 && maq.placa) {
         filteredPros = filteredPros.filter(p => p.placa && p.placa.toLowerCase() === maq.placa.toLowerCase());
@@ -454,19 +459,20 @@ const ReportesMain = () => {
               )}
               
               {/* Hoja de Vida */}
-              <HojaVidaReporte 
-                maquinaria={maquinaria} 
-                mantenimientos={mantenimiento}
-                control={control}
-                asignacion={asignacion}
-                liberacion={liberacion}
-                seguros={seguros}
-                itv={itv}
-                soat={soat}
-                impuestos={impuestos}
-                depreciaciones={depreciaciones}
-                pronosticos={pronosticos}
-              />
+        <HojaVidaReporte 
+          maquinaria={maquinaria}
+          mantenimientos={mantenimiento}
+          control={control}
+          asignacion={asignacion}
+          liberacion={liberacion}
+          seguros={seguros}
+          itv={itv}
+          soat={soat}
+          impuestos={impuestos}
+          depreciaciones={depreciaciones}
+          pronosticos={pronosticos}
+          odometerData={odometerData}
+        />
             </Box>
           </>
         )}

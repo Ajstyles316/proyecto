@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -15,11 +16,31 @@ import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useUser } from '../../../../components/UserContext';
+import PDFViewer from '../../../../components/PDFViewer';
 
 const ITVTable = ({ itvs, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
+  // Estados para el visor de PDF
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedPdfData, setSelectedPdfData] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  
+  const handleViewPDF = (itv) => {
+    if (itv.archivo_pdf) {
+      setSelectedPdfData(itv.archivo_pdf);
+      setSelectedFileName(itv.nombre_archivo || 'itv.pdf');
+      setPdfViewerOpen(true);
+    }
+  };
+  
+  const handleClosePdfViewer = () => {
+    setPdfViewerOpen(false);
+    setSelectedPdfData(null);
+    setSelectedFileName('');
+  };
   
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -84,6 +105,7 @@ const ITVTable = ({ itvs, onEdit, onDelete, loading, isReadOnly, canEdit = false
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
+    <>
     <Table sx={{
       '& .MuiTableCell-root': {
         borderBottom: '1px solid rgba(224, 224, 224, 1)',
@@ -111,11 +133,11 @@ const ITVTable = ({ itvs, onEdit, onDelete, loading, isReadOnly, canEdit = false
             <TableCell>{itv.gestion}</TableCell>
             <TableCell>
               {itv.archivo_pdf ? (
-                <Tooltip title="Descargar PDF">
+                <Tooltip title="Ver PDF">
                   <IconButton 
                     size="small" 
                     color="primary"
-                    onClick={() => handleDownloadPDF(itv)}
+                    onClick={() => handleViewPDF(itv)}
                   >
                     <PictureAsPdfIcon />
                   </IconButton>
@@ -155,7 +177,16 @@ const ITVTable = ({ itvs, onEdit, onDelete, loading, isReadOnly, canEdit = false
         ))}
       </TableBody>
     </Table>
-  );
+    
+    {/* Visor de PDF */}
+    <PDFViewer
+      open={pdfViewerOpen}
+      onClose={handleClosePdfViewer}
+      pdfData={selectedPdfData}
+      fileName={selectedFileName}
+      title="ITV - Visualizador de PDF"
+    />
+  </>);
 };
 
 ITVTable.propTypes = {

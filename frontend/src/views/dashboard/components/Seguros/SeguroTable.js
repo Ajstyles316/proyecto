@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -16,11 +17,31 @@ import BlockIcon from '@mui/icons-material/Block';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useUser } from '../../../../components/UserContext';
+import PDFViewer from '../../../../components/PDFViewer';
 
 const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit = false, canDelete = false, deleteLoading = {} }) => {
   const { user } = useUser();
   const isTechnician = user?.Cargo?.toLowerCase() === 'tecnico' || user?.Cargo?.toLowerCase() === 'técnico';
   const isEncargado = user?.Cargo?.toLowerCase() === 'encargado';
+  
+  // Estados para el visor de PDF
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedPdfData, setSelectedPdfData] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState('');
+  
+  const handleViewPDF = (seguro) => {
+    if (seguro.archivo_pdf) {
+      setSelectedPdfData(seguro.archivo_pdf);
+      setSelectedFileName(seguro.nombre_archivo || 'seguro.pdf');
+      setPdfViewerOpen(true);
+    }
+  };
+  
+  const handleClosePdfViewer = () => {
+    setPdfViewerOpen(false);
+    setSelectedPdfData(null);
+    setSelectedFileName('');
+  };
   
   const handleDownloadPDF = (seguro) => {
     if (seguro.archivo_pdf) {
@@ -88,6 +109,7 @@ const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit =
   const showActionsColumn = (isEncargado || (!isTechnician && (canEdit || canDelete)));
 
   return (
+    <>
     <Table sx={{
       '& .MuiTableCell-root': {
         borderBottom: '1px solid rgba(224, 224, 224, 1)',
@@ -123,11 +145,11 @@ const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit =
             <TableCell>{seguro.importe ? `Bs. ${seguro.importe}` : '-'}</TableCell>
             <TableCell>
               {seguro.archivo_pdf ? (
-                <Tooltip title="Descargar PDF">
+                <Tooltip title="Ver PDF">
                   <IconButton 
                     size="small" 
                     color="primary"
-                    onClick={() => handleDownloadPDF(seguro)}
+                    onClick={() => handleViewPDF(seguro)}
                   >
                     <PictureAsPdfIcon />
                   </IconButton>
@@ -167,7 +189,16 @@ const SeguroTable = ({ seguros, onEdit, onDelete, loading, isReadOnly, canEdit =
         ))}
       </TableBody>
     </Table>
-  );
+    
+    {/* Visor de PDF */}
+    <PDFViewer
+      open={pdfViewerOpen}
+      onClose={handleClosePdfViewer}
+      pdfData={selectedPdfData}
+      fileName={selectedFileName}
+      title="Seguro - Visualizador de PDF"
+    />
+  </>);
 };
 
 SeguroTable.propTypes = {

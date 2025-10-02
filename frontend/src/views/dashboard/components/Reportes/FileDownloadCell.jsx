@@ -1,7 +1,9 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PDFViewer from '../../../../components/PDFViewer';
 
 // Función auxiliar para validar y limpiar base64
 const validateAndCleanBase64 = (base64String) => {
@@ -31,6 +33,19 @@ const validateAndCleanBase64 = (base64String) => {
 };
 
 const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
+  // Estados para el visor de PDF
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  
+  const handleViewPDF = () => {
+    if (fileData?.archivo_pdf) {
+      setPdfViewerOpen(true);
+    }
+  };
+  
+  const handleClosePdfViewer = () => {
+    setPdfViewerOpen(false);
+  };
+  
   if (!fileName) {
     return <Typography variant="body2" color="text.secondary">Sin archivo</Typography>;
   }
@@ -94,13 +109,14 @@ const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
   };
 
   return (
+    <>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
       {showIcon && (
-        <Tooltip title="Hacer clic para descargar">
+        <Tooltip title={fileName.toLowerCase().endsWith('.pdf') && fileData?.archivo_pdf ? "Ver PDF" : "Descargar archivo"}>
           <IconButton 
             size="small" 
             color="primary"
-            onClick={handleDownload}
+            onClick={fileName.toLowerCase().endsWith('.pdf') && fileData?.archivo_pdf ? handleViewPDF : handleDownload}
             sx={{ 
               p: 0.5,
               '&:hover': { 
@@ -125,11 +141,21 @@ const FileDownloadCell = ({ fileName, fileData, showIcon = true }) => {
           color: 'primary.main',
           '&:hover': { color: 'primary.dark' }
         }}
-        onClick={handleDownload}
+        onClick={fileName.toLowerCase().endsWith('.pdf') && fileData?.archivo_pdf ? handleViewPDF : handleDownload}
       >
         {fileName}
       </Typography>
     </Box>
+    
+    {/* Visor de PDF */}
+    <PDFViewer
+      open={pdfViewerOpen}
+      onClose={handleClosePdfViewer}
+      pdfData={fileData?.archivo_pdf}
+      fileName={fileName}
+      title="Archivo - Visualizador de PDF"
+    />
+    </>
   );
 };
 

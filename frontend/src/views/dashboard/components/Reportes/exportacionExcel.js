@@ -285,7 +285,7 @@ function exportXLS(data, filename = 'reporte') {
         !campo.toLowerCase().includes('actualizacion') &&
         !campo.toLowerCase().includes('_id') &&
         campo !== 'id' &&
-        campo !== 'archivo_pdf'
+        campo !== 'archivo_pdf' // Excluir datos del archivo PDF, pero mantener nombre_archivo
       );
       
       if (camposFiltrados.length > 0) {
@@ -294,26 +294,72 @@ function exportXLS(data, filename = 'reporte') {
       }
     }
   }
-  if (data.depreciaciones && data.depreciaciones.length > 0 && data.depreciaciones[0].depreciacion_por_anio && Array.isArray(data.depreciaciones[0].depreciacion_por_anio) && data.depreciaciones[0].depreciacion_por_anio.length > 0) {
-    const depAnual = data.depreciaciones[0].depreciacion_por_anio;
-    const depSheet = XLSX.utils.aoa_to_sheet([
-      ['Depreciación Anual'],
-      ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'],
-      ...depAnual.map(row => [
-        row.anio ?? '-',
-        formatCurrency(row.valor_anual_depreciado ?? row.valor),
-        formatCurrency(row.depreciacion_acumulada),
-        formatCurrency(row.valor_en_libros)
-      ])
-    ]);
+  if (data.depreciaciones && data.depreciaciones.length > 0) {
+    const depData = [];
     
-    const titleCell = XLSX.utils.encode_cell({ r: 0, c: 0 });
-    depSheet[titleCell].s = EXCEL_STYLES.title;
-    depSheet[titleCell].v = 'Depreciación Anual';
-    depSheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
-    
-    const styledDepSheet = applyAdvancedStyles(depSheet, true);
-    XLSX.utils.book_append_sheet(wb, styledDepSheet, 'Depreciación Anual');
+    data.depreciaciones.forEach(item => {
+      const costoActivo = parseFloat(item.costo_activo) || 0;
+      const vidaUtil = parseFloat(item.vida_util) || 1;
+      const isDepreciacionPorHoras = item.metodo_depreciacion === 'depreciacion_por_horas';
+      
+      depData.push([`Depreciación - ${item.placa || 'Maquinaria'}`]);
+      depData.push(['Costo del Activo', `Bs. ${costoActivo.toLocaleString('es-BO', { minimumFractionDigits: 2 })}`]);
+      depData.push(['Vida Útil', `${vidaUtil} años`]);
+      depData.push(['Método', isDepreciacionPorHoras ? 'Depreciación por Horas' : 'Línea Recta']);
+      depData.push(['']); // Línea en blanco
+      
+      // Tabla de depreciación por año - campos según la imagen
+      if (item.depreciacion_por_anio && item.depreciacion_por_anio.length > 0) {
+        let headers = ['Año', 'Método', 'Valor Activo Fijo', 'Deprec. Acumulada', 'Valor Neto', 'Deprec. de la Gestión', 'Deprec. Acumulada Final', 'Valor Neto Final'];
+        
+        depData.push(headers);
+        
+        item.depreciacion_por_anio.forEach(dep => {
+          
+          const row = [
+            dep.anio || '-',
+            isDepreciacionPorHoras ? 'Por Horas' : 'Línea Recta',
+            costoActivo,
+            dep.depreciacion_acumulada || 0,
+            dep.valor_en_libros || 0,
+            dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0),
+            dep.depreciacion_acumulada_final !== undefined ? dep.depreciacion_acumulada_final : (dep.depreciacion_acumulada || 0) + (dep.incremento_actualizacion_depreciacion || 0) + (dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0)),
+            dep.valor_neto_final !== undefined ? dep.valor_neto_final : (dep.valor_actualizado || costoActivo) - (dep.depreciacion_acumulada_final !== undefined ? dep.depreciacion_acumulada_final : (dep.depreciacion_acumulada || 0) + (dep.incremento_actualizacion_depreciacion || 0) + (dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0)))
+          ];
+          
+          depData.push(row);
+        });
+      } else {
+        // Fallback al cálculo simple si no hay tabla detallada
+        const depreciacionAnual = costoActivo / vidaUtil;
+        
+        let headers = ['Año', 'Método', 'Valor Activo Fijo', 'Deprec. Acumulada', 'Valor Neto', 'Deprec. de la Gestión', 'Deprec. Acumulada Final', 'Valor Neto Final'];
+        depData.push(headers);
+        
+        for (let año = 1; año <= vidaUtil; año++) {
+          const depreciacionAcumulada = depreciacionAnual * año;
+          const valorNeto = costoActivo - depreciacionAcumulada;
+          
+          depData.push([
+            año,
+            'Línea Recta',
+            costoActivo,
+            depreciacionAcumulada,
+            valorNeto,
+            depreciacionAnual, // Deprec. de la Gestión
+            depreciacionAcumulada, // Deprec. Acumulada Final
+            valorNeto // Valor Neto Final
+          ]);
+        }
+      }
+      
+      // Separador entre depreciaciones
+      depData.push(['', '', '', '']);
+    });
+
+    const depSheet = XLSX.utils.aoa_to_sheet(depData);
+    applyAdvancedStyles(depSheet, true);
+    XLSX.utils.book_append_sheet(wb, depSheet, 'Depreciaciones');
   }
 
   XLSX.writeFile(wb, `${filename}.xlsx`);
@@ -374,34 +420,24 @@ export const exportHojaVidaExcel = (data, filename = 'hoja_vida') => {
       
       depData.push(['']); // Línea en blanco
       
-      // Tabla de depreciación por año
+      // Tabla de depreciación por año - campos según la imagen
       if (item.depreciacion_por_anio && item.depreciacion_por_anio.length > 0) {
-        let headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
-        if (isDepreciacionPorHoras) {
-          headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
-        }
+        let headers = ['Año', 'Método', 'Valor Activo Fijo', 'Deprec. Acumulada', 'Valor Neto', 'Deprec. de la Gestión', 'Deprec. Acumulada Final', 'Valor Neto Final'];
         
         depData.push(headers);
         
         item.depreciacion_por_anio.forEach(dep => {
+          
           const row = [
             dep.anio || '-',
-            dep.valor_anual_depreciado || 0,
+            isDepreciacionPorHoras ? 'Por Horas' : 'Línea Recta',
+            costoActivo,
             dep.depreciacion_acumulada || 0,
-            dep.valor_en_libros || 0
+            dep.valor_en_libros || 0,
+            dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0),
+            dep.depreciacion_acumulada_final !== undefined ? dep.depreciacion_acumulada_final : (dep.depreciacion_acumulada || 0) + (dep.incremento_actualizacion_depreciacion || 0) + (dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0)),
+            dep.valor_neto_final !== undefined ? dep.valor_neto_final : (dep.valor_actualizado || costoActivo) - (dep.depreciacion_acumulada_final !== undefined ? dep.depreciacion_acumulada_final : (dep.depreciacion_acumulada || 0) + (dep.incremento_actualizacion_depreciacion || 0) + (dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0)))
           ];
-          
-          if (isDepreciacionPorHoras) {
-            row.push(
-              dep.valor_actualizado || 0,
-              dep.horas_periodo || 0,
-              dep.depreciacion_por_hora || 0,
-              dep.valor_activo_fijo || 0,
-              dep.incremento_actualizacion_activo || 0,
-              dep.incremento_actualizacion_depreciacion || 0,
-              dep.costo_por_hora_efectiva || 0
-            );
-          }
           
           depData.push(row);
         });
@@ -409,18 +445,22 @@ export const exportHojaVidaExcel = (data, filename = 'hoja_vida') => {
         // Fallback al cálculo simple si no hay tabla detallada
         const depreciacionAnual = costoActivo / vidaUtil;
         
-        let headers = ['Año', 'Depreciación Anual', 'Depreciación Acumulada', 'Valor Residual'];
+        let headers = ['Año', 'Método', 'Valor Activo Fijo', 'Deprec. Acumulada', 'Valor Neto', 'Deprec. de la Gestión', 'Deprec. Acumulada Final', 'Valor Neto Final'];
         depData.push(headers);
         
         for (let año = 1; año <= vidaUtil; año++) {
           const depreciacionAcumulada = depreciacionAnual * año;
-          const valorResidual = costoActivo - depreciacionAcumulada;
+          const valorNeto = costoActivo - depreciacionAcumulada;
           
           depData.push([
             año,
-            depreciacionAnual.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
-            depreciacionAcumulada.toLocaleString('es-BO', { minimumFractionDigits: 2 }),
-            valorResidual.toLocaleString('es-BO', { minimumFractionDigits: 2 })
+            'Línea Recta',
+            costoActivo,
+            depreciacionAcumulada,
+            valorNeto,
+            depreciacionAnual, // Deprec. de la Gestión
+            depreciacionAcumulada, // Deprec. Acumulada Final
+            valorNeto // Valor Neto Final
           ]);
         }
       }
@@ -752,68 +792,100 @@ export const exportHojaVidaExcel = (data, filename = 'hoja_vida') => {
 export const exportTablaDepreciacionExcel = (data, filename = 'tabla_depreciacion') => {
   const wb = XLSX.utils.book_new();
   
-  // Hoja 1: Información de la maquinaria
-  const infoHeaders = ['CAMPO', 'VALOR'];
-  const infoData = [
-    ['Placa', data.maquinaria?.placa || '-'],
-    ['Código', data.maquinaria?.codigo || '-'],
-    ['Detalle', data.maquinaria?.detalle || '-'],
-    ['Costo del Activo', `Bs. ${(data.maquinaria?.costo_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`],
-    ['Fecha de Compra', data.maquinaria?.fecha_compra || '-'],
-    ['Método', data.maquinaria?.metodo || '-'],
-    ['Vida Útil', `${data.maquinaria?.vida_util || '-'} años`]
-  ];
+  // Una sola hoja con toda la información
+  const allData = [];
+  
+  // Título
+  allData.push(['TABLA DE DEPRECIACIÓN DETALLADA']);
+  allData.push([]);
+  
+  // Información de la maquinaria
+  allData.push(['INFORMACIÓN DE LA MAQUINARIA']);
+  allData.push(['Placa', data.maquinaria?.placa || '-']);
+  allData.push(['Código', data.maquinaria?.codigo || '-']);
+  allData.push(['Detalle', data.maquinaria?.detalle || '-']);
+  allData.push(['Costo del Activo', `Bs. ${(data.maquinaria?.costo_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`]);
+  allData.push(['Fecha de Compra', data.maquinaria?.fecha_compra || '-']);
+  allData.push(['Método', data.maquinaria?.metodo === 'depreciacion_por_horas' ? 'Depreciación por horas' : data.maquinaria?.metodo === 'linea_recta' ? 'Línea recta' : data.maquinaria?.metodo || 'No definido']);
+  allData.push(['Vida Útil', `${data.maquinaria?.vida_util || '-'} años`]);
   
   // Agregar campos específicos para depreciación por horas
   if (data.maquinaria?.metodo === 'depreciacion_por_horas') {
-    infoData.push(
-      ['UFV Inicial', data.maquinaria?.ufv_inicial || '-'],
-      ['UFV Final', data.maquinaria?.ufv_final || '-'],
-      ['Horas Período', data.maquinaria?.horas_periodo || '-'],
-      ['Depreciación por Hora', `Bs. ${(data.maquinaria?.depreciacion_por_hora || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`]
-    );
+    allData.push(['UFV Inicial', data.maquinaria?.ufv_inicial || '-']);
+    allData.push(['UFV Final', data.maquinaria?.ufv_final || '-']);
+    allData.push(['Horas Período', data.maquinaria?.horas_periodo || '-']);
+    allData.push(['Depreciación por Hora', `Bs. ${(data.maquinaria?.depreciacion_por_hora || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`]);
   }
   
-  const ws1 = XLSX.utils.aoa_to_sheet([infoHeaders, ...infoData]);
-  applyAdvancedStyles(ws1, true);
-  XLSX.utils.book_append_sheet(wb, ws1, 'Información');
+  allData.push([]);
+  allData.push(['TABLA DE DEPRECIACIÓN']);
   
-  // Hoja 2: Tabla de depreciación
-  if (data.tabla_depreciacion && data.tabla_depreciacion.length > 0) {
-    const isDepreciacionPorHoras = data.maquinaria?.metodo === 'depreciacion_por_horas';
-    
-    let headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
-    if (isDepreciacionPorHoras) {
-      headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
-    }
-    
-    const tableData = data.tabla_depreciacion.map(item => {
-      const row = [
-        item.anio || '-',
-        item.valor || 0,
-        item.acumulado || 0,
-        item.valor_en_libros || 0
+  // Headers de la tabla
+  const headers = [
+    'PRECIO MAQUINARIA',
+    'PLACAS', 
+    'HORAS',
+    'VALOR ACTIVO FIJO',
+    'DEPREC. ACUMULADA',
+    'VALOR NETO',
+    'DEPRECIACIÓN BS/HORA',
+    'INCREM. P/ACTUAL. ACT FIJO',
+    'VALOR ACTUALIZADO',
+    'INCREM. ACTUALIZ. DEPR.ACUM',
+    'DEPREC. DE LA GESTION',
+    'DEPREC. ACUMULADA FINAL',
+    'VALOR NETO FINAL'
+  ];
+  
+  allData.push(headers);
+  
+  // Datos de la tabla
+  if (data.depreciaciones && data.depreciaciones.length > 0) {
+    const tableData = data.depreciaciones.map(item => {
+      // Calcular valores según las fórmulas
+      const precioMaquinaria = parseFloat(data.maquinaria?.costo_activo) || 0;
+      const placa = data.maquinaria?.placa || '';
+      const horas = item.horas_periodo || 0;
+      const valorActivoFijo = precioMaquinaria;
+      const deprecAcumulada = item.acumulado || 0;
+      const valorNeto = valorActivoFijo - deprecAcumulada;
+      const deprecPorHora = parseFloat(data.maquinaria?.depreciacion_por_hora) || 0;
+      
+      // Factor UFV
+      const ufvInicial = parseFloat(data.maquinaria?.ufv_inicial) || 0;
+      const ufvFinal = parseFloat(data.maquinaria?.ufv_final) || 0;
+      const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
+      
+      const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
+      const valorActualizado = valorActivoFijo * factorUfv;
+      const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
+      const deprecGestion = horas * deprecPorHora;
+      const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
+      const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+      
+      return [
+        precioMaquinaria,
+        placa,
+        horas,
+        valorActivoFijo,
+        deprecAcumulada,
+        valorNeto,
+        deprecPorHora,
+        incrementoActualizacion,
+        valorActualizado,
+        incrementoDeprecAcum,
+        deprecGestion,
+        deprecAcumuladaFinal,
+        valorNetoFinal
       ];
-      
-      if (isDepreciacionPorHoras) {
-        row.push(
-          item.valor_actualizado || 0,
-          item.horas_periodo || 0,
-          item.depreciacion_por_hora || 0,
-          item.valor_activo_fijo || 0,
-          item.incremento_actualizacion_activo || 0,
-          item.incremento_actualizacion_depreciacion || 0,
-          item.costo_por_hora_efectiva || 0
-        );
-      }
-      
-      return row;
     });
     
-    const ws2 = XLSX.utils.aoa_to_sheet([headers, ...tableData]);
-    applyAdvancedStyles(ws2, true);
-    XLSX.utils.book_append_sheet(wb, ws2, 'Tabla Depreciación');
+    allData.push(...tableData);
   }
+  
+  const ws = XLSX.utils.aoa_to_sheet(allData);
+  applyAdvancedStyles(ws, true);
+  XLSX.utils.book_append_sheet(wb, ws, 'Depreciación');
   
   // Generar y descargar el archivo
   XLSX.writeFile(wb, `${filename}.xlsx`);

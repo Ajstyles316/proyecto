@@ -13,11 +13,19 @@ import {
   TextField,
   Button,
   Alert,
+  FormControlLabel,
+  Switch,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { useCanEdit } from 'src/components/hooks';
+import { exportTablaDepreciacionPDF } from '../Reportes/exportacionPDF';
+import { exportTablaDepreciacionExcel } from '../Reportes/exportacionExcel';
 
 const BIENES_DE_USO = [
   {
@@ -92,6 +100,11 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
   });
   const [odometerData, setOdometerData] = useState([]);
   const [error, setError] = useState('');
+  
+  // Estados para filtros y UFV
+  const [ufvActivo, setUfvActivo] = useState(false);
+  const [filtroMes, setFiltroMes] = useState('');
+  const [filtroAnio, setFiltroAnio] = useState('');
 
   useEffect(() => {
     if (maquinariaInfo) {
@@ -206,6 +219,53 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     const { name, value } = e.target;
     setEditableData((prev) => ({ ...prev, [name]: value }));
     setError('');
+  };
+
+  // Funciones de exportación
+  const handleExportPDF = () => {
+    const data = {
+      maquinaria: {
+        placa: maquinariaInfo?.placa || '',
+        codigo: maquinariaInfo?.codigo || '',
+        detalle: maquinariaInfo?.detalle || '',
+        costo_activo: editableData.costo_activo,
+        fecha_compra: editableData.fecha_compra,
+        vida_util: editableData.vida_util,
+        metodo_depreciacion: editableData.metodo,
+        ufv_inicial: ufvActivo ? editableData.ufv_inicial : '0',
+        ufv_final: ufvActivo ? editableData.ufv_final : '0',
+        depreciacion_por_hora: editableData.depreciacion_por_hora,
+        horas_periodo: editableData.horas_periodo
+      },
+      depreciaciones: detalleConAcumulado,
+      odometerData: odometerData
+    };
+    
+    const filename = `depreciacion_${maquinariaInfo?.placa || 'maquinaria'}_${new Date().toISOString().split('T')[0]}`;
+    exportTablaDepreciacionPDF(data, filename);
+  };
+
+  const handleExportExcel = () => {
+    const data = {
+      maquinaria: {
+        placa: maquinariaInfo?.placa || '',
+        codigo: maquinariaInfo?.codigo || '',
+        detalle: maquinariaInfo?.detalle || '',
+        costo_activo: editableData.costo_activo,
+        fecha_compra: editableData.fecha_compra,
+        vida_util: editableData.vida_util,
+        metodo_depreciacion: editableData.metodo,
+        ufv_inicial: ufvActivo ? editableData.ufv_inicial : '0',
+        ufv_final: ufvActivo ? editableData.ufv_final : '0',
+        depreciacion_por_hora: editableData.depreciacion_por_hora,
+        horas_periodo: editableData.horas_periodo
+      },
+      depreciaciones: detalleConAcumulado,
+      odometerData: odometerData
+    };
+    
+    const filename = `depreciacion_${maquinariaInfo?.placa || 'maquinaria'}_${new Date().toISOString().split('T')[0]}`;
+    exportTablaDepreciacionExcel(data, filename);
   };
 
   const handleSaveClick = () => {
@@ -336,9 +396,14 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
       let depreciacion_acumulada_total = 0;
       let valor_actualizado = costo_activo * (ufv_final / ufv_inicial);
       
-      // Crear una fila por cada registro de control de odómetro
-      odometerData.forEach((record, index) => {
-        const horas_periodo = parseFloat(record.odometro_mes) || 0;
+      // Acumular todas las horas de los registros de odómetro
+      const totalHoras = odometerData.reduce((sum, record) => {
+        return sum + (parseFloat(record.odometro_mes) || 0);
+      }, 0);
+      
+      // Crear una sola fila con las horas acumuladas
+      if (odometerData.length > 0) {
+        const horas_periodo = totalHoras;
         
         // Variables según las columnas de la imagen:
         // A = HORAS (horas_periodo)
@@ -391,9 +456,9 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
           incremento_actualizacion_activo: parseFloat(incremento_actualizacion_activo.toFixed(2)), // F
           incremento_actualizacion_depreciacion: parseFloat(incremento_actualizacion_depreciacion.toFixed(2)), // H
           costo_por_hora_efectiva: parseFloat(costo_por_hora_efectiva.toFixed(2)),
-          unidad: record.unidad || `Registro ${index + 1}` // Agregar identificador del registro
+          unidad: `Total (${odometerData.length} registros)` // Mostrar total de registros
         });
-      });
+      }
     } else { // Default to linea_recta if method is unknown
       const depreciacion_anual = (costo_activo - valor_residual) / vida_util;
       for (let i = 0; i < vida_util; i++) {
@@ -457,6 +522,77 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     <Grid item xs={12} sm={4}>
       <InfoItem label="Detalle" value={maquinariaInfo.detalle} />
     </Grid>
+    
+    {/* Filtros y controles */}
+    <Grid item xs={12}>
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2, flexWrap: 'wrap' }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={ufvActivo}
+              onChange={(e) => setUfvActivo(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Activar UFV"
+        />
+        
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Mes</InputLabel>
+          <Select
+            value={filtroMes}
+            label="Mes"
+            onChange={(e) => setFiltroMes(e.target.value)}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="01">Enero</MenuItem>
+            <MenuItem value="02">Febrero</MenuItem>
+            <MenuItem value="03">Marzo</MenuItem>
+            <MenuItem value="04">Abril</MenuItem>
+            <MenuItem value="05">Mayo</MenuItem>
+            <MenuItem value="06">Junio</MenuItem>
+            <MenuItem value="07">Julio</MenuItem>
+            <MenuItem value="08">Agosto</MenuItem>
+            <MenuItem value="09">Septiembre</MenuItem>
+            <MenuItem value="10">Octubre</MenuItem>
+            <MenuItem value="11">Noviembre</MenuItem>
+            <MenuItem value="12">Diciembre</MenuItem>
+          </Select>
+        </FormControl>
+        
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Año</InputLabel>
+          <Select
+            value={filtroAnio}
+            label="Año"
+            onChange={(e) => setFiltroAnio(e.target.value)}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="2023">2023</MenuItem>
+            <MenuItem value="2024">2024</MenuItem>
+            <MenuItem value="2025">2025</MenuItem>
+          </Select>
+        </FormControl>
+        
+        <Button
+          variant="outlined"
+          color="primary"
+          size="small"
+          onClick={handleExportPDF}
+        >
+          Exportar PDF
+        </Button>
+        
+        <Button
+          variant="outlined"
+          color="success"
+          size="small"
+          onClick={handleExportExcel}
+        >
+          Exportar Excel
+        </Button>
+      </Box>
+    </Grid>
     <Grid item xs={12} sm={6}>
       <TextField
         fullWidth
@@ -490,7 +626,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
       <TextField
         fullWidth
         name="metodo"
-        value={editableData.metodo === 'depreciacion_por_horas' ? 'Depreciación por horas' : 'Línea recta'}
+        value={editableData.metodo === 'depreciacion_por_horas' ? 'Depreciación por horas' : editableData.metodo === 'linea_recta' ? 'Línea recta' : editableData.metodo || 'No definido'}
         variant="outlined"
         InputProps={{ readOnly: true }}
         helperText="Se determina automáticamente según el método de depreciación de la maquinaria"
@@ -524,11 +660,11 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
             label="UFV Inicial"
             name="ufv_inicial"
             type="number"
-            value={editableData.ufv_inicial}
+            value={ufvActivo ? editableData.ufv_inicial : '0'}
             onChange={handleInputChange}
             variant="outlined"
             inputProps={{ min: 0, step: 0.00001 }}
-            disabled={!canEditDepreciacion}
+            disabled={!canEditDepreciacion || !ufvActivo}
             required
           />
         </Grid>
@@ -538,11 +674,11 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
             label="UFV Final"
             name="ufv_final"
             type="number"
-            value={editableData.ufv_final}
+            value={ufvActivo ? editableData.ufv_final : '0'}
             onChange={handleInputChange}
             variant="outlined"
             inputProps={{ min: 0, step: 0.00001 }}
-            disabled={!canEditDepreciacion}
+            disabled={!canEditDepreciacion || !ufvActivo}
             required
           />
         </Grid>
@@ -600,44 +736,69 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
           </Typography>
         ) : (
           <Box sx={{ overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 1200 }}>
+            <Table size="small" sx={{ minWidth: 1600 }}>
               <TableHead>
               <TableRow>
-                <TableCell>Año</TableCell>
-                <TableCell align="right">Valor Anual Depreciado</TableCell>
-                <TableCell align="right">Depreciación Acumulada</TableCell>
-                <TableCell align="right">Valor en Libros</TableCell>
-                {editableData.metodo === 'depreciacion_por_horas' && (
-                  <>
-                    <TableCell align="right">Unidad/Registro</TableCell>
-                    <TableCell align="right">Valor Actualizado</TableCell>
-                    <TableCell align="right">Horas Período</TableCell>
-                    <TableCell align="right">Depreciación/Hora</TableCell>
-                    <TableCell align="right">Valor Activo Fijo</TableCell>
-                    <TableCell align="right">Costo/Hora Efectiva</TableCell>
-                  </>
-                )}
+                <TableCell>PRECIO MAQUINARIA</TableCell>
+                <TableCell>PLACAS</TableCell>
+                <TableCell align="right">HORAS</TableCell>
+                <TableCell align="right">VALOR ACTIVO FIJO</TableCell>
+                <TableCell align="right">DEPREC. ACUMULADA</TableCell>
+                <TableCell align="right">VALOR NETO</TableCell>
+                <TableCell align="right">DEPRECIACIÓN BS/HORA</TableCell>
+                <TableCell align="right">INCREM. P/ACTUAL. ACT FIJO</TableCell>
+                <TableCell align="right">VALOR ACTUALIZADO</TableCell>
+                <TableCell align="right">INCREM. ACTUALIZ. DEPR.ACUM</TableCell>
+                <TableCell align="right">DEPREC. DE LA GESTION</TableCell>
+                <TableCell align="right">DEPREC. ACUMULADA FINAL</TableCell>
+                <TableCell align="right">VALOR NETO FINAL</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {detalleConAcumulado.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{item.anio}</TableCell>
-                  <TableCell align="right">{`Bs. ${item.valor.toFixed(2)}`}</TableCell>
-                  <TableCell align="right">{`Bs. ${item.acumulado.toFixed(2)}`}</TableCell>
-                  <TableCell align="right">{`Bs. ${item.valor_en_libros.toFixed(2)}`}</TableCell>
-                  {editableData.metodo === 'depreciacion_por_horas' && (
-                    <>
-                      <TableCell align="right">{item.unidad || `Registro ${index + 1}`}</TableCell>
-                      <TableCell align="right">{`Bs. ${(item.valor_actualizado || 0).toFixed(2)}`}</TableCell>
-                      <TableCell align="right">{item.horas_periodo || 0}</TableCell>
-                      <TableCell align="right">{`Bs. ${(item.depreciacion_por_hora || 0).toFixed(2)}`}</TableCell>
-                      <TableCell align="right">{`Bs. ${(item.valor_activo_fijo || 0).toFixed(2)}`}</TableCell>
-                      <TableCell align="right">{`Bs. ${(item.costo_por_hora_efectiva || 0).toFixed(2)}`}</TableCell>
-                    </>
-                  )}
-                </TableRow>
-              ))}
+              {detalleConAcumulado.map((item, index) => {
+                // Calcular valores según las fórmulas de la imagen
+                const precioMaquinaria = parseFloat(editableData.costo_activo) || 0;
+                const placa = maquinariaInfo?.placa || '';
+                const horas = item.horas_periodo || 0;
+                const valorActivoFijo = precioMaquinaria;
+                const deprecAcumulada = item.acumulado || 0;
+                const valorNeto = valorActivoFijo - deprecAcumulada;
+                const deprecPorHora = parseFloat(editableData.depreciacion_por_hora) || 0;
+                
+                // Factor UFV
+                const ufvInicial = ufvActivo ? parseFloat(editableData.ufv_inicial) || 0 : 0;
+                const ufvFinal = ufvActivo ? parseFloat(editableData.ufv_final) || 0 : 0;
+                const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
+                
+                const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
+                const valorActualizado = valorActivoFijo * factorUfv;
+                const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
+                const deprecGestion = horas * deprecPorHora;
+                const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
+                const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+                
+                return (
+                  <TableRow key={index}>
+                    <TableCell>{precioMaquinaria.toFixed(2)}</TableCell>
+                    <TableCell>{placa}</TableCell>
+                    <TableCell align="right">{horas.toFixed(2)}</TableCell>
+                    <TableCell align="right">{valorActivoFijo.toFixed(2)}</TableCell>
+                    <TableCell align="right">{deprecAcumulada.toFixed(2)}</TableCell>
+                    <TableCell align="right">{valorNeto.toFixed(2)}</TableCell>
+                    <TableCell align="right">{deprecPorHora.toFixed(2)}</TableCell>
+                    <TableCell align="right">{incrementoActualizacion.toFixed(2)}</TableCell>
+                    <TableCell align="right" sx={{ backgroundColor: 'rgba(144, 238, 144, 0.3)' }}>
+                      {valorActualizado.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right">{incrementoDeprecAcum.toFixed(2)}</TableCell>
+                    <TableCell align="right">{deprecGestion.toFixed(2)}</TableCell>
+                    <TableCell align="right" sx={{ backgroundColor: 'rgba(255, 255, 0, 0.3)' }}>
+                      {deprecAcumuladaFinal.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right">{valorNetoFinal.toFixed(2)}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
             </Table>
           </Box>

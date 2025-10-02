@@ -364,32 +364,29 @@ function exportPDF({ maquinaria, depreciaciones, pronosticos, control, asignacio
     const dep = depreciaciones?.[0];
     const isDepreciacionPorHoras = dep?.metodo === 'depreciacion_por_horas' || dep?.metodo_depreciacion?.includes('HRS.');
     
-    let headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
-    let bodyData = depAnual.map(row => [
-      row.anio ?? '-', 
-      formatCurrency(row.valor_anual_depreciado ?? row.valor),
-      formatCurrency(row.depreciacion_acumulada), 
-      formatCurrency(row.valor_en_libros)
-    ]);
-    
-    // Si es depreciación por horas, agregar columnas adicionales
-    if (isDepreciacionPorHoras) {
-      headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
-      
-      bodyData = depAnual.map(row => [
-        row.anio ?? '-', 
-        formatCurrency(row.valor_anual_depreciado ?? row.valor),
-        formatCurrency(row.depreciacion_acumulada), 
-        formatCurrency(row.valor_en_libros),
-        formatCurrency(row.valor_actualizado || 0),
-        row.horas_periodo || 0,
-        formatCurrency(row.depreciacion_por_hora || 0),
-        formatCurrency(row.valor_activo_fijo || 0),
-        formatCurrency(row.incremento_actualizacion_activo || 0),
-        formatCurrency(row.incremento_actualizacion_depreciacion || 0),
-        formatCurrency(row.costo_por_hora_efectiva || 0)
-      ]);
-    }
+      // Campos según la imagen proporcionada
+      let headers = ['Año', 'Método', 'Valor Activo Fijo', 'Deprec. Acumulada', 'Valor Neto', 'Deprec. de la Gestión', 'Deprec. Acumulada Final', 'Valor Neto Final'];
+      let bodyData = depAnual.map(row => {
+        // Calcular valores según las fórmulas
+        const horas = row.horas_periodo || 0;
+        const deprecPorHora = row.depreciacion_por_hora || 0;
+        const deprecGestion = horas * deprecPorHora;
+        const incremento = row.incremento_actualizacion_depreciacion || 0;
+        const deprecAcumuladaFinal = (row.depreciacion_acumulada || 0) + incremento + deprecGestion;
+        const valorActualizado = row.valor_actualizado || Number(dep?.costo_activo) || 0;
+        const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+        
+        return [
+          row.anio ?? '-', 
+          dep?.metodo === 'depreciacion_por_horas' ? 'Por Horas' : dep?.metodo === 'linea_recta' ? 'Línea Recta' : dep?.metodo || 'No definido',
+          formatCurrency(Number(dep?.costo_activo) || 0),
+          formatCurrency(row.depreciacion_acumulada), 
+          formatCurrency(row.valor_en_libros),
+          formatCurrency(deprecGestion),
+          formatCurrency(deprecAcumuladaFinal),
+          formatCurrency(valorNetoFinal)
+        ];
+      });
     
     autoTable(doc, {
       startY: y,
@@ -580,6 +577,107 @@ function exportPDFMasivo(data, filename = 'reporte') {
   });
   let currentY = 20;
 
+  // Función especial para tabla de depreciaciones
+  function addDepreciacionTable(depreciaciones) {
+    if (!depreciaciones || depreciaciones.length === 0) return;
+
+    // Agregar nueva página si es necesario
+    if (currentY > 150) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    // Título de la sección
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const title = 'Depreciación';
+    const titleWidth = doc.getTextWidth(title) + 20;
+    const titleX = 20;
+    
+    // Fondo azul para el título
+    doc.setFillColor(30, 77, 183);
+    doc.roundedRect(titleX, currentY - 3, titleWidth, 10, 2, 2, 'F');
+    
+    // Texto del título
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, titleX + 10, currentY + 2);
+    
+    // Agregar contador de registros
+    const registrosText = `${depreciaciones.length} registros`;
+    const registrosWidth = doc.getTextWidth(registrosText);
+    const registrosX = pageWidth - 20 - registrosWidth - 10;
+    
+    // Fondo verde para el contador
+    doc.setFillColor(40, 167, 69);
+    doc.roundedRect(registrosX - 5, currentY - 3, registrosWidth + 10, 10, 2, 2, 'F');
+    
+    // Texto del contador
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(registrosText, registrosX, currentY + 2);
+    
+    currentY += 15;
+
+    // Headers específicos para depreciación
+    const headers = ['Año', 'Método', 'Valor Activo Fijo', 'Deprec. Acumulada', 'Valor Neto', 'Deprec. de la Gestión', 'Deprec. Acumulada Final', 'Valor Neto Final'];
+    
+    // Preparar datos
+    const bodyData = [];
+    depreciaciones.forEach(item => {
+      if (item.depreciacion_por_anio && item.depreciacion_por_anio.length > 0) {
+        item.depreciacion_por_anio.forEach(dep => {
+          // Usar datos reales de la API con fallback a cálculos
+          const deprecGestion = dep.deprec_gestion !== undefined ? dep.deprec_gestion : (dep.horas_periodo || 0) * (dep.depreciacion_por_hora || 0);
+          const deprecAcumuladaFinal = dep.depreciacion_acumulada_final !== undefined ? dep.depreciacion_acumulada_final : 
+            (dep.depreciacion_acumulada || 0) + (dep.incremento_actualizacion_depreciacion || 0) + deprecGestion;
+          const valorNetoFinal = dep.valor_neto_final !== undefined ? dep.valor_neto_final : 
+            (dep.valor_actualizado || Number(item.costo_activo) || 0) - deprecAcumuladaFinal;
+          
+          bodyData.push([
+            dep.anio || '-',
+            item.metodo_depreciacion === 'depreciacion_por_horas' ? 'Por Horas' : 
+            item.metodo_depreciacion === 'linea_recta' ? 'Línea Recta' : 
+            item.metodo_depreciacion || 'No definido',
+            formatCurrency(Number(item.costo_activo) || 0),
+            formatCurrency(dep.depreciacion_acumulada || 0),
+            formatCurrency(dep.valor_en_libros || 0),
+            formatCurrency(deprecGestion),
+            formatCurrency(deprecAcumuladaFinal),
+            formatCurrency(valorNetoFinal)
+          ]);
+        });
+      }
+    });
+
+    if (bodyData.length > 0) {
+      autoTable(doc, {
+        startY: currentY,
+        head: [headers],
+        body: bodyData,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          lineColor: [0, 0, 0],
+          lineWidth: 0.1,
+        },
+        headStyles: {
+          fillColor: [30, 77, 183],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 9,
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        margin: { left: 20, right: 20 },
+      });
+
+      currentY = doc.lastAutoTable.finalY + 15;
+    }
+  }
+
   // Función para agregar tabla
   function addTable(title, rows, fields = null, tablaKey = '') {
     console.log(`🔍 ADD TABLE: ${title}`, { rows, fields, tablaKey });
@@ -666,7 +764,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
       console.log(`🔍 CAMPOS SELECCIONADOS PARA ${title}:`, tableFields);
     }
     const existingFields = tableFields.filter(field => 
-      field.key !== 'archivo_pdf' && // Excluir solo columna de archivo PDF del PDF exportado
+      field.key !== 'archivo_pdf' && // Excluir datos del archivo PDF, pero mantener nombre_archivo
       rows.some(row => row[field.key] !== undefined && row[field.key] !== null)
     );
 
@@ -785,7 +883,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
     { key: 'seguros', label: 'Seguros' },
     { key: 'itv', label: 'ITV' },
     { key: 'impuestos', label: 'Impuestos' },
-    { key: 'depreciaciones', label: 'Depreciación', fields: depFields },
+    { key: 'depreciaciones', label: 'Depreciación', fields: null },
     { key: 'pronosticos', label: 'Pronóstico' },
   ];
 
@@ -793,15 +891,135 @@ function exportPDFMasivo(data, filename = 'reporte') {
     console.log(`🔍 PROCESANDO TABLA ${t.key}:`, data[t.key]);
     if (data[t.key]?.length) {
       console.log(`🔍 AGREGANDO TABLA ${t.key} con ${data[t.key].length} registros`);
-      addTable(t.label, data[t.key], t.fields || null, t.key);
+      if (t.key === 'depreciaciones') {
+        // Manejo especial para depreciaciones con las 8 columnas
+        addDepreciacionTable(data[t.key]);
+      } else {
+        addTable(t.label, data[t.key], t.fields || null, t.key);
+      }
     } else {
       console.log(`🔍 TABLA ${t.key} NO TIENE DATOS`);
     }
   }
 
+  // Agregar página de resumen
+  doc.addPage();
+  
+  // Configuración de página
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  let y = margin;
+  
+  // Título principal del resumen
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 77, 183); // Azul corporativo
+  doc.text('RESUMEN DEL REPORTE', pageWidth / 2, y, { align: 'center' });
+  y += 20;
+  
+  // Línea separadora
+  doc.setDrawColor(30, 77, 183);
+  doc.setLineWidth(1);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 15;
+  
+  // Información general
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('INFORMACIÓN GENERAL', margin, y);
+  y += 10;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Fecha de generación: ${getFormattedDateTime()}`, margin, y);
+  y += 6;
+  doc.text(`Total de páginas: ${doc.internal.getNumberOfPages() - 1}`, margin, y);
+  y += 6;
+  doc.text(`Sistema: Gestión de Maquinaria COFADENA`, margin, y);
+  y += 15;
+  
+  // Resumen de datos
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RESUMEN DE DATOS', margin, y);
+  y += 10;
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  // Contar registros por tabla
+  const resumenDatos = [];
+  if (data.maquinaria?.length) resumenDatos.push(`Maquinaria: ${data.maquinaria.length} registros`);
+  if (data.control?.length) resumenDatos.push(`Control: ${data.control.length} registros`);
+  if (data.asignacion?.length) resumenDatos.push(`Asignación: ${data.asignacion.length} registros`);
+  if (data.liberacion?.length) resumenDatos.push(`Liberación: ${data.liberacion.length} registros`);
+  if (data.mantenimiento?.length) resumenDatos.push(`Mantenimiento: ${data.mantenimiento.length} registros`);
+  if (data.soat?.length) resumenDatos.push(`SOAT: ${data.soat.length} registros`);
+  if (data.seguros?.length) resumenDatos.push(`Seguros: ${data.seguros.length} registros`);
+  if (data.itv?.length) resumenDatos.push(`ITV: ${data.itv.length} registros`);
+  if (data.impuestos?.length) resumenDatos.push(`Impuestos: ${data.impuestos.length} registros`);
+  if (data.depreciaciones?.length) resumenDatos.push(`Depreciaciones: ${data.depreciaciones.length} registros`);
+  if (data.pronosticos?.length) resumenDatos.push(`Pronósticos: ${data.pronosticos.length} registros`);
+  
+  // Mostrar resumen en columnas
+  const columnWidth = (pageWidth - 2 * margin) / 2;
+  resumenDatos.forEach((item, index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const x = margin + (column * columnWidth);
+    const itemY = y + (row * 6);
+    
+    if (itemY < pageHeight - 80) { // Evitar que se salga de la página
+      doc.text(item, x, itemY);
+    }
+  });
+  
+  // Posicionar firmas casi al final de la página
+  y = pageHeight - 50;
+  
+  // Título de firmas
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('FIRMAS', pageWidth / 2, y, { align: 'center' });
+  y += 15;
+  
+  // Configuración de firmas
+  const firmas = [
+    'ENCARGADO DE ACTIVOS FIJOS',
+    'JEFE DE LA UNIDAD ADMINISTRATIVA', 
+    'GERENTE DE LA UNIDAD'
+  ];
+  
+  const firmaWidth = (pageWidth - 60) / firmas.length; // 60 es el margen total (30 + 30)
+  
+  // Dibujar todas las firmas en la misma línea horizontal
+  firmas.forEach((firma, index) => {
+    const x = 30 + (index * firmaWidth) + (firmaWidth / 2);
+    let firmaY = y; // Posición fija para todos los títulos
+    
+    // Título de la firma
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(firma, x, firmaY, { align: 'center' });
+    
+    // Línea para firma (misma posición Y para todos)
+    firmaY = y + 10;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(x - 25, firmaY, x + 25, firmaY);
+    
+    // Línea de puntos (misma posición Y para todos)
+    firmaY = y + 16;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('........................................................................', x, firmaY, { align: 'center' });
+  });
+
   // pie de página
   const totalPages = doc.internal.getNumberOfPages();
-  const pageWidth = doc.internal.pageSize.getWidth();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     const pageY = doc.internal.pageSize.getHeight() - 10;
@@ -866,69 +1084,151 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
     }
   }
   
-  // Tabla de depreciación
-  if (data.tabla_depreciacion && data.tabla_depreciacion.length > 0) {
+  // Tabla de depreciación con formato específico
+  if (data.depreciaciones && data.depreciaciones.length > 0) {
     let y = margin + 60;
     
-    // Preparar datos para la tabla
-    const headers = ['Año', 'Valor Anual Depreciado', 'Depreciación Acumulada', 'Valor en Libros'];
-    const isDepreciacionPorHoras = data.maquinaria?.metodo === 'depreciacion_por_horas';
+    // Preparar datos para la tabla con el formato de la imagen
+    const headers = [
+      'PRECIO MAQUINARIA',
+      'PLACAS', 
+      'HORAS',
+      'VALOR ACTIVO FIJO',
+      'DEPREC. ACUMULADA',
+      'VALOR NETO',
+      'DEPRECIACIÓN BS/HORA',
+      'INCREM. P/ACTUAL. ACT FIJO',
+      'VALOR ACTUALIZADO',
+      'INCREM. ACTUALIZ. DEPR.ACUM',
+      'DEPREC. DE LA GESTION',
+      'DEPREC. ACUMULADA FINAL',
+      'VALOR NETO FINAL'
+    ];
     
-    if (isDepreciacionPorHoras) {
-      headers.push('Valor Actualizado', 'Horas Período', 'Depreciación/Hora', 'Valor Activo Fijo', 'Incremento Activo', 'Incremento Deprec.', 'Costo/Hora Efectiva');
-    }
-    
-    const tableData = data.tabla_depreciacion.map(item => {
-      const row = [
-        item.anio || '-',
-        `Bs. ${(item.valor || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-        `Bs. ${(item.acumulado || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-        `Bs. ${(item.valor_en_libros || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
+    const tableData = data.depreciaciones.map(item => {
+      // Calcular valores según las fórmulas
+      const precioMaquinaria = parseFloat(data.maquinaria?.costo_activo) || 0;
+      const placa = data.maquinaria?.placa || '';
+      const horas = item.horas_periodo || 0;
+      const valorActivoFijo = precioMaquinaria;
+      const deprecAcumulada = item.acumulado || 0;
+      const valorNeto = valorActivoFijo - deprecAcumulada;
+      const deprecPorHora = parseFloat(data.maquinaria?.depreciacion_por_hora) || 0;
+      
+      // Factor UFV
+      const ufvInicial = parseFloat(data.maquinaria?.ufv_inicial) || 0;
+      const ufvFinal = parseFloat(data.maquinaria?.ufv_final) || 0;
+      const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
+      
+      const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
+      const valorActualizado = valorActivoFijo * factorUfv;
+      const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
+      const deprecGestion = horas * deprecPorHora;
+      const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
+      const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+      
+      return [
+        precioMaquinaria.toFixed(2),
+        placa,
+        horas.toFixed(2),
+        valorActivoFijo.toFixed(2),
+        deprecAcumulada.toFixed(2),
+        valorNeto.toFixed(2),
+        deprecPorHora.toFixed(2),
+        incrementoActualizacion.toFixed(2),
+        valorActualizado.toFixed(2),
+        incrementoDeprecAcum.toFixed(2),
+        deprecGestion.toFixed(2),
+        deprecAcumuladaFinal.toFixed(2),
+        valorNetoFinal.toFixed(2)
       ];
-      
-      if (isDepreciacionPorHoras) {
-        row.push(
-          `Bs. ${(item.valor_actualizado || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-          item.horas_periodo || 0,
-          `Bs. ${(item.depreciacion_por_hora || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-          `Bs. ${(item.valor_activo_fijo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-          `Bs. ${(item.incremento_actualizacion_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-          `Bs. ${(item.incremento_actualizacion_depreciacion || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`,
-          `Bs. ${(item.costo_por_hora_efectiva || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
-        );
-      }
-      
-      return row;
     });
     
-    // Crear la tabla
+    // Crear la tabla con mejor visibilidad
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: y,
       margin: { left: margin, right: margin },
       styles: {
-        fontSize: 7,
-        cellPadding: 1,
+        fontSize: 8,
+        cellPadding: 2,
         overflow: 'linebreak',
-        halign: 'center'
+        halign: 'center',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1
       },
       headStyles: {
-        fillColor: [240, 240, 240],
-        textColor: [0, 0, 0],
-        fontStyle: 'bold'
+        fillColor: [30, 77, 183],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 9
       },
       alternateRowStyles: {
         fillColor: [248, 248, 248]
       },
       columnStyles: {
-        0: { halign: 'center' }, // Año
-        1: { halign: 'right' },   // Valor Anual
-        2: { halign: 'right' },   // Depreciación Acumulada
-        3: { halign: 'right' }    // Valor en Libros
+        0: { halign: 'right' }, // PRECIO MAQUINARIA
+        1: { halign: 'center' }, // PLACAS
+        2: { halign: 'right' }, // HORAS
+        3: { halign: 'right' }, // VALOR ACTIVO FIJO
+        4: { halign: 'right' }, // DEPREC. ACUMULADA
+        5: { halign: 'right' }, // VALOR NETO
+        6: { halign: 'right' }, // DEPRECIACIÓN BS/HORA
+        7: { halign: 'right' }, // INCREM. P/ACTUAL. ACT FIJO
+        8: { halign: 'right' }, // VALOR ACTUALIZADO
+        9: { halign: 'right' }, // INCREM. ACTUALIZ. DEPR.ACUM
+        10: { halign: 'right' }, // DEPREC. DE LA GESTION
+        11: { halign: 'right' }, // DEPREC. ACUMULADA FINAL
+        12: { halign: 'right' } // VALOR NETO FINAL
       }
     });
   }
+  
+  // Agregar firmas específicas para depreciación
+  const lastPage = doc.internal.getNumberOfPages();
+  doc.setPage(lastPage);
+  
+  // Posicionar firmas casi al final de la página
+  let y = pageHeight - 50;
+  
+  // Título de firmas
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('FIRMAS', pageWidth / 2, y, { align: 'center' });
+  y += 15;
+  
+  // Configuración de firmas para depreciación
+  const firmasDepreciacion = [
+    'TECNICO DE ACTIVOS FIJOS',
+    'ENCARGADO DE ACTIVOS FIJOS'
+  ];
+  
+  const firmaWidth = (pageWidth - 60) / firmasDepreciacion.length;
+  
+  // Dibujar firmas
+  firmasDepreciacion.forEach((firma, index) => {
+    const x = 30 + (index * firmaWidth) + (firmaWidth / 2);
+    let firmaY = y;
+    
+    // Título de la firma
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(firma, x, firmaY, { align: 'center' });
+    
+    // Línea para firma
+    firmaY = y + 10;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(x - 25, firmaY, x + 25, firmaY);
+    
+    // Línea de puntos
+    firmaY = y + 16;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('........................................................................', x, firmaY, { align: 'center' });
+  });
   
   // Pie de página
   const totalPages = doc.internal.getNumberOfPages();

@@ -17,7 +17,13 @@ export const depFields = [
   { key: 'costo_activo', label: 'Costo activo' },
   { key: 'fecha_compra', label: 'Fecha compra' },
   { key: 'vida_util', label: 'Vida útil' },
-  { key: 'bien_uso', label: 'Bien de Uso' },
+  { key: 'metodo_depreciacion', label: 'Método' },
+  { key: 'horas_periodo', label: 'Horas' },
+  { key: 'valor_activo_fijo', label: 'Valor activo fijo' },
+  { key: 'depreciacion_acumulada', label: 'Deprec. acumulada' },
+  { key: 'valor_neto', label: 'Valor neto' },
+  { key: 'depreciacion_por_hora', label: 'Depreciación Bs/Hora' },
+  { key: 'valor_actualizado', label: 'Valor actualizado' },
 ];
 
 export const controlFields = [

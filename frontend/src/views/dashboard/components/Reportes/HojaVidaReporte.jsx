@@ -25,7 +25,8 @@ const HojaVidaReporte = ({
   soat, 
   impuestos, 
   depreciaciones, 
-  pronosticos 
+  pronosticos,
+  odometerData 
 }) => {
   const reportRef = useRef(null);
 
@@ -126,21 +127,26 @@ const HojaVidaReporte = ({
     // Sección de firmas (se añade al final de CADA sección renderizada)
     const firmasHTML = `
       <div style="margin-top: 400px; margin-bottom: 10px;">
-        <div style="display: flex; justify-content: space-between; gap: 12px;">
-          <div style="text-align: center; width: 33%;">
-            <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">RESPONSABLE DE MANTENIMIENTO</div>
-            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
-            <div style="font-size: 11px; margin-top: 6px;">........................................................................................................</div>
+        <div style="display: flex; justify-content: space-between; gap: 8px;">
+          <div style="text-align: center; width: 25%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 12px;">RESPONSABLE DE MANTENIMIENTO</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 4px;"></div>
+            <div style="font-size: 10px; margin-top: 6px;">........................................................................................................</div>
           </div>
-          <div style="text-align: center; width: 33%;">
-            <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">ENCARGADO DE ACTIVOS FIJOS</div>
-            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
-            <div style="font-size: 11px; margin-top: 6px;">........................................................................................................</div>
+          <div style="text-align: center; width: 25%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 12px;">ENCARGADO DE ACTIVOS FIJOS</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 4px;"></div>
+            <div style="font-size: 10px; margin-top: 6px;">........................................................................................................</div>
           </div>
-          <div style="text-align: center; width: 33%;">
-            <div style="font-weight: bold; margin-bottom: 18px; font-size: 13px;">DIRECTOR GENERAL</div>
-            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 8px;"></div>
-            <div style="font-size: 11px; margin-top: 6px;">........................................................................................................</div>
+          <div style="text-align: center; width: 25%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 12px;">JEFE DE LA UNIDAD ADMINISTRATIVA</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 4px;"></div>
+            <div style="font-size: 10px; margin-top: 6px;">........................................................................................................</div>
+          </div>
+          <div style="text-align: center; width: 25%;">
+            <div style="font-weight: bold; margin-bottom: 18px; font-size: 12px;">GERENTE DE LA UNIDAD</div>
+            <div style="height: 40px; border-bottom: 1px solid #000; margin: 0 4px;"></div>
+            <div style="font-size: 10px; margin-top: 6px;">........................................................................................................</div>
           </div>
         </div>
       </div>
@@ -390,7 +396,8 @@ const HojaVidaReporte = ({
           seguros: seguros,
           itv: itv,
           soat: soat,
-          impuestos: impuestos
+          impuestos: impuestos,
+          odometerData: odometerData || []
         };
 
         console.log('🔍 DATOS PARA EXCEL:', excelData);
@@ -456,6 +463,7 @@ const HojaVidaReporte = ({
           itv={itv}
           soat={soat}
           impuestos={impuestos}
+          odometerData={odometerData}
         />
 
       </Box> {/* Cierre del contenido del reporte */}
@@ -475,7 +483,8 @@ HojaVidaReporte.propTypes = {
   soat: PropTypes.array,
   impuestos: PropTypes.array,
   depreciaciones: PropTypes.array,
-  pronosticos: PropTypes.array
+  pronosticos: PropTypes.array,
+  odometerData: PropTypes.array
 };
 
 export default HojaVidaReporte;
