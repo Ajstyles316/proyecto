@@ -544,6 +544,11 @@ class DepreciacionEntrySerializer(serializers.Serializer):
     valor_actualizado = serializers.FloatField(required=False)  # Para depreciación por horas
     horas_periodo = serializers.FloatField(required=False)  # Para depreciación por horas
     depreciacion_por_hora = serializers.FloatField(required=False)  # Para depreciación por horas
+    # Campos calculados adicionales
+    deprec_gestion = serializers.FloatField(required=False)  # Depreciación de la gestión
+    depreciacion_acumulada_final = serializers.FloatField(required=False)  # Depreciación acumulada final
+    valor_neto_final = serializers.FloatField(required=False)  # Valor neto final
+    incremento_actualizacion_depreciacion = serializers.FloatField(required=False)  # Incremento por actualización
 
 class DepreciacionSerializer(serializers.Serializer):
     _id = serializers.CharField(read_only=True)
@@ -589,13 +594,13 @@ class DepreciacionSerializer(serializers.Serializer):
         return value
     
     def validate_ufv_inicial(self, value):
-        if value is not None and value <= 0:
-            raise serializers.ValidationError("El UFV inicial debe ser mayor a 0.")
+        if value is not None and value < 0:
+            raise serializers.ValidationError("El UFV inicial no puede ser negativo.")
         return value
     
     def validate_ufv_final(self, value):
-        if value is not None and value <= 0:
-            raise serializers.ValidationError("El UFV final debe ser mayor a 0.")
+        if value is not None and value < 0:
+            raise serializers.ValidationError("El UFV final no puede ser negativo.")
         return value
     
     def validate_horas_periodo(self, value):

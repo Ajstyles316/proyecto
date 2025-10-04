@@ -6025,4 +6025,3 @@ class ControlOdometroDetailView(BaseSectionDetailAPIView):
         except Exception as e:
             logger.error(f"Error al reactivar control de odómetro: {str(e)}\n{traceback.format_exc()}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-

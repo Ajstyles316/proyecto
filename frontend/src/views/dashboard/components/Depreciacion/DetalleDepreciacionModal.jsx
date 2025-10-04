@@ -177,8 +177,13 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
           // Calcular depreciación por hora automáticamente si no está definida
           const costoActivo = parseFloat(editableData.costo_activo) || 0;
           const vidaUtil = parseFloat(editableData.vida_util) || 1;
-          const horasAnualesEstandar = 300 * 8; // 2400 horas anuales
-          const depreciacionPorHora = costoActivo / (vidaUtil * horasAnualesEstandar);
+          const horasAnualesEstandar = 300 * 8; // 300 días * 8 horas = 2400 horas anuales
+          
+          // Factor UFV (por defecto 20 si no está especificado)
+          const factorUfv = 20;
+          
+          // Fórmula corregida: costoActivo / ((300*8) * factorUfv)
+          const depreciacionPorHora = costoActivo / (horasAnualesEstandar * factorUfv);
           
           // Actualizar los datos automáticamente
           setEditableData(prev => ({
@@ -205,8 +210,13 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     if (odometerData.length > 0 && editableData.metodo === 'depreciacion_por_horas') {
       const costoActivo = parseFloat(editableData.costo_activo) || 0;
       const vidaUtil = parseFloat(editableData.vida_util) || 1;
-      const horasAnualesEstandar = 300 * 8;
-      const depreciacionPorHora = costoActivo / (vidaUtil * horasAnualesEstandar);
+      const horasAnualesEstandar = 300 * 8; // 300 días * 8 horas = 2400 horas anuales
+      
+      // Factor UFV (por defecto 20 si no está especificado)
+      const factorUfv = 20;
+      
+      // Fórmula corregida: costoActivo / ((300*8) * factorUfv)
+      const depreciacionPorHora = costoActivo / (horasAnualesEstandar * factorUfv);
       
       setEditableData(prev => ({
         ...prev,
@@ -284,13 +294,16 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     
     // Validaciones específicas para depreciación por horas
     if (editableData.metodo === 'depreciacion_por_horas') {
-      if (!editableData.ufv_inicial || Number(editableData.ufv_inicial) <= 0) {
-        setError('El UFV inicial es obligatorio y debe ser mayor a 0.');
-        return;
-      }
-      if (!editableData.ufv_final || Number(editableData.ufv_final) <= 0) {
-        setError('El UFV final es obligatorio y debe ser mayor a 0.');
-        return;
+      // Solo validar UFV si está activado
+      if (ufvActivo) {
+        if (!editableData.ufv_inicial || Number(editableData.ufv_inicial) <= 0) {
+          setError('El UFV inicial es obligatorio y debe ser mayor a 0 cuando está activado.');
+          return;
+        }
+        if (!editableData.ufv_final || Number(editableData.ufv_final) <= 0) {
+          setError('El UFV final es obligatorio y debe ser mayor a 0 cuando está activado.');
+          return;
+        }
       }
       if (!editableData.horas_periodo || Number(editableData.horas_periodo) < 0) {
         setError('Las horas del período son obligatorias y no pueden ser negativas.');

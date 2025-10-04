@@ -126,7 +126,7 @@ const HojaVidaReporte = ({
 
     // Sección de firmas (se añade al final de CADA sección renderizada)
     const firmasHTML = `
-      <div style="margin-top: 400px; margin-bottom: 10px;">
+      <div style="margin-top: 60px; margin-bottom: 10px;">
         <div style="display: flex; justify-content: space-between; gap: 8px;">
           <div style="text-align: center; width: 25%;">
             <div style="font-weight: bold; margin-bottom: 18px; font-size: 12px;">RESPONSABLE DE MANTENIMIENTO</div>
@@ -171,17 +171,17 @@ const HojaVidaReporte = ({
        }
        
        if (mode === 'middle') {
-         // Sección 2: Desde Control hasta Seguros (sin ITV)
+         // Sección 2: Desde Control hasta Impuestos (incluyendo ITV, SOAT, IMPUESTOS)
          const controlElement = Array.from(section.querySelectorAll('*')).find(el => 
            el.textContent && el.textContent.trim() === 'CONTROL'
          );
-         const segurosElement = Array.from(section.querySelectorAll('*')).find(el => 
-           el.textContent && el.textContent.trim() === 'SEGUROS'
+         const impuestosElement = Array.from(section.querySelectorAll('*')).find(el => 
+           el.textContent && el.textContent.trim() === 'IMPUESTOS'
          );
          
-         if (controlElement && segurosElement) {
+         if (controlElement && impuestosElement) {
            const controlBox = controlElement.closest('[class*="Box"]') || controlElement.parentElement;
-           const segurosBox = segurosElement.closest('[class*="Box"]') || segurosElement.parentElement;
+           const impuestosBox = impuestosElement.closest('[class*="Box"]') || impuestosElement.parentElement;
            
            // Eliminar todo antes de Control
            let currentNode = controlBox;
@@ -192,8 +192,8 @@ const HojaVidaReporte = ({
              break;
            }
            
-           // Eliminar todo después de Seguros
-           currentNode = segurosBox;
+           // Eliminar todo después de Impuestos
+           currentNode = impuestosBox;
            while (currentNode && currentNode.parentNode) {
              while (currentNode.nextSibling) {
                currentNode.nextSibling.remove();
@@ -205,28 +205,98 @@ const HojaVidaReporte = ({
        }
        
        if (mode === 'after') {
-         // Sección 3: Desde ITV hasta el final (con firmas al final)
-         const itvElement = Array.from(section.querySelectorAll('*')).find(el => 
-           el.textContent && el.textContent.trim() === 'ITV'
-         );
+         // Sección 3: Solo resumen de registros y firmas
+         const resumenDiv = document.createElement('div');
+         resumenDiv.style.backgroundColor = 'white';
+         resumenDiv.style.padding = '20px';
+         resumenDiv.style.fontFamily = 'Arial, sans-serif';
          
-         if (itvElement) {
-           const itvBox = itvElement.closest('[class*="Box"]') || itvElement.parentElement;
-           let currentNode = itvBox;
-           while (currentNode && currentNode.parentNode) {
-             while (currentNode.previousSibling) {
-               currentNode.previousSibling.remove();
-             }
-             break;
-           }
-         }
+         // Resumen técnico detallado
+         const resumenHTML = `
+           <div style="margin-bottom: 50px;">
+             <h2 style="color: #1e4db7; text-align: center; margin-bottom: 30px; font-size: 20px;">RESUMEN TÉCNICO DE MAQUINARIA</h2>
+             
+             <!-- Información del equipo -->
+             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #1e4db7;">
+               <h3 style="color: #2c3e50; margin: 0 0 15px 0; font-size: 16px;">INFORMACIÓN DEL EQUIPO</h3>
+               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                 <div><strong>Equipo:</strong> ${maquinaria?.detalle || 'No especificado'}</div>
+                 <div><strong>Placa:</strong> ${maquinaria?.placa || 'No asignada'}</div>
+                 <div><strong>Marca:</strong> ${maquinaria?.marca || 'No especificada'}</div>
+                 <div><strong>Modelo:</strong> ${maquinaria?.modelo || 'No especificado'}</div>
+                 <div><strong>Chasis:</strong> ${maquinaria?.nro_chasis || 'No especificado'}</div>
+                 <div><strong>Motor:</strong> ${maquinaria?.nro_motor || 'No especificado'}</div>
+                 <div><strong>Tipo:</strong> ${maquinaria?.tipo || 'No especificado'}</div>
+                 <div><strong>Estado:</strong> OPERABLE</div>
+               </div>
+             </div>
+             
+             <!-- Estadísticas técnicas -->
+             <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ddd;">
+               <h3 style="color: #2c3e50; margin: 0 0 20px 0; font-size: 16px;">ESTADÍSTICAS DE REGISTROS</h3>
+               
+               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+                 <div style="text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 6px; background-color: #f8f9fa;">
+                   <h4 style="color: #2c3e50; margin: 0 0 8px 0; font-size: 14px;">MANTENIMIENTOS REALIZADOS</h4>
+                   <p style="font-size: 28px; font-weight: bold; color: #1e4db7; margin: 0;">${mantenimientos ? mantenimientos.length : 0}</p>
+                   <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Registros de mantenimiento preventivo y correctivo</p>
+                 </div>
+                 
+                 <div style="text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 6px; background-color: #f8f9fa;">
+                   <h4 style="color: #2c3e50; margin: 0 0 8px 0; font-size: 14px;">PRONÓSTICOS GENERADOS</h4>
+                   <p style="font-size: 28px; font-weight: bold; color: #1e4db7; margin: 0;">${pronosticos ? pronosticos.length : 0}</p>
+                   <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Análisis predictivos de mantenimiento</p>
+                 </div>
+                 
+                 <div style="text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 6px; background-color: #f8f9fa;">
+                   <h4 style="color: #2c3e50; margin: 0 0 8px 0; font-size: 14px;">DOCUMENTOS LEGALES</h4>
+                   <p style="font-size: 28px; font-weight: bold; color: #1e4db7; margin: 0;">${(seguros ? seguros.length : 0) + (itv ? itv.length : 0) + (soat ? soat.length : 0) + (impuestos ? impuestos.length : 0)}</p>
+                   <p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">Total de documentos administrativos</p>
+                 </div>
+               </div>
+               
+               <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                 <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #fff;">
+                   <h5 style="color: #2c3e50; margin: 0 0 5px 0; font-size: 12px;">SEGUROS</h5>
+                   <p style="font-size: 18px; font-weight: bold; color: #27ae60; margin: 0;">${seguros ? seguros.length : 0}</p>
+                 </div>
+                 
+                 <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #fff;">
+                   <h5 style="color: #2c3e50; margin: 0 0 5px 0; font-size: 12px;">ITV</h5>
+                   <p style="font-size: 18px; font-weight: bold; color: #e74c3c; margin: 0;">${itv ? itv.length : 0}</p>
+                 </div>
+                 
+                 <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #fff;">
+                   <h5 style="color: #2c3e50; margin: 0 0 5px 0; font-size: 12px;">SOAT</h5>
+                   <p style="font-size: 18px; font-weight: bold; color: #f39c12; margin: 0;">${soat ? soat.length : 0}</p>
+                 </div>
+                 
+                 <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #fff;">
+                   <h5 style="color: #2c3e50; margin: 0 0 5px 0; font-size: 12px;">IMPUESTOS</h5>
+                   <p style="font-size: 18px; font-weight: bold; color: #8e44ad; margin: 0;">${impuestos ? impuestos.length : 0}</p>
+                 </div>
+               </div>
+             </div>
+             
+             <!-- Información del reporte -->
+             <div style="text-align: center; margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 6px;">
+               <p style="color: #666; font-size: 13px; margin: 0;">
+                 <strong>Fecha de Generación del Reporte:</strong> ${new Date().toLocaleDateString('es-ES')} | 
+                 <strong>Hora:</strong> ${new Date().toLocaleTimeString('es-ES')} | 
+                 <strong>Sistema:</strong> COFADENA - Gestión de Maquinaria
+               </p>
+             </div>
+           </div>
+         `;
          
-         // Añadir firmas al final de la última sección
+         resumenDiv.innerHTML = resumenHTML;
+         
+         // Añadir firmas al final
          const firmasDiv = document.createElement('div');
          firmasDiv.innerHTML = firmasHTML;
-         section.appendChild(firmasDiv);
+         resumenDiv.appendChild(firmasDiv);
          
-         return section;
+         return resumenDiv;
        }
        
        return section;
@@ -359,11 +429,11 @@ const HojaVidaReporte = ({
        }
      }
 
-     // ====== Sección 2 (desde Control hasta ITV) ======
+     // ====== Sección 2 (desde Control hasta Impuestos - incluyendo ITV, SOAT, IMPUESTOS) ======
      const canvasMiddle = await renderToCanvas(sectionMiddle);
      await paginateSection(pdf, canvasMiddle);
 
-     // ====== Sección 3 (desde SOAT hasta firmas) ======
+     // ====== Sección 3 (resumen de registros y firmas) ======
      const canvasAfter = await renderToCanvas(sectionAfter);
      await paginateSection(pdf, canvasAfter);
 
