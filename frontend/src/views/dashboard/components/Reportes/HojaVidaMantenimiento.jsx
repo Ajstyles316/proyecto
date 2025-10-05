@@ -3,10 +3,12 @@ import { useState, useRef } from 'react';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Grid, CardMedia, Button } from '@mui/material';
 import { formatDateOnly } from './helpers';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import TableChartIcon from '@mui/icons-material/TableChart';
 
 const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
   const reportRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   // Función para exportar PDF
   const handleExportPDF = async () => {
@@ -61,6 +63,226 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
     }
   };
 
+  // Función para exportar Excel
+  const handleExportExcel = async () => {
+    setIsExportingExcel(true);
+    try {
+      const XLSX = await import('xlsx');
+      
+      // Crear un nuevo workbook
+      const workbook = XLSX.utils.book_new();
+      
+      // Preparar los datos para Excel manteniendo el mismo formato
+      const excelData = [];
+      
+      // Título principal
+      excelData.push(['HOJA DE VIDA HISTORIAL DE MANTENIMIENTO']);
+      excelData.push([]);
+      excelData.push([`CÓDIGO: ${maquinaria?.codigo || 'N/A'}`]);
+      excelData.push([]);
+      
+      // Datos del Vehículo/Maquinaria
+      excelData.push(['DATOS VEHICULO, MAQUINARIA, EQUIPO']);
+      excelData.push([]);
+      
+      // Datos Generales
+      excelData.push(['DATOS GENERALES']);
+      excelData.push(['Equipo:', maquinaria?.detalle || '']);
+      excelData.push(['Placa:', maquinaria?.placa || '']);
+      excelData.push(['Marca:', maquinaria?.marca || '']);
+      excelData.push(['Modelo:', maquinaria?.modelo || '']);
+      excelData.push(['Chasis:', maquinaria?.nro_chasis || '']);
+      excelData.push(['Tipo:', maquinaria?.tipo || '']);
+      excelData.push(['Color:', maquinaria?.color || '']);
+      excelData.push(['Tracción:', maquinaria?.tipo_vehiculo || '']);
+      excelData.push(['No. del Motor:', maquinaria?.nro_motor || '']);
+      excelData.push(['Estado:', 'OPERABLE']);
+      excelData.push([]);
+      
+      // Tipo de Desplazamiento
+      excelData.push(['TIPO DE DESPLAZAMIENTO']);
+      excelData.push(['CANTIDAD', 'NUMERO DE LLANTA', 'NUMERO DE LLANTA DELANTERA', 'VIDA UTIL']);
+      excelData.push([
+        mantenimientos[0]?.tipo_desplazamiento_cantidad || '10',
+        mantenimientos[0]?.tipo_desplazamiento_numero_llanta || '11R22,5',
+        mantenimientos[0]?.tipo_desplazamiento_numero_llanta_delantera || '11R22,5',
+        mantenimientos[0]?.tipo_desplazamiento_vida_util || '3'
+      ]);
+      excelData.push([]);
+      
+      // Sistema Eléctrico
+      excelData.push(['SISTEMA ELÉCTRICO']);
+      excelData.push(['CANTIDAD', 'VOLTAJE', 'AMPERAJE', 'VIDA UTIL']);
+      excelData.push([
+        mantenimientos[0]?.cantidad_sistema_electrico || '3',
+        mantenimientos[0]?.voltaje_sistema_electrico || '12',
+        mantenimientos[0]?.amperaje_sistema_electrico || '100',
+        mantenimientos[0]?.vida_util_sistema_electrico || 'AÑOS'
+      ]);
+      excelData.push([]);
+      
+      // Aceites y Fluidos
+      excelData.push(['ACEITES Y FLUIDOS']);
+      excelData.push([]);
+      
+      // Aceite de Motor
+      excelData.push(['ACEITE DE MOTOR']);
+      excelData.push(['CANTIDAD', 'NUMERO', 'CAMBIO (HR/KM)', 'NUMERO DE FILTRO']);
+      excelData.push([
+        mantenimientos[0]?.aceite_motor_cantidad || '45 LT',
+        mantenimientos[0]?.aceite_motor_numero || '15W40',
+        mantenimientos[0]?.aceite_motor_cambio_km_hr || '5000 KM',
+        mantenimientos[0]?.aceite_motor_numero_filtro || 'P559000'
+      ]);
+      excelData.push([]);
+      
+      // Aceite Hidráulico
+      excelData.push(['ACEITE DE HIDRAULICO']);
+      excelData.push(['CANTIDAD', 'NUMERO', 'CAMBIO (HR/KM)', 'NUMERO DE FILTRO']);
+      excelData.push([
+        mantenimientos[0]?.aceite_hidraulico_cantidad || '100',
+        mantenimientos[0]?.aceite_hidraulico_numero || 'ISO VG68',
+        mantenimientos[0]?.aceite_hidraulico_cambio_km_hr || '4000 H',
+        mantenimientos[0]?.aceite_hidraulico_numero_filtro || 'P550388'
+      ]);
+      excelData.push([]);
+      
+      // Aceite de Transmisión
+      excelData.push(['ACEITE DE TRANSMISION']);
+      excelData.push(['CANTIDAD', 'NUMERO', 'CAMBIO (HR/KM)', 'NUMERO DE FILTRO']);
+      excelData.push([
+        mantenimientos[0]?.aceite_transmision_cantidad || '6LTS',
+        mantenimientos[0]?.aceite_transmision_numero || '-',
+        mantenimientos[0]?.aceite_transmision_cambio_km_hr || '20.000 KM',
+        mantenimientos[0]?.aceite_transmision_numero_filtro || '-'
+      ]);
+      excelData.push([]);
+      
+      // Líquido de Freno
+      excelData.push(['LIQUIDO DE FRENO']);
+      excelData.push(['CANTIDAD', 'NUMERO', 'CAMBIO (HR/KM)', 'NUMERO DE FILTRO COMB.']);
+      excelData.push([
+        mantenimientos[0]?.liquido_freno_cantidad || '20',
+        mantenimientos[0]?.liquido_freno_numero || '80W90',
+        mantenimientos[0]?.liquido_freno_cambio_km_hr || '40000 KM',
+        mantenimientos[0]?.liquido_freno_numero_filtro_combustible || '-'
+      ]);
+      excelData.push([]);
+      
+      // Líquido Refrigerante
+      excelData.push(['LIQUIDO REFRIGERANTE']);
+      excelData.push(['TIPO DE REFRIGERANTE', 'CANTIDAD REFRIGERANTE (Lt)', 'FRECUENCIA DE CAMBIO (HR/KM)']);
+      excelData.push([
+        mantenimientos[0]?.liquido_refrigerante_tipo || '-',
+        mantenimientos[0]?.liquido_refrigerante_cantidad_lt || '-',
+        mantenimientos[0]?.liquido_refrigerante_frecuencia_cambio || '-'
+      ]);
+      excelData.push([]);
+      
+      // Otros Aceites
+      excelData.push(['OTROS ACEITES']);
+      excelData.push(['TIPO DE REFRIGERANTE', 'CANTIDAD (Lt)', 'FRECUENCIA DE CAMBIO (HR/KM)']);
+      excelData.push([
+        mantenimientos[0]?.otros_aceites_tipo || '-',
+        mantenimientos[0]?.otros_aceites_cantidad_lt || '-',
+        mantenimientos[0]?.otros_aceites_frecuencia_cambio || '-'
+      ]);
+      excelData.push([]);
+      
+      // Trabajos Destinados a Realizar
+      excelData.push(['TRABAJOS DESTINADOS A REALIZAR']);
+      excelData.push([mantenimientos[0]?.trabajos_destinados_realizar || '-']);
+      excelData.push([]);
+      
+      // Sistema de Combustible
+      excelData.push(['SISTEMA DE COMBUSTIBLE']);
+      excelData.push(['GASOLINA', 'CANTIDAD (Lt)', 'CANTIDAD FILTROS', 'CODIGO FILTRO COMBUSTIBLE']);
+      excelData.push([
+        mantenimientos[0]?.gasolina || '-',
+        mantenimientos[0]?.gasolina_cantidad_lt || '-',
+        mantenimientos[0]?.cantidad_filtros || '-',
+        mantenimientos[0]?.codigo_filtro_combustible || '-'
+      ]);
+      excelData.push([]);
+      
+      // Otros Filtros
+      excelData.push(['OTROS FILTROS']);
+      excelData.push(['CANTIDAD', 'NUMERO', 'CAMBIO (HR/KM)', 'DESCRIPCION DEL FILTRO']);
+      excelData.push([
+        mantenimientos[0]?.otros_filtros_cantidad || '1',
+        mantenimientos[0]?.otros_filtros_numero || 'AB39-9601-AB',
+        mantenimientos[0]?.otros_filtros_cambio || '-',
+        'FILTRO DE AIRE'
+      ]);
+      excelData.push([]);
+      
+      // Historial de Mantenimiento
+      excelData.push(['HISTORIAL DE MANTENIMIENTO']);
+      excelData.push([
+        'FECHA',
+        'N° SALIDA DE MATERIALES',
+        'DESCRIPCION, DAÑOS, EVENTOS, REPARACION REALIZADA',
+        'COSTO TOTAL Bs.',
+        'HOR/KM.',
+        'OPERADOR',
+        'ATENDIDO POR',
+        'ENCARGADO DE ACTIVOS FIJOS',
+        'UNIDAD/ EMPRESA',
+        'UBICACIÓN FISICO/ PROYECTO'
+      ]);
+      
+      // Agregar datos de mantenimientos
+      mantenimientos.forEach((mantenimiento) => {
+        excelData.push([
+          formatDateOnly(mantenimiento.fecha_mantenimiento),
+          mantenimiento.numero_salida_materiales || '-',
+          mantenimiento.descripcion_danos_eventos || mantenimiento.reparacion_realizada || '-',
+          mantenimiento.costo_total ? mantenimiento.costo_total.toLocaleString('es-BO', { minimumFractionDigits: 2 }) : '-',
+          mantenimiento.horas_kilometros ? mantenimiento.horas_kilometros.toLocaleString('es-BO') : '-',
+          mantenimiento.operador || '-',
+          mantenimiento.atendido_por || '-',
+          mantenimiento.encargado_activos_fijos || '-',
+          mantenimiento.unidad_empresa || '-',
+          mantenimiento.ubicacion_fisico_proyecto || '-'
+        ]);
+      });
+      
+      // Crear la hoja de trabajo
+      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      
+      // Configurar el ancho de las columnas
+      const columnWidths = [
+        { wch: 15 }, // FECHA
+        { wch: 20 }, // N° SALIDA DE MATERIALES
+        { wch: 50 }, // DESCRIPCION
+        { wch: 15 }, // COSTO TOTAL
+        { wch: 15 }, // HOR/KM
+        { wch: 20 }, // OPERADOR
+        { wch: 20 }, // ATENDIDO POR
+        { wch: 25 }, // ENCARGADO DE ACTIVOS FIJOS
+        { wch: 20 }, // UNIDAD/ EMPRESA
+        { wch: 25 }  // UBICACIÓN FISICO/ PROYECTO
+      ];
+      worksheet['!cols'] = columnWidths;
+      
+      // Agregar la hoja al workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Hoja de Vida Mantenimiento');
+      
+      // Generar el archivo Excel
+      const fecha = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+      const placa = maquinaria?.placa || 'maquinaria';
+      const filename = `Hoja_Vida_Mantenimiento_${placa}_${fecha}.xlsx`;
+      
+      XLSX.writeFile(workbook, filename);
+      
+    } catch (error) {
+      console.error('Error al exportar Excel:', error);
+      alert('Error al exportar el Excel. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   if (!mantenimientos || mantenimientos.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -73,8 +295,18 @@ const HojaVidaMantenimiento = ({ maquinaria, mantenimientos }) => {
 
   return (
     <Box sx={{ p: 2, maxWidth: '100%', overflow: 'hidden' }}>
-      {/* Botón de Exportar PDF */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+      {/* Botones de Exportar */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 2 }}>
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<TableChartIcon />}
+          onClick={handleExportExcel}
+          disabled={isExportingExcel}
+          sx={{ minWidth: 150 }}
+        >
+          {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
+        </Button>
         <Button
           variant="contained"
           color="error"

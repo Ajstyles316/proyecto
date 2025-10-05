@@ -19,6 +19,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Chip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
@@ -225,6 +226,38 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     }
   }, [odometerData, editableData.costo_activo, editableData.vida_util, editableData.metodo]);
 
+  // Recalcular automáticamente cuando cambien los filtros de mes y año
+  useEffect(() => {
+    if (odometerData.length > 0 && editableData.metodo === 'depreciacion_por_horas') {
+      // Filtrar datos según los filtros
+      let odometerDataFiltrado = odometerData;
+      if (filtroMes || filtroAnio) {
+        odometerDataFiltrado = odometerData.filter(record => {
+          if (!record.fecha_registro) return false;
+          
+          const fechaRegistro = new Date(record.fecha_registro);
+          const mesRegistro = String(fechaRegistro.getMonth() + 1).padStart(2, '0');
+          const anioRegistro = String(fechaRegistro.getFullYear());
+          
+          const cumpleMes = !filtroMes || mesRegistro === filtroMes;
+          const cumpleAnio = !filtroAnio || anioRegistro === filtroAnio;
+          
+          return cumpleMes && cumpleAnio;
+        });
+      }
+      
+      // Recalcular horas del período con datos filtrados
+      const totalHoras = odometerDataFiltrado.reduce((sum, record) => {
+        return sum + (parseFloat(record.odometro_mes) || 0);
+      }, 0);
+      
+      setEditableData(prev => ({
+        ...prev,
+        horas_periodo: totalHoras.toString()
+      }));
+    }
+  }, [filtroMes, filtroAnio, odometerData, editableData.metodo]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setEditableData((prev) => ({ ...prev, [name]: value }));
@@ -361,7 +394,37 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
     const costo_activo = parseFloat(editableData.costo_activo);
     const coeficiente = editableData.coeficiente ? Number(editableData.coeficiente) : undefined;
     const valor_residual = editableData.valor_residual ? Number(editableData.valor_residual) : 0;
-    if (!costo_activo || !fecha_compra || vida_util <= 0) return [];
+    
+    // Debug logging para identificar el problema en despliegue
+    console.log('=== DEBUG DEPRECIACIÓN ===');
+    console.log('costo_activo:', costo_activo, 'tipo:', typeof costo_activo);
+    console.log('fecha_compra:', fecha_compra, 'tipo:', typeof fecha_compra);
+    console.log('vida_util:', vida_util, 'tipo:', typeof vida_util);
+    console.log('metodo:', metodo);
+    console.log('editableData completo:', editableData);
+    console.log('========================');
+    
+    if (!costo_activo || !fecha_compra || vida_util <= 0) {
+      console.log('❌ Retornando array vacío - faltan datos requeridos');
+      return [];
+    }
+    
+    // Filtrar datos de odómetros según los filtros de mes y año
+    let odometerDataFiltrado = odometerData;
+    if (filtroMes || filtroAnio) {
+      odometerDataFiltrado = odometerData.filter(record => {
+        if (!record.fecha_registro) return false;
+        
+        const fechaRegistro = new Date(record.fecha_registro);
+        const mesRegistro = String(fechaRegistro.getMonth() + 1).padStart(2, '0');
+        const anioRegistro = String(fechaRegistro.getFullYear());
+        
+        const cumpleMes = !filtroMes || mesRegistro === filtroMes;
+        const cumpleAnio = !filtroAnio || anioRegistro === filtroAnio;
+        
+        return cumpleMes && cumpleAnio;
+      });
+    }
     
     const tabla = [];
     let fecha = new Date(fecha_compra);
@@ -409,13 +472,13 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
       let depreciacion_acumulada_total = 0;
       let valor_actualizado = costo_activo * (ufv_final / ufv_inicial);
       
-      // Acumular todas las horas de los registros de odómetro
-      const totalHoras = odometerData.reduce((sum, record) => {
+      // Acumular todas las horas de los registros de odómetro filtrados
+      const totalHoras = odometerDataFiltrado.reduce((sum, record) => {
         return sum + (parseFloat(record.odometro_mes) || 0);
       }, 0);
       
       // Crear una sola fila con las horas acumuladas
-      if (odometerData.length > 0) {
+      if (odometerDataFiltrado.length > 0) {
         const horas_periodo = totalHoras;
         
         // Variables según las columnas de la imagen:
@@ -469,7 +532,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
           incremento_actualizacion_activo: parseFloat(incremento_actualizacion_activo.toFixed(2)), // F
           incremento_actualizacion_depreciacion: parseFloat(incremento_actualizacion_depreciacion.toFixed(2)), // H
           costo_por_hora_efectiva: parseFloat(costo_por_hora_efectiva.toFixed(2)),
-          unidad: `Total (${odometerData.length} registros)` // Mostrar total de registros
+          unidad: `Total (${odometerDataFiltrado.length} registros)` // Mostrar total de registros filtrados
         });
       }
     } else { // Default to linea_recta if method is unknown
@@ -486,6 +549,8 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         tabla.push({ anio: fecha.getFullYear() + i, valor: parseFloat(dep_anual.toFixed(2)), valor_en_libros: parseFloat(valor_en_libros.toFixed(2)) });
       }
     }
+    
+    console.log('✅ Tabla generada con', tabla.length, 'elementos:', tabla);
     return tabla;
   };
 
@@ -586,6 +651,20 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
             <MenuItem value="2025">2025</MenuItem>
           </Select>
         </FormControl>
+        
+        {(filtroMes || filtroAnio) && (
+          <Button
+            variant="outlined"
+            color="warning"
+            size="small"
+            onClick={() => {
+              setFiltroMes('');
+              setFiltroAnio('');
+            }}
+          >
+            Limpiar Filtros
+          </Button>
+        )}
         
         <Button
           variant="outlined"
@@ -731,9 +810,34 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-          Tabla de Depreciación Anual
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 4, mb: 2 }}>
+          <Typography variant="h6">
+            Tabla de Depreciación Anual
+          </Typography>
+          {(filtroMes || filtroAnio) && (
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Typography variant="caption" color="text.secondary">
+                Filtros activos:
+              </Typography>
+              {filtroMes && (
+                <Chip 
+                  label={`Mes: ${filtroMes}`} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                />
+              )}
+              {filtroAnio && (
+                <Chip 
+                  label={`Año: ${filtroAnio}`} 
+                  size="small" 
+                  color="secondary" 
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          )}
+        </Box>
 
         {maquinariaInfo?.advertencia && (
           <Alert severity="info" sx={{ mb: 2 }}>{maquinariaInfo.advertencia}</Alert>

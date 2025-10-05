@@ -105,7 +105,7 @@ class MantenimientoSerializer(serializers.Serializer):
     tipo_desplazamiento_vida_util = serializers.CharField(max_length=50, required=False, allow_blank=True)
     
     # Sistema eléctrico
-    cantidad_sistema_electrico = serializers.IntegerField(required=False, allow_null=True)
+    cantidad_sistema_electrico = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     voltaje_sistema_electrico = serializers.FloatField(required=False, allow_null=True)
     amperaje_sistema_electrico = serializers.FloatField(required=False, allow_null=True)
     vida_util_sistema_electrico = serializers.CharField(max_length=50, required=False, allow_blank=True)
@@ -147,11 +147,11 @@ class MantenimientoSerializer(serializers.Serializer):
     # Sistema de combustible
     gasolina = serializers.CharField(max_length=100, required=False, allow_blank=True)
     gasolina_cantidad_lt = serializers.FloatField(required=False, allow_null=True)
-    cantidad_filtros = serializers.IntegerField(required=False, allow_null=True)
+    cantidad_filtros = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     codigo_filtro_combustible = serializers.CharField(max_length=50, required=False, allow_blank=True)
     
     # Otros filtros
-    otros_filtros_cantidad = serializers.IntegerField(required=False, allow_null=True)
+    otros_filtros_cantidad = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     otros_filtros_numero = serializers.CharField(max_length=50, required=False, allow_blank=True)
     otros_filtros_cambio = serializers.CharField(max_length=100, required=False, allow_blank=True)
     otros_filtros_descripcion = serializers.CharField(max_length=200, required=False, allow_blank=True)
@@ -178,6 +178,36 @@ class MantenimientoSerializer(serializers.Serializer):
                 return datetime.strptime(value, '%Y-%m-%d').date()
             except ValueError:
                 raise serializers.ValidationError("Formato de fecha inválido. Use YYYY-MM-DD")
+        return value
+    
+    def validate_cantidad_sistema_electrico(self, value):
+        if value is None or value == '':
+            return None
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return value  # Mantener como string si no se puede convertir
+        return value
+    
+    def validate_cantidad_filtros(self, value):
+        if value is None or value == '':
+            return None
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return value  # Mantener como string si no se puede convertir
+        return value
+    
+    def validate_otros_filtros_cantidad(self, value):
+        if value is None or value == '':
+            return None
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                return value  # Mantener como string si no se puede convertir
         return value
 
 class SeguroSerializer(serializers.Serializer):

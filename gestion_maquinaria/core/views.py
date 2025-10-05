@@ -2008,6 +2008,9 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
         data['maquinaria'] = str(maquinaria_id)
         maquinaria_doc = get_collection(Maquinaria).find_one({"_id": ObjectId(maquinaria_id)})
         
+        logger.info(f"Mantenimiento PUT - Datos recibidos: {data}")
+        logger.info(f"Mantenimiento PUT - Registro existente: {existing_record}")
+        
         serializer = self.serializer_class(existing_record, data=data, partial=True)
         if serializer.is_valid():
             validated_data = serializer.validated_data
@@ -2043,8 +2046,10 @@ class MantenimientoDetailView(BaseSectionDetailAPIView):
                 logger.error(f"Error al registrar actividad de edición de mantenimiento: {str(e)}")
             # --- FIN REGISTRO DE ACTIVIDAD ---
             return Response(serialize_doc(updated_record))
-        # Responder el error exacto del serializer en el JSON
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            logger.error(f"Mantenimiento PUT - Errores de validación: {serializer.errors}")
+            # Responder el error exacto del serializer en el JSON
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, maquinaria_id, record_id):
         if not ObjectId.is_valid(maquinaria_id) or not ObjectId.is_valid(record_id):

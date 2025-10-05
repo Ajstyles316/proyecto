@@ -131,8 +131,8 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
   const currentRows = useMemo(() => {
     const enrichedRows = filteredRows.map(enriquecerMaquinaria);
     if (pageSize === 'Todos') return enrichedRows;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
+    const startIndex = (currentPage - 1) * parseInt(pageSize, 10);
+    const endIndex = startIndex + parseInt(pageSize, 10);
     return enrichedRows.slice(startIndex, endIndex);
   }, [filteredRows, currentPage, pageSize]);
 
@@ -157,7 +157,7 @@ const DepreciacionTabla = ({ maquinarias, handleVerDetalleClick, loading }) => {
           </Typography>
         </Box>
         <Chip
-          label={`${filteredRows.length} registro${filteredRows.length !== 1 ? 's' : ''}`}
+          label={`${currentRows.length} registro${currentRows.length !== 1 ? 's' : ''}`}
           size="small"
           sx={{ 
             bgcolor: 'rgba(255,255,255,0.2)',
