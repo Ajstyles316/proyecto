@@ -266,6 +266,47 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
 
   // Funciones de exportación
   const handleExportPDF = () => {
+    // Asegurar que siempre haya al menos un elemento de depreciación para el PDF
+    let depreciacionesParaExportar = detalleConAcumulado;
+    
+    // Si no hay datos de depreciación, crear un elemento por defecto
+    if (!depreciacionesParaExportar || depreciacionesParaExportar.length === 0) {
+      const costoActivo = parseFloat(editableData.costo_activo) || 0;
+      const horasPeriodo = parseFloat(editableData.horas_periodo) || 0;
+      const deprecPorHora = parseFloat(editableData.depreciacion_por_hora) || 0;
+      const ufvInicial = ufvActivo ? parseFloat(editableData.ufv_inicial) || 1 : 1;
+      const ufvFinal = ufvActivo ? parseFloat(editableData.ufv_final) || 1 : 1;
+      
+      // Calcular valores por defecto
+      const valorActivoFijo = costoActivo;
+      const deprecAcumulada = 0;
+      const valorNeto = valorActivoFijo - deprecAcumulada;
+      const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
+      const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
+      const valorActualizado = valorActivoFijo * factorUfv;
+      const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
+      const deprecGestion = horasPeriodo * deprecPorHora;
+      const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
+      const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+      
+      depreciacionesParaExportar = [{
+        anio: new Date().getFullYear(),
+        valor: deprecGestion,
+        valor_en_libros: valorNetoFinal,
+        valor_actualizado: valorActualizado,
+        depreciacion_acumulada: deprecAcumuladaFinal,
+        horas_periodo: horasPeriodo,
+        depreciacion_por_hora: deprecPorHora,
+        valor_activo_fijo: valorActivoFijo,
+        ufv_inicial: ufvInicial,
+        ufv_final: ufvFinal,
+        incremento_actualizacion_activo: incrementoActualizacion,
+        incremento_actualizacion_depreciacion: incrementoDeprecAcum,
+        costo_por_hora_efectiva: 0,
+        acumulado: deprecAcumuladaFinal
+      }];
+    }
+    
     const data = {
       maquinaria: {
         placa: maquinariaInfo?.placa || '',
@@ -280,15 +321,58 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         depreciacion_por_hora: editableData.depreciacion_por_hora,
         horas_periodo: editableData.horas_periodo
       },
-      depreciaciones: detalleConAcumulado,
+      depreciaciones: depreciacionesParaExportar,
       odometerData: odometerData
     };
+    
+    console.log('🔍 Datos para exportar PDF:', data);
     
     const filename = `depreciacion_${maquinariaInfo?.placa || 'maquinaria'}_${new Date().toISOString().split('T')[0]}`;
     exportTablaDepreciacionPDF(data, filename);
   };
 
   const handleExportExcel = () => {
+    // Asegurar que siempre haya al menos un elemento de depreciación para el Excel
+    let depreciacionesParaExportar = detalleConAcumulado;
+    
+    // Si no hay datos de depreciación, crear un elemento por defecto
+    if (!depreciacionesParaExportar || depreciacionesParaExportar.length === 0) {
+      const costoActivo = parseFloat(editableData.costo_activo) || 0;
+      const horasPeriodo = parseFloat(editableData.horas_periodo) || 0;
+      const deprecPorHora = parseFloat(editableData.depreciacion_por_hora) || 0;
+      const ufvInicial = ufvActivo ? parseFloat(editableData.ufv_inicial) || 1 : 1;
+      const ufvFinal = ufvActivo ? parseFloat(editableData.ufv_final) || 1 : 1;
+      
+      // Calcular valores por defecto
+      const valorActivoFijo = costoActivo;
+      const deprecAcumulada = 0;
+      const valorNeto = valorActivoFijo - deprecAcumulada;
+      const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
+      const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
+      const valorActualizado = valorActivoFijo * factorUfv;
+      const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
+      const deprecGestion = horasPeriodo * deprecPorHora;
+      const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
+      const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+      
+      depreciacionesParaExportar = [{
+        anio: new Date().getFullYear(),
+        valor: deprecGestion,
+        valor_en_libros: valorNetoFinal,
+        valor_actualizado: valorActualizado,
+        depreciacion_acumulada: deprecAcumuladaFinal,
+        horas_periodo: horasPeriodo,
+        depreciacion_por_hora: deprecPorHora,
+        valor_activo_fijo: valorActivoFijo,
+        ufv_inicial: ufvInicial,
+        ufv_final: ufvFinal,
+        incremento_actualizacion_activo: incrementoActualizacion,
+        incremento_actualizacion_depreciacion: incrementoDeprecAcum,
+        costo_por_hora_efectiva: 0,
+        acumulado: deprecAcumuladaFinal
+      }];
+    }
+    
     const data = {
       maquinaria: {
         placa: maquinariaInfo?.placa || '',
@@ -303,9 +387,11 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         depreciacion_por_hora: editableData.depreciacion_por_hora,
         horas_periodo: editableData.horas_periodo
       },
-      depreciaciones: detalleConAcumulado,
+      depreciaciones: depreciacionesParaExportar,
       odometerData: odometerData
     };
+    
+    console.log('🔍 Datos para exportar Excel:', data);
     
     const filename = `depreciacion_${maquinariaInfo?.placa || 'maquinaria'}_${new Date().toISOString().split('T')[0]}`;
     exportTablaDepreciacionExcel(data, filename);
