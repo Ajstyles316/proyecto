@@ -1037,7 +1037,7 @@ function exportPDFMasivo(data, filename = 'reporte') {
 // Función específica para exportar tabla de depreciación detallada
 export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion') => {
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
     compress: true,
@@ -1053,25 +1053,28 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
   // Encabezado
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('TABLA DE DEPRECIACIÓN DETALLADA', pageWidth / 2, margin + 10, { align: 'center' });
+  doc.text('TABLA DE DEPRECIACIÓN DETALLADA', pageWidth / 2, margin + 5, { align: 'center' });
   
   // Información de la maquinaria
   if (data.maquinaria) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    let y = margin + 25;
+    let y = margin + 20;
     
-    doc.text(`Placa: ${data.maquinaria.placa || '-'}`, margin, y);
-    doc.text(`Código: ${data.maquinaria.codigo || '-'}`, margin + 60, y);
-    doc.text(`Detalle: ${data.maquinaria.detalle || '-'}`, margin + 120, y);
+    // Centrar la información de la maquinaria
+    const infoWidth = 80;
+    const startX = (pageWidth - infoWidth * 2) / 2;
     
-    y += 8;
-    doc.text(`Costo del Activo: Bs. ${(data.maquinaria.costo_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`, margin, y);
-    doc.text(`Fecha de Compra: ${data.maquinaria.fecha_compra || '-'}`, margin + 80, y);
-    doc.text(`Método: ${data.maquinaria.metodo || '-'}`, margin + 160, y);
+    doc.text(`Placa: ${data.maquinaria.placa || '-'}`, startX, y);
+    doc.text(`Código: ${data.maquinaria.codigo || '-'}`, startX + infoWidth, y);
     
     y += 8;
-    doc.text(`Vida Útil: ${data.maquinaria.vida_util || '-'} años`, margin, y);
+    doc.text(`Detalle: ${data.maquinaria.detalle || '-'}`, startX, y);
+    doc.text(`Costo del Activo: Bs. ${(data.maquinaria.costo_activo || 0).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`, startX + infoWidth, y);
+    
+    y += 8;
+    doc.text(`Fecha de Compra: ${data.maquinaria.fecha_compra || '-'}`, startX, y);
+    doc.text(`Vida Útil: ${data.maquinaria.vida_util || '-'} años`, startX + infoWidth, y);
     
     // Campos específicos para depreciación por horas
     if (data.maquinaria.metodo === 'depreciacion_por_horas') {
@@ -1084,77 +1087,71 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
     }
   }
   
-  // Tabla de depreciación con formato específico
+  // Tabla de depreciación con formato de 2 columnas
   if (data.depreciaciones && data.depreciaciones.length > 0) {
-    let y = margin + 60;
+    let y = margin + 50;
     
-    // Preparar datos para la tabla con el formato de la imagen
-    const headers = [
-      'PRECIO MAQUINARIA',
-      'PLACAS', 
-      'HORAS',
-      'VALOR ACTIVO FIJO',
-      'DEPREC. ACUMULADA',
-      'VALOR NETO',
-      'DEPRECIACIÓN BS/HORA',
-      'INCREM. P/ACTUAL. ACT FIJO',
-      'VALOR ACTUALIZADO',
-      'INCREM. ACTUALIZ. DEPR.ACUM',
-      'DEPREC. DE LA GESTION',
-      'DEPREC. ACUMULADA FINAL',
-      'VALOR NETO FINAL'
+    // Preparar datos para la tabla con formato de 2 columnas (Campo, Valor)
+    const tableData = [];
+    
+    // Obtener el primer elemento de depreciación para mostrar los valores
+    const item = data.depreciaciones[0];
+    
+    // Calcular valores según las fórmulas
+    const precioMaquinaria = parseFloat(data.maquinaria?.costo_activo) || 0;
+    const placa = data.maquinaria?.placa || '';
+    const horas = item.horas_periodo || 0;
+    const valorActivoFijo = precioMaquinaria;
+    const deprecAcumulada = item.acumulado || 0;
+    const valorNeto = valorActivoFijo - deprecAcumulada;
+    const deprecPorHora = parseFloat(data.maquinaria?.depreciacion_por_hora) || 0;
+    
+    // Factor UFV
+    const ufvInicial = parseFloat(data.maquinaria?.ufv_inicial) || 0;
+    const ufvFinal = parseFloat(data.maquinaria?.ufv_final) || 0;
+    const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
+    
+    const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
+    const valorActualizado = valorActivoFijo * factorUfv;
+    const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
+    const deprecGestion = horas * deprecPorHora;
+    const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
+    const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
+    
+    // Crear filas con formato Campo-Valor
+    const campos = [
+      { campo: 'PRECIO MAQUINARIA', valor: `Bs. ${precioMaquinaria.toFixed(2)}` },
+      { campo: 'PLACAS', valor: placa },
+      { campo: 'HORAS', valor: horas.toFixed(2) },
+      { campo: 'VALOR ACTIVO FIJO', valor: `Bs. ${valorActivoFijo.toFixed(2)}` },
+      { campo: 'DEPRECIACIÓN ACUMULADA', valor: `Bs. ${deprecAcumulada.toFixed(2)}` },
+      { campo: 'VALOR NETO', valor: `Bs. ${valorNeto.toFixed(2)}` },
+      { campo: 'DEPRECIACIÓN BS/HORA', valor: `Bs. ${deprecPorHora.toFixed(2)}` },
+      { campo: 'INCREMENTO POR ACTUALIZACIÓN ACTIVO FIJO', valor: `Bs. ${incrementoActualizacion.toFixed(2)}` },
+      { campo: 'VALOR ACTUALIZADO', valor: `Bs. ${valorActualizado.toFixed(2)}` },
+      { campo: 'INCREMENTO ACTUALIZACIÓN DEPRECIACIÓN ACUMULADA', valor: `Bs. ${incrementoDeprecAcum.toFixed(2)}` },
+      { campo: 'DEPRECIACIÓN DE LA GESTIÓN', valor: `Bs. ${deprecGestion.toFixed(2)}` },
+      { campo: 'DEPRECIACIÓN ACUMULADA FINAL', valor: `Bs. ${deprecAcumuladaFinal.toFixed(2)}` },
+      { campo: 'VALOR NETO FINAL', valor: `Bs. ${valorNetoFinal.toFixed(2)}` }
     ];
     
-    const tableData = data.depreciaciones.map(item => {
-      // Calcular valores según las fórmulas
-      const precioMaquinaria = parseFloat(data.maquinaria?.costo_activo) || 0;
-      const placa = data.maquinaria?.placa || '';
-      const horas = item.horas_periodo || 0;
-      const valorActivoFijo = precioMaquinaria;
-      const deprecAcumulada = item.acumulado || 0;
-      const valorNeto = valorActivoFijo - deprecAcumulada;
-      const deprecPorHora = parseFloat(data.maquinaria?.depreciacion_por_hora) || 0;
-      
-      // Factor UFV
-      const ufvInicial = parseFloat(data.maquinaria?.ufv_inicial) || 0;
-      const ufvFinal = parseFloat(data.maquinaria?.ufv_final) || 0;
-      const factorUfv = ufvInicial > 0 ? ufvFinal / ufvInicial : 1;
-      
-      const incrementoActualizacion = valorActivoFijo * (factorUfv - 1);
-      const valorActualizado = valorActivoFijo * factorUfv;
-      const incrementoDeprecAcum = deprecAcumulada * (factorUfv - 1);
-      const deprecGestion = horas * deprecPorHora;
-      const deprecAcumuladaFinal = deprecAcumulada + incrementoDeprecAcum + deprecGestion;
-      const valorNetoFinal = valorActualizado - deprecAcumuladaFinal;
-      
-      return [
-        precioMaquinaria.toFixed(2),
-        placa,
-        horas.toFixed(2),
-        valorActivoFijo.toFixed(2),
-        deprecAcumulada.toFixed(2),
-        valorNeto.toFixed(2),
-        deprecPorHora.toFixed(2),
-        incrementoActualizacion.toFixed(2),
-        valorActualizado.toFixed(2),
-        incrementoDeprecAcum.toFixed(2),
-        deprecGestion.toFixed(2),
-        deprecAcumuladaFinal.toFixed(2),
-        valorNetoFinal.toFixed(2)
-      ];
+    // Convertir a formato de tabla
+    campos.forEach(campo => {
+      tableData.push([campo.campo, campo.valor]);
     });
     
-    // Crear la tabla con mejor visibilidad
+    // Crear la tabla con formato de 2 columnas centrada
+    const tableMargin = 30; // Márgenes más amplios para centrar mejor
     autoTable(doc, {
-      head: [headers],
+      head: [['CAMPO', 'VALOR']],
       body: tableData,
       startY: y,
-      margin: { left: margin, right: margin },
+      margin: { left: tableMargin, right: tableMargin },
       styles: {
-        fontSize: 8,
-        cellPadding: 2,
+        fontSize: 10,
+        cellPadding: 4,
         overflow: 'linebreak',
-        halign: 'center',
+        halign: 'left',
         lineColor: [0, 0, 0],
         lineWidth: 0.1
       },
@@ -1162,25 +1159,15 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
         fillColor: [30, 77, 183],
         textColor: [255, 255, 255],
         fontStyle: 'bold',
-        fontSize: 9
+        fontSize: 11,
+        halign: 'center'
       },
       alternateRowStyles: {
         fillColor: [248, 248, 248]
       },
       columnStyles: {
-        0: { halign: 'right' }, // PRECIO MAQUINARIA
-        1: { halign: 'center' }, // PLACAS
-        2: { halign: 'right' }, // HORAS
-        3: { halign: 'right' }, // VALOR ACTIVO FIJO
-        4: { halign: 'right' }, // DEPREC. ACUMULADA
-        5: { halign: 'right' }, // VALOR NETO
-        6: { halign: 'right' }, // DEPRECIACIÓN BS/HORA
-        7: { halign: 'right' }, // INCREM. P/ACTUAL. ACT FIJO
-        8: { halign: 'right' }, // VALOR ACTUALIZADO
-        9: { halign: 'right' }, // INCREM. ACTUALIZ. DEPR.ACUM
-        10: { halign: 'right' }, // DEPREC. DE LA GESTION
-        11: { halign: 'right' }, // DEPREC. ACUMULADA FINAL
-        12: { halign: 'right' } // VALOR NETO FINAL
+        0: { halign: 'left', cellWidth: 100 }, // CAMPO - más ancho
+        1: { halign: 'right', cellWidth: 50 }  // VALOR - más ancho
       }
     });
   }
@@ -1189,19 +1176,11 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
   const lastPage = doc.internal.getNumberOfPages();
   doc.setPage(lastPage);
   
-  // Posicionar firmas casi al final de la página
-  let y = pageHeight - 50;
-  
-  // Título de firmas
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('FIRMAS', pageWidth / 2, y, { align: 'center' });
-  y += 15;
-  
+  // Posicionar firmas con más espacio después de la tabla
+  let y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 18 : pageHeight - 80;
   // Configuración de firmas para depreciación
   const firmasDepreciacion = [
-    'TECNICO DE ACTIVOS FIJOS',
+    'TÉCNICO DE ACTIVOS FIJOS',
     'ENCARGADO DE ACTIVOS FIJOS'
   ];
   

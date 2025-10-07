@@ -860,14 +860,14 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
                 <TableCell>PLACAS</TableCell>
                 <TableCell align="right">HORAS</TableCell>
                 <TableCell align="right">VALOR ACTIVO FIJO</TableCell>
-                <TableCell align="right">DEPREC. ACUMULADA</TableCell>
+                <TableCell align="right">DEPRECIACIÓN ACUMULADA</TableCell>
                 <TableCell align="right">VALOR NETO</TableCell>
                 <TableCell align="right">DEPRECIACIÓN BS/HORA</TableCell>
-                <TableCell align="right">INCREM. P/ACTUAL. ACT FIJO</TableCell>
+                <TableCell align="right">INCREMENTO POR ACTUALIZACIÓN ACTIVO FIJO</TableCell>
                 <TableCell align="right">VALOR ACTUALIZADO</TableCell>
-                <TableCell align="right">INCREM. ACTUALIZ. DEPR.ACUM</TableCell>
-                <TableCell align="right">DEPREC. DE LA GESTION</TableCell>
-                <TableCell align="right">DEPREC. ACUMULADA FINAL</TableCell>
+                <TableCell align="right">INCREMENTO ACTUALIZACIÓN DEPRECIACIÓN ACUMULADA</TableCell>
+                <TableCell align="right">DEPRECIACIÓN DE LA GESTIÓN</TableCell>
+                <TableCell align="right">DEPRECIACIÓN ACUMULADA FINAL</TableCell>
                 <TableCell align="right">VALOR NETO FINAL</TableCell>
               </TableRow>
             </TableHead>
