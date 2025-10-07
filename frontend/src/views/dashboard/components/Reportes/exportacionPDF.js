@@ -1088,14 +1088,20 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
   }
   
   // Tabla de depreciación con formato de 2 columnas
-  if (data.depreciaciones && data.depreciaciones.length > 0) {
-    let y = margin + 50;
-    
-    // Preparar datos para la tabla con formato de 2 columnas (Campo, Valor)
-    const tableData = [];
-    
-    // Obtener el primer elemento de depreciación para mostrar los valores
-    const item = data.depreciaciones[0];
+  let y = margin + 50;
+  
+  // Preparar datos para la tabla con formato de 2 columnas (Campo, Valor)
+  const tableData = [];
+  
+  // Obtener datos de depreciación (usar datos por defecto si no hay depreciaciones)
+  const item = data.depreciaciones && data.depreciaciones.length > 0 ? data.depreciaciones[0] : {};
+  
+  // Debug: Verificar datos
+  console.log('🔍 Datos para tabla de depreciación:', {
+    maquinaria: data.maquinaria,
+    depreciaciones: data.depreciaciones,
+    item: item
+  });
     
     // Calcular valores según las fórmulas
     const precioMaquinaria = parseFloat(data.maquinaria?.costo_activo) || 0;
@@ -1170,14 +1176,14 @@ export const exportTablaDepreciacionPDF = (data, filename = 'tabla_depreciacion'
         1: { halign: 'right', cellWidth: 50 }  // VALOR - más ancho
       }
     });
-  }
   
   // Agregar firmas específicas para depreciación
   const lastPage = doc.internal.getNumberOfPages();
   doc.setPage(lastPage);
   
   // Posicionar firmas con más espacio después de la tabla
-  let y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 18 : pageHeight - 80;
+  y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 17 : pageHeight - 80;
+  
   // Configuración de firmas para depreciación
   const firmasDepreciacion = [
     'TÉCNICO DE ACTIVOS FIJOS',
