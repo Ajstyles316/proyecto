@@ -564,28 +564,13 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
       }, 0);
       
       // Crear una sola fila con las horas acumuladas
-      // Siempre crear al menos una fila, incluso si no hay datos de odómetro
       const horas_periodo = totalHoras || parseFloat(editableData.horas_periodo) || 0;
         
-        // Variables según las columnas de la imagen:
-        // A = HORAS (horas_periodo)
-        // B = VALOR ACTIVO FIJO 31-12-23 (costo_activo)
-        // C = DEPREC. ACUMULADA AL 31-12-23 (depreciacion_acumulada_anterior)
-        // D = VALOR NETO 31-12-23 (valor_neto_anterior)
-        // E = DEPRECIACIÓN BS/HORA (depreciacion_por_hora)
-        // F = INCREM. P/ACTUAL. ACT FIJO (incremento_actualizacion_activo)
-        // G = VALOR ACTUALIZADO 31-12-2024 (valor_actualizado)
-        // H = INCREM. ACTUALIZ. DEPR.ACUM (incremento_actualizacion_depreciacion)
-        // I = DEPREC. DE LA GESTION AL 31-12-2024 (depreciacion_periodo)
-        // J = DEPREC. ACUMULADA AL 31-12-2024 (depreciacion_acumulada_total)
-        // K = VALOR NETO AL 31-12-2024 (valor_neto_final)
-        
-        const valor_activo_fijo = costo_activo; // B
-        const depreciacion_acumulada_anterior = depreciacion_acumulada_total; // C (acumulado hasta ahora)
-        // const valor_neto_anterior = valor_activo_fijo - depreciacion_acumulada_anterior; // D = B - C (no usado)
+        const valor_activo_fijo = costo_activo; 
+        const depreciacion_acumulada_anterior = depreciacion_acumulada_total;
         
         // Fórmula: G = B * UFV FINAL / UFV INICIAL
-        const incremento_actualizacion_activo = valor_actualizado - valor_activo_fijo; // F = G - B
+        const incremento_actualizacion_activo = valor_actualizado - valor_activo_fijo; 
         
         // Fórmula: H = C * UFV FINAL / UFV INICIAL
         const incremento_actualizacion_depreciacion = depreciacion_acumulada_anterior * (ufv_final / ufv_inicial); // H
@@ -620,7 +605,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
         costo_por_hora_efectiva: parseFloat(costo_por_hora_efectiva.toFixed(2)),
         unidad: `Total (${odometerDataFiltrado.length} registros)` // Mostrar total de registros filtrados
       });
-    } else { // Default to linea_recta if method is unknown
+    } else { 
       const depreciacion_anual = (costo_activo - valor_residual) / vida_util;
       for (let i = 0; i < vida_util; i++) {
         let dep_anual;
@@ -635,7 +620,7 @@ const DetalleDepreciacionModal = ({ open, handleClose, maquinariaInfo, onSave })
       }
     }
     
-    console.log('✅ Tabla generada con', tabla.length, 'elementos:', tabla);
+    console.log('Tabla generada con', tabla.length, 'elementos:', tabla);
     return tabla;
   };
 
