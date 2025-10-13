@@ -7,12 +7,22 @@ import {
   TextField,
   Button,
   Typography,
-  Alert
+  Alert,
+  Chip
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useState, useEffect } from "react";
 import { getRiesgoColor, getRandomRecomendacionesPorTipo } from "./hooks";
 import PropTypes from "prop-types";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip
+} from "recharts";
 // Utilidades para capitalizar y formatear probabilidad
 function capitalizeSentence(str) {
   if (!str) return '';
@@ -22,6 +32,25 @@ function formatProbabilidad(prob) {
   if (prob === undefined || prob === null) return '-';
   const num = Number(prob);
   return Number.isInteger(num) ? `${num}%` : `${num.toFixed(2)}%`;
+}
+// Visual de urgencia (coherente con el historial)
+function getUrgenciaStyle(urgencia) {
+  if (!urgencia) return { color: '#8bc34a', bg: '#8bc34a15' };
+  const map = {
+    'CRÍTICA': { color: '#d32f2f', bg: '#d32f2f15' },
+    'ALTA': { color: '#f57c00', bg: '#f57c0015' },
+    'MODERADA': { color: '#ff9800', bg: '#ff980015' },
+    'NORMAL': { color: '#4caf50', bg: '#4caf5015' },
+    'MÍNIMA': { color: '#8bc34a', bg: '#8bc34a15' }
+  };
+  return map[urgencia] || { color: '#8bc34a', bg: '#8bc34a15' };
+}
+function normalizeTipo(resultado) {
+  if (!resultado) return 'otro';
+  const val = String(resultado).toLowerCase();
+  if (val.includes('prevent')) return 'preventivo';
+  if (val.includes('correct')) return 'correctivo';
+  return 'otro';
 }
 // Componente reutilizable para mostrar un pronóstico con estilo
 function PronosticoCard({ pronostico }) {
@@ -53,6 +82,29 @@ function PronosticoCard({ pronostico }) {
       <Typography><b>Horas de Operación:</b> {horas_op || '-'}</Typography>
       <Typography><b>Recorrido (km):</b> {recorrido || '-'}</Typography>
       <Typography><b>Resultado:</b> <b>{capitalizeSentence(resultado)}</b></Typography>
+      <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
+        {/* Chip por tipo de mantenimiento */}
+        <Chip
+          size="small"
+          label={resultado ? capitalizeSentence(normalizeTipo(resultado)) : 'Sin tipo'}
+          sx={{
+            color: normalizeTipo(resultado) === 'correctivo' ? '#d32f2f' : normalizeTipo(resultado) === 'preventivo' ? '#2e7d32' : '#1976d2',
+            backgroundColor: normalizeTipo(resultado) === 'correctivo' ? '#d32f2f15' : normalizeTipo(resultado) === 'preventivo' ? '#2e7d3215' : '#1976d215',
+            fontWeight: 600
+          }}
+        />
+        {/* Chip de urgencia (si existe) */}
+        {urgencia && (() => {
+          const s = getUrgenciaStyle(urgencia);
+          return (
+            <Chip
+              size="small"
+              label={`Urgencia: ${urgencia}`}
+              sx={{ color: s.color, backgroundColor: s.bg, fontWeight: 600 }}
+            />
+          );
+        })()}
+      </Box>
       {resultado && resultado.toLowerCase() === 'correctivo' && (
         <Typography color="error" fontWeight={600}>¡Atención inmediata!</Typography>
       )}
@@ -216,6 +268,75 @@ const ModalPronostico = ({ open, onClose, maquinaria, historial = [], onPredicti
         {showForm === false && Array.isArray(historial) && historial.length > 0 && (
           <Box mb={3}>
             <Typography variant="subtitle1" color="primary" mb={1}>Historial de Pronósticos</Typography>
+            {/* Gráfico compacto de evolución */}
+            <Box sx={{ width: '100%', height: 220, mb: 2 }} aria-label="Gráfico de evolución de pronósticos">
+              {(() => {
+                const tipos = (historial || []).map(h => normalizeTipo(h.resultado));
+                const countPreventivo = tipos.filter(t => t === 'preventivo').length;
+                const countCorrectivo = tipos.filter(t => t === 'correctivo').length;
+                const predominant = countCorrectivo > countPreventivo ? 'correctivo' : countPreventivo > 0 ? 'preventivo' : 'otro';
+                const strokeColor = predominant === 'correctivo' ? '#d32f2f' : predominant === 'preventivo' ? '#2e7d32' : '#1976d2';
+                const gradientId = 'colorValorModal';
+                const dataSerie = [...historial]
+                  .map((h, idx) => {
+                    const fecha = (() => {
+                      const raw = h.fecha_asig || h.fecha_mantenimiento || h.fecha_sugerida;
+                      if (!raw) return `#${idx + 1}`;
+                      try {
+                        const d = new Date(String(raw));
+                        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+                        return String(raw).split('T')[0].split(' ')[0];
+                      } catch {
+                        return `#${idx + 1}`;
+                      }
+                    })();
+                    const prob = h.probabilidad !== undefined && h.probabilidad !== null ? Number(h.probabilidad) : null;
+                    const horas = h.horas_op !== undefined && h.horas_op !== null ? Number(h.horas_op) : null;
+                    const recorrido = h.recorrido !== undefined && h.recorrido !== null ? Number(h.recorrido) : null;
+                    const yVal = prob ?? horas ?? recorrido ?? null;
+                    const serie = prob !== null ? 'Probabilidad (%)' : horas !== null ? 'Horas Operación' : 'Recorrido (km)';
+                    return { fecha, valor: yVal, serie };
+                  })
+                  .filter(d => d.valor !== null);
+                return (
+                  <>
+                    {/* Leyenda simple por tipo */}
+                    <Box display="flex" gap={2} mb={1} alignItems="center">
+                      {countPreventivo > 0 && (
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2e7d32' }} />
+                          <Typography variant="caption">Preventivo</Typography>
+                        </Box>
+                      )}
+                      {countCorrectivo > 0 && (
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#d32f2f' }} />
+                          <Typography variant="caption">Correctivo</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                    <ResponsiveContainer>
+                      <AreaChart data={dataSerie} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={strokeColor} stopOpacity={0.35} />
+                            <stop offset="95%" stopColor={strokeColor} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="fecha" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} width={40} />
+                        <Tooltip
+                          formatter={(val, name, ctx) => [val, ctx?.payload?.serie || 'Valor']}
+                          labelFormatter={(label) => `Fecha: ${label}`}
+                        />
+                        <Area type="monotone" dataKey="valor" stroke={strokeColor} fillOpacity={1} fill={`url(#${gradientId})`} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </>
+                );
+              })()}
+            </Box>
             {historial.map((h, idx) => (
               <PronosticoCard key={idx} pronostico={h} />
             ))}
