@@ -51,6 +51,8 @@ from .views import (
     ImpuestoDetailView,
     ControlOdometroListView,
     ControlOdometroDetailView,
+    NovedadListView,
+    NovedadDetailView,
     SolicitarResetPasswordView,
     VerificarCodigoResetPasswordView,
     ReenviarCodigoResetPasswordView
@@ -136,5 +138,9 @@ urlpatterns = [
         path('', ControlOdometroListView.as_view(), name='control-odometro-list'),
         path('<str:record_id>/', ControlOdometroDetailView.as_view(), name='control-odometro-detail'),
     ])),
-
+    
+    path('novedades/', include([
+        path('', NovedadListView.as_view(), name='novedad-list'),          
+        path('<str:record_id>/', NovedadDetailView.as_view(), name='novedad-detail'),  
+    ])),
 ]

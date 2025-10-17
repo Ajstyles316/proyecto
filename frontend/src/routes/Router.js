@@ -21,6 +21,7 @@ const ExRadio = lazy(() => import("../views/form-elements/ExButton"));
 const ActivosMain = lazy(() => import("../views/dashboard/components/Activos/ActivosMain"));
 const Pronostico = lazy(() => import("../views/dashboard/components/Pronostico/Pronostico"));
 const ReportesMain = lazy(() => import("../views/dashboard/components/Reportes/ReportesMain"));
+const NovedadesPage = lazy(() => import("../views/dashboard/components/Novedades/NovedadesMain"));
 const DepreciacionesMain = lazy(() => import("../views/dashboard/components/Depreciacion/DepreciacionesMain"));
 
 const Router = [
@@ -41,6 +42,7 @@ const Router = [
       { path: "/pronostico", element: <PrivateRoute><Pronostico /></PrivateRoute> },
       { path: "/perfil", element: <PrivateRoute><ProfilePage /></PrivateRoute> },
       { path: "/reportes", element: <PrivateRoute><ReportesMain /></PrivateRoute> },
+      { path: "/novedades", element: <PrivateRoute><NovedadesPage maquinariaId={null} maquinariaPlaca={""} /></PrivateRoute> },
       { path: "/usuarios", element: <PrivateRoute><UserManagement /></PrivateRoute> },
       { path: "*", element: <Navigate to="/auth/404" /> },
     ],

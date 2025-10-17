@@ -653,3 +653,41 @@ class PronosticoInputSerializer(serializers.Serializer):
     fecha_asig = serializers.DateField()
     horas_op = serializers.FloatField()
     recorrido = serializers.FloatField()
+    
+class NovedadSerializer(serializers.Serializer):
+    _id = serializers.CharField(required=False, allow_blank=True)
+    numero = serializers.IntegerField(required=False, min_value=1)
+    maquinaria = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    placa = serializers.CharField(required=False, allow_blank=True)
+    unidad = serializers.CharField(required=False, allow_blank=True)
+    evento = serializers.CharField(required=False, allow_blank=True)
+    descripcion = serializers.CharField(required=False, allow_blank=True)
+    detalle = serializers.CharField(required=False, allow_blank=True)
+    ubicacion = serializers.CharField(required=False, allow_blank=True)
+    observaciones = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    registrado_por = serializers.CharField(required=False, allow_blank=True)
+    autorizado_por = serializers.CharField(required=False, allow_blank=True)
+    activo = serializers.BooleanField(required=False)
+    fecha_creacion = serializers.DateTimeField(required=False)
+    fecha_actualizacion = serializers.DateTimeField(required=False)
+
+    def validate(self, attrs):
+        unidad = attrs.get('unidad', '')
+        descripcion = attrs.get('descripcion', '')
+        detalle = attrs.get('detalle', '')
+        evento = attrs.get('evento', '')
+        if not descripcion:
+            if detalle:
+                attrs['descripcion'] = detalle
+            elif evento:
+                attrs['descripcion'] = evento
+        if not attrs.get('descripcion', '').strip():
+            raise serializers.ValidationError("Debe proporcionar 'descripcion' (o 'evento'/'detalle').")
+        if not str(unidad).strip():
+            raise serializers.ValidationError("El campo 'unidad' es requerido.")
+        if 'placa' in attrs and isinstance(attrs['placa'], str):
+            attrs['placa'] = attrs['placa'].strip()
+        if 'unidad' in attrs and isinstance(attrs['unidad'], str):
+            attrs['unidad'] = attrs['unidad'].strip()
+
+        return attrs

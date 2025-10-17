@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, date, timedelta, time
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from .models import Maquinaria, HistorialControl, ActaAsignacion, Liberacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro, ControlOdometro
+from .models import Maquinaria, HistorialControl, ActaAsignacion, Liberacion, Mantenimiento, Seguro, ITV, SOAT, Impuesto, Usuario, Pronostico, Seguimiento, VerificacionRegistro, ControlOdometro, Novedad
 from .serializers import (
     MaquinariaSerializer,
     RegistroSerializer,
@@ -27,7 +27,8 @@ from .serializers import (
     DepreciacionSerializer,
     ActivoSerializer,
     PronosticoInputSerializer,
-    ControlOdometroSerializer
+    ControlOdometroSerializer,
+    NovedadSerializer
 )
 from django.conf import settings
 from .mongo_connection import get_collection, get_collection_from_activos_db, is_mongodb_available
@@ -5793,7 +5794,167 @@ class ControlOdometroListView(BaseSectionAPIView):
 class ControlOdometroDetailView(BaseSectionDetailAPIView):
     collection_class = ControlOdometro
     serializer_class = ControlOdometroSerializer
-    projection = None
+
+# core/views.py
+from unicodedata import normalize as _norm
+
+def _norm_upper(x: str) -> str:
+    if not isinstance(x, str):
+        return ''
+    # quita acentos y mayusculiza
+    return _norm('NFD', x).encode('ascii', 'ignore').decode('ascii').upper().strip()
+
+class NovedadListView(APIView):
+    def _get_actor(self, request):
+        email = request.headers.get('X-User-Email')
+        usuarios_collection = get_collection(Usuario)
+        user = None
+        if usuarios_collection is not None and email:
+            user = usuarios_collection.find_one({"Email": email})
+        return user, email
+
+    def _flags_rol(self, user_dict):
+        if not isinstance(user_dict, dict):
+            return {'is_tecnico': False, 'is_encargado': False, 'is_admin': False}
+        raw = user_dict.get('Rol') or user_dict.get('role') or user_dict.get('Cargo') or user_dict.get('cargo') or ''
+        ru = _norm_upper(raw)
+        return {
+            'is_tecnico': 'TECNIC' in ru,    # TECNICO / TÉCNICO / TECNICO/A...
+            'is_encargado': 'ENCARG' in ru,  # ENCARGADO/A
+            'is_admin': 'ADMIN' in ru,       # ADMIN/ADMINISTRADOR(A)
+        }
+
+    def get(self, request):
+        try:
+            collection = get_collection(Novedad)
+            if collection is None:
+                return Response({"error": "Base de datos no disponible temporalmente"},
+                                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+            user, _ = self._get_actor(request)
+            flags = self._flags_rol(user or {})
+            unidad_usuario = (user.get('Unidad') if isinstance(user, dict) else None) or (user.get('unidad') if isinstance(user, dict) else None)
+
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size') or request.GET.get('limit') or 50)
+
+            filtro = {"$or": [{"activo": True}, {"activo": {"$exists": False}}]}
+
+            # Filtros desde UI
+            unidad = request.GET.get('unidad') or ''
+            fecha = request.GET.get('fecha') or ''  # YYYY-MM-DD (prefijo)
+
+            # Si es Técnico, fuerza su unidad (ignora query del cliente)
+            if flags['is_tecnico'] and unidad_usuario:
+                filtro['unidad'] = unidad_usuario
+            else:
+                if unidad:
+                    filtro['unidad'] = unidad
+
+            # Filtro por fecha (si fecha_creacion se guarda como string ISO)
+            if fecha:
+                filtro['fecha_creacion'] = {'$regex': f'^{fecha}'}
+
+            skip = max(page - 1, 0) * page_size
+            cursor = collection.find(filtro).skip(skip).limit(page_size)
+            data = serialize_list(list(cursor))
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback; print("NovedadListView.get error\n", traceback.format_exc())
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        try:
+            mongodb_check = check_mongodb_availability()
+            if mongodb_check:
+                return mongodb_check
+
+            user, actor_email = self._get_actor(request)
+            flags = self._flags_rol(user or {})
+
+            # Encargado/Admin no pueden crear
+            if flags['is_encargado'] or flags['is_admin']:
+                return Response({"error": "No autorizado para crear novedades."}, status=status.HTTP_403_FORBIDDEN)
+
+            data = request.data.copy()
+            serializer = NovedadSerializer(data=data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            validated = dict(serializer.validated_data)
+
+            # Normaliza maquinaria (ObjectId si llega string)
+            maq = validated.get('maquinaria')
+            if isinstance(maq, str) and maq.strip():
+                try:
+                    validated['maquinaria'] = ObjectId(maq)
+                except Exception:
+                    validated['maquinaria'] = None
+
+            # Técnico: fuerza su unidad al guardar
+            unidad_usuario = (user.get('Unidad') if isinstance(user, dict) else None) or (user.get('unidad') if isinstance(user, dict) else None)
+            if flags['is_tecnico'] and unidad_usuario:
+                validated['unidad'] = unidad_usuario
+
+            now = datetime.now()
+            validated['fecha_creacion'] = now
+            validated['fecha_actualizacion'] = now
+            validated['activo'] = True
+            validated['registrado_por'] = (user.get('Nombre') if isinstance(user, dict) and 'Nombre' in user else actor_email) or 'Sistema'
+            validated['autorizado_por'] = validated.get('registrado_por')
+
+            collection = get_collection(Novedad)
+            if collection is None:
+                return Response({"error": "Base de datos no disponible temporalmente"},
+                                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+            result = collection.insert_one(convert_dates_to_str(validated))
+            new_record = collection.find_one({"_id": result.inserted_id})
+            return Response(serialize_doc(new_record), status=status.HTTP_201_CREATED)
+        except Exception as e:
+            import traceback; print("NovedadListView.post error\n", traceback.format_exc())
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class NovedadDetailView(APIView):
+    def get(self, request, record_id):
+        collection = get_collection(Novedad)
+        record = collection.find_one({'_id': ObjectId(record_id)})
+        if not record:
+            return Response({"error": "Novedad no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serialize_doc(record))
+
+    def put(self, request, record_id):
+        collection = get_collection(Novedad)
+        existing = collection.find_one({'_id': ObjectId(record_id)})
+        if not existing:
+            return Response({"error": "Novedad no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = NovedadSerializer(existing, data=request.data, partial=True)
+        if serializer.is_valid():
+            validated = dict(serializer.validated_data)
+            maq = validated.get('maquinaria')
+            if isinstance(maq, str) and maq.strip():
+                try:
+                    validated['maquinaria'] = ObjectId(maq)
+                except Exception:
+                    validated['maquinaria'] = None
+            validated['fecha_actualizacion'] = datetime.now()
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': convert_dates_to_str(validated)})
+            updated = collection.find_one({'_id': ObjectId(record_id)})
+            return Response(serialize_doc(updated))
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, record_id):
+        collection = get_collection(Novedad)
+        existing = collection.find_one({'_id': ObjectId(record_id)})
+        if not existing:
+            return Response({"error": "Novedad no encontrada"}, status=status.HTTP_404_NOT_FOUND)
+        permanent = str(request.query_params.get('permanent', 'false')).lower() in ['1', 'true', 'yes']
+        if permanent:
+            collection.delete_one({'_id': ObjectId(record_id)})
+        else:
+            collection.update_one({'_id': ObjectId(record_id)}, {'$set': {'activo': False, 'fecha_actualizacion': datetime.now()}})
+        return Response({"status": "ok"})
+
 
     def convert_date_to_datetime(self, data):
         if not isinstance(data, dict):

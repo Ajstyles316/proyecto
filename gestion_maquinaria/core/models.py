@@ -68,3 +68,6 @@ class Seguimiento:
 
 class ControlOdometro:
     collection_name = "control_odometro"
+
+class Novedad:
+    collection_name = "novedades"

@@ -78,6 +78,12 @@ const baseMenuItems = [
     href: '/reportes',
   },
   {
+    id: uniqueId(),
+    title: 'Novedades',
+    icon: IconReport,
+    href: '/novedades',
+  },
+  {
     navlabel: true,
     subheader: 'Autenticación',
   },
@@ -104,6 +110,7 @@ const moduloMap = {
   'Activos': 'Activos',
   'Pronóstico': 'Pronóstico',
   'Reportes': 'Reportes',
+  'Novedades': 'Novedades',
   'Usuarios': 'Usuarios',
 };
 
