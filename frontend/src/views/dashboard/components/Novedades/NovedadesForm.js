@@ -11,16 +11,16 @@ const NovedadesForm = ({ onSubmit, onCancel, initialData, isEditing, isReadOnly,
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(form);
-  };
-
   // opciones ya FILTRADAS por unidad desde el padre
   const detallesUnicos = React.useMemo(
     () => Array.from(new Set(maquinariaOptions.map(m => m.detalle))).filter(Boolean),
     [maquinariaOptions]
   );
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(form);
+  };
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mb: 2 }}>

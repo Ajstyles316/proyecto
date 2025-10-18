@@ -1,21 +1,54 @@
 import PropTypes from 'prop-types';
 import { Box, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 
-// intenta formatear "YYYY-MM-DD"
+// Formatea a "DD/MM/YYYY" evitando desfase por zona horaria
 const fmtDate = (any) => {
   if (!any) return '';
   try {
-    // casos: string ISO, string "YYYY-MM-DD", objeto { $date: ... }, etc.
-    let d = any;
+    let s = any;
     if (typeof any === 'object') {
-      d = any.$date || any.date || any.iso || any.toString?.();
+      s = any.$date ?? any.date ?? any.iso ?? any.toString?.() ?? '';
     }
-    const dt = new Date(d);
-    if (isNaN(dt)) return String(any);
-    const dd = String(dt.getDate()).padStart(2, '0');
-    const mm = String(dt.getMonth() + 1).padStart(2, '0');
-    const yy = String(dt.getFullYear());
-    return `${dd}/${mm}/${yy}`;
+    if (typeof s !== 'string') s = String(s);
+
+    // Caso 1: "YYYY-MM-DD" (fecha pura). No usar new Date() para no desplazar.
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const [, y, mo, d] = m;
+      return `${d}/${mo}/${y}`;
+    }
+
+    // Caso 2: ISO con Z (UTC). Usar getters UTC para congelar día/mes/año.
+    if (s.includes('Z')) {
+      const dt = new Date(s);
+      if (!isNaN(dt)) {
+        const dd = String(dt.getUTCDate()).padStart(2, '0');
+        const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+        const yy = String(dt.getUTCFullYear());
+        return `${dd}/${mm}/${yy}`;
+      }
+    }
+
+    // Caso 3: epoch en ms
+    if (/^\d{13}$/.test(s)) {
+      const dt = new Date(Number(s));
+      if (!isNaN(dt)) {
+        const dd = String(dt.getDate()).padStart(2, '0');
+        const mm = String(dt.getMonth() + 1).padStart(2, '0');
+        const yy = String(dt.getFullYear());
+        return `${dd}/${mm}/${yy}`;
+      }
+    }
+
+    // Fallback: parse local
+    const dt = new Date(s);
+    if (!isNaN(dt)) {
+      const dd = String(dt.getDate()).padStart(2, '0');
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const yy = String(dt.getFullYear());
+      return `${dd}/${mm}/${yy}`;
+    }
+    return String(any);
   } catch {
     return String(any);
   }
@@ -49,9 +82,8 @@ const NovedadesTable = ({ rows }) => {
           ) : rows.map((r) => {
             const fecha = r.fecha || r.fecha_creacion || r.fecha_registro || r.created_at;
             const placa = r.placa ?? '';
-            // En tu payload: "descripcion" venía del equipo; "evento" es el detalle del suceso.
             const descEquipo = r.descripcion || r.descripcion_equipo || r.detalle_equipo || '';
-            const evento = r.evento || r.detalle || r.descripcion_evento || ''; // fallback si tu backend lo llama distinto
+            const evento = r.evento || r.detalle || r.descripcion_evento || '';
             const ubicacion = r.ubicacion || r.destino || r.ubicacion_destino || '';
             const observ = r.observaciones || '';
             const unidad = r.unidad || '';

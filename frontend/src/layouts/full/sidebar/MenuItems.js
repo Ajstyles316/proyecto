@@ -125,10 +125,17 @@ const getMenuItems = (user) => {
     return baseMenuItems.filter(item => !item.onlyAdmin);
   }
   
-  // Si es técnico, filtrar por permisos granulares
+  // Técnico (detección simple sin alterar nada más)
+  const isTecnico = user.Cargo && user.Cargo.toLowerCase().includes('técnico');
+
+  // Si es técnico (u otro), filtrar por permisos granulares
   return baseMenuItems.filter(item => {
     if (item.onlyAdmin) return false;
     if (!item.title || !moduloMap[item.title]) return true; // navlabel, subheader, logout, etc.
+
+    // EXCEPCIÓN mínima: mostrar "Novedades" al técnico aunque no tenga permisos cargados
+    if (isTecnico && item.title === 'Novedades') return true;
+
     const mod = moduloMap[item.title];
     return user.permisos && user.permisos[mod] && user.permisos[mod].ver;
   });

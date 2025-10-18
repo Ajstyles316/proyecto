@@ -40,51 +40,6 @@ const NovedadesMain = ({ maquinariaPlaca, maquinariaDetalle, maquinariaUnidad })
   const { user } = useUser();
   const { unidades, normalizeUnidadForDB } = useUnidades();
 
-  /* --- Patch 1-vez para que el sidebar muestre "Novedades" según rol (sin tocar el sidebar) --- */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('user');
-      if (!raw) return;
-      const u = JSON.parse(raw);
-
-      const pool = [
-        u?.Cargo, u?.Rol, u?.role, u?.rol,
-        ...(Array.isArray(u?.roles) ? u.roles : []),
-        ...(Array.isArray(u?.Roles) ? u.Roles : []),
-      ]
-        .filter(Boolean)
-        .map((s) => (s ?? '').toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase().trim());
-
-      const isTecnico   = pool.some((r) => r.includes('TECNIC'));
-
-      u.permisos = u.permisos || {};
-      const current = { ver: false, crear: false, editar: false, eliminar: false, ...(u.permisos.Novedades || {}) };
-      const needed = {
-        ver: true,
-        crear: isTecnico ? true : false,
-        editar: false,
-        eliminar: false,
-      };
-
-      const changed =
-        current.ver !== needed.ver ||
-        current.crear !== needed.crear ||
-        current.editar !== needed.editar ||
-        current.eliminar !== needed.eliminar;
-
-      if (changed && !sessionStorage.getItem('sb_fix_v2')) {
-        u.permisos.Novedades = needed;
-        localStorage.setItem('user', JSON.stringify(u));
-        sessionStorage.setItem('sb_fix_v2', '1');
-        window.location.reload();
-      }
-    } catch (e) {
-      console.error('sidebar fix (Novedades):', e);
-    }
-    // solo una vez
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // roles / permisos (solo lectura)
   const { isTecnico, isEncargado, isAdmin } = useMemo(() => detectRoles(user || {}), [user]);
   const readOnlyByRole = isEncargado || isAdmin;
@@ -188,6 +143,7 @@ const NovedadesMain = ({ maquinariaPlaca, maquinariaDetalle, maquinariaUnidad })
       placa: formData.placa || maquinariaPlaca,
       registrado_por: user?.Nombre || user?.Email || 'Usuario',
     };
+
     try {
       const res = await fetch(`${API}/novedades/`, {
         method: 'POST',
